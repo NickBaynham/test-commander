@@ -78,6 +78,12 @@ These decisions are settled. They constrain every phase below.
 
 16. **Frontend users drive Test Commander workflows, not raw Claude Code.** Any UI that fronts the orchestrator must route every request through the controlled execution pipeline introduced in Phase 10.5: intent router → command planner → permission policy → approval gate → bounded execution → artifact capture → diff validation → audit log. The web console is never a raw Claude terminal in a browser. This rule applies to Phase 10, 10.5, 11, 12, and 13 without exception.
 
+17. **Plan steps use the `claude` CLI, not interactive slash commands.** The Claude Code `/plugin`, `/skill`, etc. slash commands may be unavailable in some sessions (headless, CI, certain editor environments). Every plan step that validates, installs, lists, or removes plugins or skills uses the equivalent `claude plugin ...` CLI subcommands. Slash commands remain valid for ad-hoc interactive use, but the canonical, scriptable, environment-independent path is the CLI. Discovered during Step 0.5 when `/plugin marketplace add` returned "isn't available in this environment" while `claude plugin marketplace add` worked. Specifically the plan favors:
+    - `claude plugin validate <path>` for manifest schema checks (run before install).
+    - `claude plugin marketplace add <path>` and `claude plugin marketplace list`.
+    - `claude plugin install <name>@<marketplace>`, `claude plugin list`, `claude plugin details <name>`.
+    - `claude plugin uninstall <name>` for teardown.
+
 ---
 
 ## Open Questions
@@ -369,6 +375,8 @@ When a Claude Code prompt is provided for a phase, it ends with this standing in
 
 > Do not implement future phases yet. Create clean extension points, but only complete the current phase. Write documentation as you go. Add review and test steps. Update the To Do and Completed lists in `planning/plan.md`.
 
+**Tooling rule (Decision D17).** Any phase step that touches plugins, marketplaces, or installed skills uses the `claude plugin ...` CLI, never `/plugin` slash commands. The CLI is available in every Claude Code environment; slash commands are not. Validate manifests with `claude plugin validate` before any install or marketplace registration — schema problems are far cheaper to fix before install state is created.
+
 ---
 
 ## Phase 0 — Repository Foundation
@@ -461,13 +469,29 @@ Six sub-steps. Test-first: write the scaffold-validation tests before the artifa
 - **Content.** YAML frontmatter (`name: tc-core`, single-line `description` written as a trigger statement). Body describes `/tc:init`, `/tc:status`, `/tc:journal` and notes that command behavior arrives in Phase 1. `/tc:next` mentioned only as a Phase 1 follow-up (per Q7).
 - **Definition of done.** Frontmatter parses; `name` kebab-case; `description` non-empty; body references the three commands; no `commands/` files yet.
 
-##### 0.5.5 — Structural sanity check
-- **Deliverables.** No new files. Run `make verify` and `make test`; confirm the scaffold tests turn green.
-- **Definition of done.** `make verify` clean; `tests/test_plugin_scaffold.py` passes.
+##### 0.5.5 — Structural sanity check + manifest schema validation
+- **Deliverables.** No new files. Run:
+  - `make verify` — confirms `tests/test_plugin_scaffold.py` turns green.
+  - `claude plugin validate <repo-root>` — schema-validates `marketplace.json` against the published Claude Code marketplace schema.
+  - `claude plugin validate <repo-root>/plugins/test-commander` — schema-validates `plugin.json` against the plugin schema.
+- **Definition of done.** `make verify` clean; both `claude plugin validate` invocations print `✔ Validation passed`. If either validate fails, iterate on the manifest before continuing to 0.5.6 — fixing schema problems before the install step is much faster than fixing them after.
 
-##### 0.5.6 — Interactive install in Claude Code
+##### 0.5.6 — CLI install (no slash commands)
 - **Deliverables.** None. Verification only.
-- **Definition of done.** `/plugin marketplace add <repo-root>` and `/plugin install test-commander` succeed. `test-commander:tc-core` appears in available skills with no load errors. `~/.claude/plugins/installed_plugins.json` lists the new entry.
+- **Commands.** Run from the repo root:
+  ```sh
+  claude plugin marketplace add "$PWD"
+  claude plugin install test-commander@test-commander-marketplace
+  claude plugin list
+  claude plugin details test-commander
+  ```
+- **Why CLI.** Per Decision D17, slash commands like `/plugin marketplace add` may be unavailable in some Claude Code sessions. The `claude plugin ...` CLI works in every environment, is scriptable, and is what `make install` will wire up in Step 0.7.
+- **Definition of done.**
+  - `claude plugin marketplace add` prints `✔ Successfully added marketplace: test-commander-marketplace`.
+  - `claude plugin install` prints `✔ Successfully installed plugin: test-commander@test-commander-marketplace`.
+  - `claude plugin list` includes `test-commander@test-commander-marketplace`.
+  - `claude plugin details test-commander` lists `tc-core` under `Skills (1)`.
+  - `~/.claude/plugins/installed_plugins.json` has a `test-commander@test-commander-marketplace` entry.
 
 ##### Pre-flight tests
 
@@ -487,26 +511,28 @@ Eight automated; two interactive. The interactive checks gate 0.5.6.
 | 6 | `tc-core/SKILL.md` has valid YAML frontmatter with `name` and `description` | auto | regex parse in pytest |
 | 7 | `SKILL.md` body references `/tc:init`, `/tc:status`, `/tc:journal` | auto | grep-style assertion |
 | 8 | No command behavior implemented yet | auto | `commands/` absent or empty |
-| 9 | Marketplace + plugin install succeed without error in Claude Code | interactive | user runs the slash commands |
-| 10 | `tc-core` appears in available skills; no load errors | interactive | system-reminder skills list + `installed_plugins.json` check |
+| 9 | Marketplace + plugin install succeed without error | CLI | `claude plugin marketplace add` + `claude plugin install` both print success; `installed_plugins.json` has the entry |
+| 10 | `tc-core` appears in skill inventory; no load errors | CLI | `claude plugin details test-commander` lists `tc-core` under `Skills (1)` |
 
 ##### Validation sequence
 
 1. Write `tests/test_plugin_scaffold.py`. Run `make test` — expect failures for every Step 0.5 deliverable.
 2. Author 0.5.1–0.5.4 in parallel.
 3. Run `make verify` — automated checks 1–8 turn green.
-4. Author `plugins/test-commander/README.md` if any cross-link is missing.
-5. User runs `/plugin marketplace add <repo>` and `/plugin install test-commander` in Claude Code; reports output.
-6. I read `~/.claude/plugins/installed_plugins.json` and confirm the entry.
-7. User confirms `test-commander:tc-core` in the system-reminder skills list.
-8. If 5–7 fail, iterate on the manifest until accepted.
+4. Run `claude plugin validate <repo-root>` and `claude plugin validate <repo-root>/plugins/test-commander` — both must print `✔ Validation passed`. If either fails, iterate on the manifest before continuing.
+5. Run `claude plugin marketplace add "$PWD"` from the repo root.
+6. Run `claude plugin install test-commander@test-commander-marketplace`.
+7. Run `claude plugin list` and `claude plugin details test-commander` — confirm install and skill inventory.
+8. Read `~/.claude/plugins/installed_plugins.json` and confirm the entry.
+9. If any of 4–8 fail, iterate on the manifest until accepted.
 
 ##### Failure modes
 
-- Wrong/missing `source` shape for a local plugin in `marketplace.json` — most likely friction point. Will inspect the marketplace `$schema` URL if needed.
-- Required field present in schema but absent from the on-disk examples I inspected — same remediation.
-- `description` triggers the skill too broadly or too narrowly — iterate on wording.
-- Claude Code warns but loads — treated as a soft fail; fix before declaring done.
+- Wrong/missing `source` shape for a local plugin in `marketplace.json`. **Mitigation:** the correct shape is a relative string like `"./plugins/<name>"` (confirmed against the on-disk `~/.claude/plugins/marketplaces/marketplace/.claude-plugin/marketplace.json`). `claude plugin validate` catches this before install.
+- Required field present in the schema but missing from the manifest. **Mitigation:** `claude plugin validate` reports the specific field. Iterate, re-validate.
+- `description` triggers the skill too broadly or too narrowly. **Mitigation:** iterate on wording; no rebuild required.
+- Plugin install fails after a previous failed attempt left stale state. **Mitigation:** `claude plugin uninstall test-commander` then re-install.
+- Slash commands (`/plugin marketplace add`, `/plugin install`) unavailable in the session. **Mitigation:** per Decision D17, the plan uses `claude plugin ...` CLI subcommands, which work in every environment. Do not fall back to slash commands.
 
 #### 0.6 — Skill verifier
 - **Deliverables.** `scripts/verify_skills.py`.
