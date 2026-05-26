@@ -439,9 +439,74 @@ Nine small, ordered steps. Each ships an independently verifiable artifact with 
 - **Review.** Three macOS scenarios — all present (pass), PDM missing (auto-installs), Docker missing (prints suggestions, exits non-zero). WSL run noted as a follow-up if not immediately available.
 
 #### 0.5 — Plugin scaffold
-- **Deliverables.** `.claude-plugin/marketplace.json`; `plugins/test-commander/.claude-plugin/plugin.json`; `plugins/test-commander/README.md`, `plugins/test-commander/LICENSE`; `plugins/test-commander/skills/tc-core/SKILL.md` (frontmatter + description of `/tc:init`, `/tc:status`, `/tc:journal`; commands not yet implemented).
-- **Definition of done.** `marketplace.json` and `plugin.json` schema-valid; `tc-core/SKILL.md` has correct YAML frontmatter (`name`, `description`); skill describes the three commands; nothing implemented beyond the skill description.
-- **Review.** Install the local marketplace into Claude Code (`/plugin marketplace add .`); install `test-commander`; verify `tc-core` appears in available-skills. Confirm load with no errors.
+
+Six sub-steps. Test-first: write the scaffold-validation tests before the artifacts so red turns green deliberately. Sub-steps 0.5.1–0.5.4 run in parallel; 0.5.5 after them; 0.5.6 last.
+
+##### 0.5.1 — Marketplace manifest
+- **Deliverables.** `.claude-plugin/marketplace.json`.
+- **Content.** `$schema` pointing at the Anthropic marketplace schema; `name: "test-commander-marketplace"`; `description`; `owner` (name + email); `plugins` array with one entry referencing `plugins/test-commander/`.
+- **Definition of done.** Valid JSON; field shape mirrors `~/.claude/plugins/marketplaces/claude-plugins-official/.claude-plugin/marketplace.json`.
+
+##### 0.5.2 — Plugin manifest
+- **Deliverables.** `plugins/test-commander/.claude-plugin/plugin.json`.
+- **Content.** `name: "test-commander"`, `description`, `version: "0.0.0"` (matches `pyproject.toml`), `author` (name + email), optional `homepage` / `repository`.
+- **Definition of done.** Valid JSON; field shape mirrors `~/.claude/plugins/marketplaces/claude-plugins-official/plugins/skill-creator/.claude-plugin/plugin.json`.
+
+##### 0.5.3 — Plugin metadata
+- **Deliverables.** `plugins/test-commander/LICENSE` (MIT, mirrors the repo LICENSE) and `plugins/test-commander/README.md` (under 100 lines; what the plugin is, what skills it ships now, what arrives later, link back to repo root).
+- **Definition of done.** Both files exist; no broken links.
+
+##### 0.5.4 — tc-core skill
+- **Deliverables.** `plugins/test-commander/skills/tc-core/SKILL.md`.
+- **Content.** YAML frontmatter (`name: tc-core`, single-line `description` written as a trigger statement). Body describes `/tc:init`, `/tc:status`, `/tc:journal` and notes that command behavior arrives in Phase 1. `/tc:next` mentioned only as a Phase 1 follow-up (per Q7).
+- **Definition of done.** Frontmatter parses; `name` kebab-case; `description` non-empty; body references the three commands; no `commands/` files yet.
+
+##### 0.5.5 — Structural sanity check
+- **Deliverables.** No new files. Run `make verify` and `make test`; confirm the scaffold tests turn green.
+- **Definition of done.** `make verify` clean; `tests/test_plugin_scaffold.py` passes.
+
+##### 0.5.6 — Interactive install in Claude Code
+- **Deliverables.** None. Verification only.
+- **Definition of done.** `/plugin marketplace add <repo-root>` and `/plugin install test-commander` succeed. `test-commander:tc-core` appears in available skills with no load errors. `~/.claude/plugins/installed_plugins.json` lists the new entry.
+
+##### Pre-flight tests
+
+Before 0.5.1 begins, `tests/test_plugin_scaffold.py` lands red. It asserts every automated DoD item below. The implementation steps turn it green.
+
+##### Definition of done — consolidated 10 checks
+
+Eight automated; two interactive. The interactive checks gate 0.5.6.
+
+| # | Check | Type | How |
+| --- | --- | --- | --- |
+| 1 | All five artifact paths exist | auto | `pytest` file-existence assertions |
+| 2 | `.claude-plugin/marketplace.json` parses as JSON | auto | `json.load` in pytest |
+| 3 | `marketplace.json` lists `test-commander` as a plugin | auto | pytest |
+| 4 | `plugins/test-commander/.claude-plugin/plugin.json` parses | auto | pytest |
+| 5 | `plugin.json` has expected fields (`name`, `description`, `version`) | auto | pytest |
+| 6 | `tc-core/SKILL.md` has valid YAML frontmatter with `name` and `description` | auto | regex parse in pytest |
+| 7 | `SKILL.md` body references `/tc:init`, `/tc:status`, `/tc:journal` | auto | grep-style assertion |
+| 8 | No command behavior implemented yet | auto | `commands/` absent or empty |
+| 9 | Marketplace + plugin install succeed without error in Claude Code | interactive | user runs the slash commands |
+| 10 | `tc-core` appears in available skills; no load errors | interactive | system-reminder skills list + `installed_plugins.json` check |
+
+##### Validation sequence
+
+1. Write `tests/test_plugin_scaffold.py`. Run `make test` — expect failures for every Step 0.5 deliverable.
+2. Author 0.5.1–0.5.4 in parallel.
+3. Run `make verify` — automated checks 1–8 turn green.
+4. Author `plugins/test-commander/README.md` if any cross-link is missing.
+5. User runs `/plugin marketplace add <repo>` and `/plugin install test-commander` in Claude Code; reports output.
+6. I read `~/.claude/plugins/installed_plugins.json` and confirm the entry.
+7. User confirms `test-commander:tc-core` in the system-reminder skills list.
+8. If 5–7 fail, iterate on the manifest until accepted.
+
+##### Failure modes
+
+- Wrong/missing `source` shape for a local plugin in `marketplace.json` — most likely friction point. Will inspect the marketplace `$schema` URL if needed.
+- Required field present in schema but absent from the on-disk examples I inspected — same remediation.
+- `description` triggers the skill too broadly or too narrowly — iterate on wording.
+- Claude Code warns but loads — treated as a soft fail; fix before declaring done.
 
 #### 0.6 — Skill verifier
 - **Deliverables.** `scripts/verify_skills.py`.

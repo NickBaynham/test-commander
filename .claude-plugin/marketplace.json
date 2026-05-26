@@ -1,0 +1,16 @@
+{
+  "name": "test-commander-marketplace",
+  "owner": {
+    "name": "Nick Baynham",
+    "email": "nickbaynham@gmail.com"
+  },
+  "description": "Local marketplace hosting the Test Commander plugin.",
+  "plugins": [
+    {
+      "name": "test-commander",
+      "source": "./plugins/test-commander",
+      "version": "0.0.0",
+      "description": "An AI-assisted testing system and quality intelligence center. Skills span requirements review, project knowledge ingestion, exploratory testing, BDD generation, Playwright automation, evidence collection, quality reporting, and continuous learning."
+    }
+  ]
+}
