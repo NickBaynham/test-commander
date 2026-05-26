@@ -84,6 +84,12 @@ These decisions are settled. They constrain every phase below.
     - `claude plugin install <name>@<marketplace>`, `claude plugin list`, `claude plugin details <name>`.
     - `claude plugin uninstall <name>` for teardown.
 
+18. **User-facing helpers and templates ship inside the plugin; dev tooling stays at the repo root.** Verified during Step 1.2 by inspecting `~/.claude/plugins/cache/test-commander-marketplace/test-commander/0.0.0/` — only `plugins/test-commander/` contents are copied into the installed plugin cache. Repo-root `scripts/` and `templates/` do not travel. Therefore:
+    - **User-facing helpers** (the Python implementations of `/tc:*` commands) live at `plugins/test-commander/scripts/<name>.py`. They ship with the plugin and are reachable from any consuming project that installed Test Commander.
+    - **The workspace template** lives at `plugins/test-commander/templates/workspace/`. It ships with the plugin.
+    - **Dev tooling** (`scripts/verify_skills.py`, `scripts/check_links.py`) stays at the repo root `scripts/`. These are developer concerns, not user-facing commands; they need not ship.
+    - **Tests** stay at the repo root `tests/`. `pytest.ini_options.pythonpath` includes both `scripts` and `plugins/test-commander/scripts` so tests can import from either location.
+
 ---
 
 ## Open Questions
@@ -903,27 +909,27 @@ Eight automated; five evidence-based.
 Eight sub-steps. TDD throughout: every implementation step lands its tests red before turning them green. Sub-step 1.6 is the dedicated documentation pass; 1.7 is the dedicated testing finalization; 1.8 is the sign-off with a `phase-1` tag.
 
 #### 1.1 — Workspace template
-- **Deliverables.** `templates/workspace/` directory tree mirroring the canonical `.test-commander/` layout from this plan. Every starter file has a heading and a "filled in by Phase N" note.
+- **Deliverables.** `plugins/test-commander/templates/workspace/` directory tree mirroring the canonical `.test-commander/` layout from this plan. Every starter file has a heading and a "filled in by Phase N" note. Per D18 the template ships with the installed plugin.
 - **Tests first.** `tests/test_workspace_template.py` asserts every directory and starter file from the plan's Workspace Layout exists in the template.
 - **Definition of done.** Template matches the layout exactly; pytest green.
 - **Review.** Manual diff against the plan's Workspace Layout block; no surprise files added later.
 
 #### 1.2 — `/tc:init` (TDD)
-- **Helper.** `scripts/init_workspace.py` — copies the template into a target directory; idempotent; reports created vs skipped.
+- **Helper.** `plugins/test-commander/scripts/init_workspace.py` (per D18 — ships inside the plugin so consuming-project users can invoke it) — copies the template into a target directory; idempotent; reports created vs skipped.
 - **Command file.** `plugins/test-commander/skills/tc-core/commands/init.md` (also serves as the user-facing reference per the per-command-page decision).
 - **Tests first.** `tests/test_init_workspace.py` — fresh init, idempotent re-init on existing workspace, partial-existing case (some files present), refusal on invalid target (e.g. a file path, not a directory).
 - **Definition of done.** Helper passes all four cases; command file follows the per-command structure; nothing executes outside the target directory.
 - **Verification.** Pytest + smoke run against a tmp dir leaves the expected tree.
 
 #### 1.3 — `/tc:status` (TDD)
-- **Helper.** `scripts/workspace_state.py` — reads `.test-commander/`, returns a structured snapshot (artifact counts, last-modified, completeness per phase). Shared with `/tc:next` in 1.5.
+- **Helper.** `plugins/test-commander/scripts/workspace_state.py` (per D18) — reads `.test-commander/`, returns a structured snapshot (artifact counts, last-modified, completeness per phase). Shared with `/tc:next` in 1.5.
 - **Command file.** `tc-core/commands/status.md` formats the snapshot for users.
 - **Tests first.** `tests/test_workspace_state.py` — empty workspace, partial workspace, full workspace (fixtures generated from the template + selective additions).
 - **Definition of done.** Helper returns the documented snapshot shape (typed); command file authored; output is grep-friendly.
 - **Verification.** Snapshot deterministic per fixture; output passes a structural assertion.
 
 #### 1.4 — `/tc:journal` (TDD)
-- **Helper.** `scripts/journal.py` — append (timestamped) and summarize (chronological, by date range).
+- **Helper.** `plugins/test-commander/scripts/journal.py` (per D18) — append (timestamped) and summarize (chronological, by date range).
 - **Command file.** `tc-core/commands/journal.md`.
 - **Tests first.** `tests/test_journal.py` — append to empty, append to existing, summarize range, summarize empty, malformed entry refused.
 - **Definition of done.** Helper passes all five cases; command file authored; journal files are valid Markdown.
@@ -932,7 +938,7 @@ Eight sub-steps. TDD throughout: every implementation step lands its tests red b
 
 #### 1.5 — `/tc:next` heuristics engine (TDD)
 - **Methodology.** `plugins/test-commander/skills/tc-core/methodology/next-step-inference.md` — documents the recommendation rules with examples.
-- **Engine.** `scripts/next_step.py` — reads `workspace_state`, applies heuristics, returns a ranked recommendation list with explanations.
+- **Engine.** `plugins/test-commander/scripts/next_step.py` (per D18) — reads `workspace_state`, applies heuristics, returns a ranked recommendation list with explanations.
 - **Command file.** `tc-core/commands/next.md`.
 - **Tests first.** `tests/test_next_step.py` with one fixture per heuristic: empty workspace, requirements-unreviewed, BDD-without-automation-plan, automation-without-runs, run-without-report, etc. Every rule documented in `next-step-inference.md` has at least one passing fixture.
 - **Definition of done.** Every documented heuristic has a passing test case; recommendations include an explanation, not just a command name; the top recommendation surfaces as `next:` on its own line.

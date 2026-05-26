@@ -10,7 +10,7 @@ import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-TEMPLATE = REPO / "templates" / "workspace"
+TEMPLATE = REPO / "plugins" / "test-commander" / "templates" / "workspace"
 
 REQUIRED_DIRS = [
     "documents",

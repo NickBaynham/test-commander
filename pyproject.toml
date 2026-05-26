@@ -41,4 +41,4 @@ quote-style = "double"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-pythonpath = ["scripts"]
+pythonpath = ["scripts", "plugins/test-commander/scripts"]

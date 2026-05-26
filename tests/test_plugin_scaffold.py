@@ -80,9 +80,7 @@ def test_tc_core_skill_references_three_commands():
         assert cmd in text, f"SKILL.md body must reference {cmd}"
 
 
-def test_no_command_behavior_yet():
-    if TC_CORE_COMMANDS.exists():
-        contents = list(TC_CORE_COMMANDS.iterdir())
-        assert not contents, (
-            f"commands/ must be empty until Phase 1, found: {[p.name for p in contents]}"
-        )
+# Note: a Phase 0 guard `test_no_command_behavior_yet` previously asserted
+# that tc-core/commands/ was empty. Removed when Phase 1 Step 1.2 landed the
+# first command file (init.md). Per-command coverage now lives in the
+# individual command tests (test_init_workspace.py, etc.).
