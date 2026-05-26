@@ -625,9 +625,104 @@ Ten automated; two manual (the Makefile wiring and the live drill).
 - Unexpected skill directory authored ahead of its phase. **Mitigation:** Reported as `UNEXPECTED` (warn only, exit 0). Useful when scaffolding ahead of schedule.
 
 #### 0.7 — `make install` wiring
-- **Deliverables.** Wire the `Makefile` `install` target to register the local marketplace and install the plugin via `claude plugin` CLI; run `scripts/verify_skills.py` as the final step.
-- **Definition of done.** On a fresh checkout, `bootstrap.sh` → `make install` results in `tc-core` loaded in Claude Code; second `make install` is a no-op; `verify_skills.py` reports PASS at the end of install.
-- **Review.** Clean macOS run captured top to bottom (logs saved under a temp dir, not committed). Second run produces no diff and no duplicate plugin entry.
+
+Seven sub-steps. Test-first: the Makefile pre-flight tests land red before the targets exist. Sub-step 0.7.7 is an explicit DoD evaluation that captures evidence of success.
+
+##### 0.7.1 — Manifest validation target
+- **Deliverables.** A `validate-manifests` Make target that runs `claude plugin validate` against both the marketplace root and the plugin root.
+- **Behavior.** Aborts on any validation failure. Runs **before** any state-changing step in `install` so schema errors are caught before marketplace registration.
+- **Definition of done.** `make validate-manifests` exits 0 today and prints both `✔ Validation passed` lines.
+
+##### 0.7.2 — Marketplace registration target (idempotent)
+- **Deliverables.** A `marketplace-add` Make target.
+- **Behavior.** Inspects `claude plugin marketplace list`; if `test-commander-marketplace` is absent, runs `claude plugin marketplace add "$PWD"`; if present, no-op.
+- **Definition of done.** First invocation registers; second invocation is a clean no-op (no error, no duplicate entry in `~/.claude/plugins/known_marketplaces.json`).
+
+##### 0.7.3 — Plugin install target (idempotent)
+- **Deliverables.** A `plugin-install` Make target.
+- **Behavior.** Inspects `claude plugin list`; if `test-commander` is absent, runs `claude plugin install test-commander@test-commander-marketplace`; if present, no-op.
+- **Definition of done.** First invocation installs; second invocation is a clean no-op (no error, no duplicate entry in `~/.claude/plugins/installed_plugins.json`).
+
+##### 0.7.4 — Wire `install` and add `uninstall`
+- **Deliverables.** Updated `Makefile`. New target dependency chain:
+  ```
+  install: pdm-install validate-manifests marketplace-add plugin-install verify-skills
+  ```
+  Each step is its own target. A new `uninstall` target reverses the install (`claude plugin uninstall test-commander` then `claude plugin marketplace remove test-commander-marketplace`); both prefixed with `-` so partial state cleans up.
+- **Definition of done.** `make install` runs the chain in order; `make uninstall` removes both registrations without erroring on already-clean state. `make help` lists both new targets.
+
+##### 0.7.5 — Pre-flight tests
+- **Deliverables.** `tests/test_make_install.py`.
+- **Coverage.** Each test maps to one DoD assertion below.
+  - Static: required targets exist (`install`, `uninstall`, `validate-manifests`, `marketplace-add`, `plugin-install`, `verify-skills`).
+  - Static: `install` depends on those targets in the documented order (parse `make -n install` dry-run output).
+  - Idempotency markers: `marketplace-add` and `plugin-install` both check existence before invoking the CLI.
+  - PATH probe: `claude` binary is on `$PATH` (xfail-style note if not, since CI without Claude Code can't run the dynamic test).
+- **Note.** A live end-to-end test belongs in 0.7.7, not here — it has side effects on the developer's installed plugins.
+- **Definition of done.** Suite is red before 0.7.1–0.7.4 land; green after.
+
+##### 0.7.6 — Documentation
+- **Deliverables.**
+  - Update `docs/install.md` so the "what `make install` does" list matches the new five-target chain exactly. Add a one-line "How to uninstall: `make uninstall`" subsection.
+  - Update `docs/user-guide/getting-started.md` step 3 to mention that re-running `make install` is safe (idempotent).
+  - Update `plugins/test-commander/README.md` "Install" section so the order matches reality.
+  - Add a troubleshooting entry to `docs/install.md`: "claude plugin install fails with `already installed`" — mitigation: run `make uninstall` then `make install`, or re-run `make install` (idempotent path should handle it cleanly).
+- **Definition of done.** Each user-facing doc accurately reflects the implementation. `make verify` (link check included) clean.
+
+##### 0.7.7 — Final DoD evaluation (proof of success)
+
+An explicit end-to-end drill that produces evidence the install actually works. Output captured to a temp log; not committed.
+
+- **Procedure.**
+  1. Snapshot state before: `claude plugin marketplace list` and `claude plugin list`.
+  2. `make uninstall` to reach a known-clean state.
+  3. Confirm clean: marketplace and plugin both absent.
+  4. `make install` — capture full stdout/stderr to `/tmp/tc-install-fresh.log`.
+  5. Confirm presence: `claude plugin marketplace list` shows `test-commander-marketplace`; `claude plugin list` shows `test-commander@test-commander-marketplace`; `claude plugin details test-commander` lists `tc-core` under `Skills (1)`; `scripts/verify_skills.py` reports `OK`.
+  6. `make install` again — capture to `/tmp/tc-install-rerun.log`.
+  7. Confirm idempotency: no errors; no duplicates; the same final state.
+  8. (Optional) `make uninstall` then `make install` once more to fully reset to a known good state.
+- **Evidence.** The two log files plus the JSON-state snapshots. Pasted into the commit message as proof; not committed to the repo.
+- **Definition of done.** Every numbered step above completes as described, with no unexpected output.
+
+##### Definition of done — consolidated 12 checks
+
+Eight automated, four evidence-based.
+
+| # | Check | Type | How |
+| --- | --- | --- | --- |
+| 1 | `validate-manifests` target exists and runs `claude plugin validate` on both manifests | auto | Makefile parse + `make -n validate-manifests` |
+| 2 | `marketplace-add` target exists and is idempotent | auto | pytest checks existence-then-add pattern |
+| 3 | `plugin-install` target exists and is idempotent | auto | pytest checks existence-then-install pattern |
+| 4 | `install` depends on the documented chain in order | auto | parse `make -n install` output |
+| 5 | `uninstall` target exists and tolerates already-clean state | auto | pytest checks `-` prefix on commands |
+| 6 | `make help` lists all new targets | auto | grep `make help` output |
+| 7 | All Makefile tests in `tests/test_make_install.py` pass | auto | `make test` |
+| 8 | `make verify` chain still clean | auto | `make verify` |
+| 9 | Live fresh install: `make uninstall` then `make install` succeeds and leaves the system in the expected state | evidence | 0.7.7 captured log |
+| 10 | Live idempotent re-run: second `make install` produces no error and no duplicates | evidence | 0.7.7 captured log + state-snapshot diff |
+| 11 | All user-facing docs match the implementation | evidence | code review against the chain |
+| 12 | Troubleshooting entry for "already installed" present and accurate | evidence | code review |
+
+##### Validation sequence
+
+1. Write `tests/test_make_install.py`. Run `make test` — expect failures.
+2. Author 0.7.1–0.7.3 (the three sub-targets).
+3. Author 0.7.4 (wire `install`, add `uninstall`, update `help`).
+4. Run `make test` — expect green for the Makefile tests.
+5. Update docs (0.7.6). Run `make verify` — link check must remain clean.
+6. Run 0.7.7 end-to-end. Capture both logs. Confirm each numbered step.
+7. Re-run `make verify` once more for a clean final state.
+8. If 0.7.7 surfaces any unexpected behavior, iterate on 0.7.2/0.7.3 and re-run.
+
+##### Failure modes
+
+- `claude plugin marketplace add` errors when the marketplace is already registered. **Mitigation:** the idempotency guard in `marketplace-add` checks `marketplace list` first; if hit anyway, run `make uninstall` to clean state.
+- `claude plugin install` errors when the plugin is already installed. **Mitigation:** same guard pattern in `plugin-install`; `make uninstall` as fallback.
+- `claude` binary missing from `$PATH`. **Mitigation:** the Makefile probes early and prints a one-line install hint pointing at the bootstrap script.
+- Schema validation passes but install fails. **Mitigation:** `claude plugin validate` runs first; if install still fails, the captured log identifies which step erred. Iterate on the manifest.
+- Stale marketplace cache after manifest change. **Mitigation:** `make uninstall` then `make install` forces a re-read; document in the new troubleshooting entry.
+- `~/.claude/plugins/installed_plugins.json` corruption or unexpected scope. **Mitigation:** `claude plugin list` is the source of truth, not the JSON; the targets read from the CLI, not the JSON.
 
 #### 0.8 — Public-skill evaluation
 - **Deliverables.** `docs/skill-evaluation.md` (under one page).
