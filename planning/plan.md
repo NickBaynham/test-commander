@@ -725,9 +725,67 @@ Eight automated, four evidence-based.
 - `~/.claude/plugins/installed_plugins.json` corruption or unexpected scope. **Mitigation:** `claude plugin list` is the source of truth, not the JSON; the targets read from the CLI, not the JSON.
 
 #### 0.8 — Public-skill evaluation
-- **Deliverables.** `docs/skill-evaluation.md` (under one page).
-- **Definition of done.** One paragraph per candidate — Mermaid/diagram, devbox/sandbox (Coder, Daytona, Sprites.dev), traceability-matrix, accessibility-testing, performance-testing — each stating what it does, why interesting, the decision (adopt as design reference / pass), and a link if available.
-- **Review.** Every decision actionable. Any open questions surfaced get added to plan.md Open Questions, not lost.
+
+Five sub-steps. Research + write-up + cross-reference. Two hours of work, not two days.
+
+##### 0.8.1 — Catalog scan
+- **Deliverables.** Scratch list of plausible plugin candidates per category, with URLs.
+- **Source order.** First pass: grep `~/.claude/plugins/plugin-catalog-cache.json` for hits. Fallback: targeted WebFetch on the Anthropic plugin marketplace if the cache has no clear match.
+- **Categories.** Mermaid/diagram, devbox/sandbox (Coder, Daytona, Sprites.dev), traceability-matrix, accessibility-testing, performance-testing.
+- **Definition of done.** Every category has either a named candidate or an explicit "no clear match" note.
+
+##### 0.8.2 — Per-candidate evaluation
+- **Deliverables.** Five draft paragraphs, one per category.
+- **Required fields per paragraph.** What it does / Why interesting for Test Commander / Decision (adopt as design reference / pass / defer, with reason) / Link if available.
+- **Definition of done.** Five paragraphs in draft, each addressing all four fields, each no longer than five sentences.
+
+##### 0.8.3 — Author `docs/skill-evaluation.md` and fold-back any plan deltas
+- **Deliverables.** `docs/skill-evaluation.md`, under 100 lines. Header explains purpose, when it was written (Phase 0), and that it informs the TC-Owned Skill Catalog and Open Questions Q1 and Q12.
+- **Plan fold-back.** If any candidate's adopt-decision contradicts a current plan decision (e.g., changes Q12's "build our own Mermaid" default), update `planning/plan.md` in the same commit. Same-commit rule keeps the plan and the evaluation consistent.
+- **Definition of done.** Doc exists, under 100 lines, all five candidates covered, plan deltas (if any) applied.
+
+##### 0.8.4 — Pre-flight tests, cross-links, and verify
+- **Deliverables.** `tests/test_skill_evaluation.py`. Asserts the doc exists, has one section per category, each section contains all four required fields, and the file is under 100 lines.
+- **Cross-links.** Add a link to the evaluation doc from `docs/methodology.md` and from the README's documentation index.
+- **Definition of done.** Test suite green. `make verify` clean (link check covers the new doc and its cross-links).
+
+##### 0.8.5 — Final DoD evaluation
+- **Procedure.** Read the doc end to end. For each "adopt as design reference" decision, confirm the corresponding row in the TC-Owned Skill Catalog cites the reference (e.g., `tc-visualize` row cites an adopted Mermaid skill). If any new question emerged during research, ensure it landed in the Open Questions table.
+- **Definition of done.** Single read-through confirms every decision is actionable, every adoption is reflected in the skill catalog, and no question was lost.
+
+##### Definition of done — consolidated 10 checks
+
+Six automated, four code-review.
+
+| # | Check | Type | How |
+| --- | --- | --- | --- |
+| 1 | `docs/skill-evaluation.md` exists | auto | pytest |
+| 2 | All five categories present | auto | pytest grep on section headers |
+| 3 | Each section has all four fields (what / why / decision / link) | auto | pytest |
+| 4 | File under 100 lines | auto | pytest |
+| 5 | All links resolve | auto | `scripts/check_links.py` |
+| 6 | `make verify` chain clean | auto | full chain |
+| 7 | Cross-links from `docs/methodology.md` and README present | manual | code review |
+| 8 | Every "adopt" decision shows up in the TC-Owned Skill Catalog row | manual | code review |
+| 9 | Any plan-affecting decision folded back into `planning/plan.md` in the same commit | manual | git diff review |
+| 10 | Any new question added to Open Questions (Q13+) | manual | grep plan |
+
+##### Validation sequence
+
+1. Scan the marketplace catalog cache (0.8.1).
+2. Draft per-candidate writeups (0.8.2).
+3. Synthesize the doc and fold-back any plan deltas (0.8.3).
+4. Author the pre-flight test and the cross-links; run `make verify` (0.8.4).
+5. Final read-through (0.8.5).
+6. Update CHANGELOG, commit, push.
+
+##### Failure modes
+
+- Catalog cache is stale or empty. **Mitigation:** fall back to WebFetch of the Anthropic plugin marketplace; document the fallback in the doc.
+- No clear match in a category. **Mitigation:** explicitly write "no clear match found" with a one-line search summary. Not a blocker.
+- Doc grows past one page. **Mitigation:** tighten paragraphs; split into per-category subdocs only if absolutely necessary.
+- Adopt-decision contradicts a prior plan decision. **Mitigation:** fold the change into `planning/plan.md` in the same commit so plan and evaluation never disagree.
+- Candidate is dramatically better than what we can author. **Mitigation:** that is a question, not a unilateral pivot. Raise it as an Open Question; D1 (vendor-and-own) is not bypassed without explicit reconsideration.
 
 #### 0.9 — Smoke test and Phase 0 sign-off
 - **Deliverables.** Phase 0 entry in `CHANGELOG.md`; Phase 0 items moved from `To Do` to `Completed` in `plan.md` with date.

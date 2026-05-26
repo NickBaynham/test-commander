@@ -30,3 +30,7 @@ Test Commander is opinionated about how to move from product context to verified
 Each linked document lives under `plugins/test-commander/skills/<skill>/methodology/` and is owned by the skill that needs it.
 
 > This page is filled out across Phases 2 through 9 as each skill ships its methodology.
+
+## Related
+
+- [Public-skill evaluation pass](skill-evaluation.md) — Phase 0 evaluation of public-marketplace candidates for `tc-visualize`, `tc-sandbox`, `tc-traceability`, and the a11y / perf scope decisions.

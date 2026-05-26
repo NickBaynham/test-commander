@@ -135,6 +135,7 @@ The per-project quality workspace lives at `.test-commander/` in *consuming* pro
 - [Glossary](docs/glossary.md)
 - [Install guide](docs/install.md)
 - [User guide — getting started](docs/user-guide/getting-started.md)
+- [Public-skill evaluation pass](docs/skill-evaluation.md)
 - [Controlled agent execution](docs/controlled-agent-execution.md)
 - [Security and permissions](docs/security-and-permissions.md)
 - [Chat command governance](docs/chat-command-governance.md)
