@@ -9,6 +9,7 @@ All notable changes to this project are documented in this file. The format foll
 #### Added
 - Step 0.1: MIT `LICENSE`, expanded `README.md`, `CONTRIBUTING.md`, this `CHANGELOG.md`, and `TODO.md` placeholder.
 - Step 0.2: documentation skeleton under `docs/` (vision, architecture, roadmap, methodology, command-reference, workspace-reference, glossary, install) and `docs/user-guide/getting-started.md`. Markdown link checker at `scripts/check_links.py`.
+- Step 0.3: Python project foundation. `pyproject.toml` (PDM-managed, `requires-python = ">=3.12"`, ruff and pytest dev deps, tool config inline). `Makefile` with `install`, `lint`, `test`, `build`, `run`, `verify` targets. `docker-compose.yml` placeholder. `.gitignore` for Python/PDM/IDE artifacts. `tests/test_placeholder.py` so pytest exits cleanly before real tests arrive.
 
 ---
 

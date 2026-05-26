@@ -1,0 +1,3 @@
+# Test Commander local stack.
+# Populated as runtimes ship — Playwright environment in Phase 6, web/API in Phase 10+.
+services: {}
