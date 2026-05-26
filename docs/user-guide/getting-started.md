@@ -21,7 +21,7 @@ See [../install.md](../install.md) for the full prerequisite list and per-platfo
    ./bootstrap.sh
    ```
 
-   The script checks `make`, Python 3.12, PDM, Docker, and Git. It auto-installs the safe ones. For anything questionable, it prints a suggested install list and exits — install those manually, then re-run.
+   The script checks `make`, Python 3.12, PDM, Docker, and Git. It auto-installs the safe ones. For anything questionable, it prints a suggested install list and exits — install those manually, then re-run. All output is prefixed with `[bootstrap]`. Run `./bootstrap.sh --help` for the auto-install policy.
 
 3. **Install the project.**
 

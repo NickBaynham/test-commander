@@ -31,7 +31,9 @@ Test Commander ships as a Claude Code plugin plus a small Python and TypeScript 
 make install
 ```
 
-`bootstrap.sh` is idempotent — re-running is a no-op when everything is already present. It never modifies `PATH` and never writes a `make` shim.
+`bootstrap.sh` is idempotent — re-running is a no-op when everything is already present. It never modifies `PATH` and never writes a `make` shim. Run `./bootstrap.sh --help` for the auto-install policy and usage.
+
+All bootstrap output is prefixed with `[bootstrap]` so it is easy to recognize and grep.
 
 `make install` is also idempotent. It:
 
@@ -63,5 +65,29 @@ Install Ubuntu under WSL2, then clone and run the install from your WSL shell. A
 Git Bash does not ship with `make`. Install it separately (for example via Chocolatey) before `make install`. Runtime phases 6, 10, and 11 are not validated under Git Bash — use WSL for those.
 
 ## Troubleshooting
+
+### `pdm: command not found` after bootstrap
+
+The PDM installer drops the `pdm` binary in `~/.local/bin`. If that directory is not on your `PATH`, the command will not resolve.
+
+Fix:
+
+```sh
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc   # or ~/.bashrc
+exec "$SHELL" -l
+./bootstrap.sh                                            # confirms pdm is now visible
+```
+
+The bootstrap warns when this happens; if you saw `pdm installed but not on PATH`, this is the fix.
+
+### `sudo` password prompt during bootstrap (Linux / WSL)
+
+When `git` or `make` are missing on Linux or WSL, the script auto-installs them via `apt-get`, which requires `sudo`. The prompt is expected and not an error. If you cannot use `sudo` on the machine, install `git` and `make` manually before re-running.
+
+### Bootstrap exited non-zero with a suggestion list
+
+The script blocks on tools it will not auto-install (Python 3.12, Docker). Install them per the printed suggestion list, then re-run `./bootstrap.sh`. The script re-checks everything from scratch each run.
+
+### More
 
 > Filled out as install issues surface. Track them under [../TODO.md](../TODO.md) and reference fixes in [../CHANGELOG.md](../CHANGELOG.md).
