@@ -30,16 +30,16 @@ Methodology first
 
 These decisions are settled. They constrain every phase below.
 
-1. **Vendor and own all skills.** Test Commander owns every skill it ships. Skills live under `.claude/skills/test-commander/<sub-skill>/SKILL.md` inside this repo. There is no runtime dependency on external skill plugins. Community skills (the ones in the current environment) serve as design references and pattern inspiration only — we author our own copies adapted to the Test Commander workspace, naming, and traceability model. This avoids compatibility drift in directory layouts, file naming, and tool expectations, and lets us evolve skills in lockstep with the workspace schema. See *Skill Authoring Strategy*.
+1. **Vendor and own all skills.** Test Commander owns every skill it ships. Skills live under `plugins/test-commander/skills/<skill-name>/SKILL.md` inside this repo (see D12 for the verified plugin structure). There is no runtime dependency on external skill plugins. Community skills (the ones in the current environment) serve as design references and pattern inspiration only — we author our own copies adapted to the Test Commander workspace, naming, and traceability model. This avoids compatibility drift in directory layouts, file naming, and tool expectations, and lets us evolve skills in lockstep with the workspace schema. See *Skill Authoring Strategy*.
 2. **Test Commander is a skill pack first, runtime second.** Phases 0–5 and Phases 7–9 author Markdown skills, methodology, templates, and command guidance — Claude Code executes by reading them. Phase 6 introduces the first executable code (Playwright framework). Phase 10 adds the web/API runtime.
 3. **No `examples/` directory.** Real projects bring their own artifacts. Sample apps are not part of the repo.
 4. **All BDD lives under `.test-commander/bdd/`** including feature files (`.test-commander/bdd/features/`). Nothing BDD-related lives at the repo root.
 5. **Workspace is committed to git.** `.test-commander/` is checked in, including `quality-report/history/`. Test runs in `.test-commander/runs/` are committed as snapshots; large binaries (videos, traces) follow git-lfs rules documented per phase.
 6. **Test data lives outside code.** Path: `.test-commander/test-data/`. Tests reference data through fixtures; no inline data in `.ts` files. Claude can regenerate test data on demand via `/tc:generate-test-data`.
-7. **Capstone includes Phase 3.** Project knowledge is foundational for exploration, BDD generation, and automation. The capstone is: 0, 1, 2, 3, 4, 5, 6, 7, 8, 10.
+7. **Capstone includes Phase 3 and Phase 10.5.** Project knowledge is foundational for exploration, BDD generation, and automation; the controlled-execution pipeline is required before the web console can be safely exposed. The capstone is: 0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 10.5.
 8. **Playwright framework is built lazily.** `/tc:build-framework` is a one-time, idempotent skill. Any command that needs the framework (`/tc:automate`, `/tc:run`) checks for its presence first and invokes `/tc:build-framework` if missing. The framework is never built before automation is actually needed.
 9. **Every phase has Review, Test, and Documentation steps.** See *Per-Phase Conventions*.
-10. **`make install` provisions the full environment.** Python (PDM), Node (Playwright), and a verification step that lists every TC-owned skill the current phase set requires and confirms each is present in `.claude/skills/test-commander/`. See *Environment Setup*.
+10. **`make install` provisions the full environment.** Python (PDM), Node (Playwright), and a verification step that lists every TC-owned skill the current phase set requires and confirms each is present in `plugins/test-commander/skills/`. See *Environment Setup*.
 11. **Phase 3 precedes Phase 4 in every rollout.** Exploration reads from `.test-commander/product-knowledge/`, which is created in Phase 3. The capstone order respects this; no shortcut is permitted.
 12. **Plugin structure follows Claude Code's convention.** Verified against installed plugins on disk. The repo is a self-contained marketplace plus a single plugin:
     ```
@@ -365,7 +365,7 @@ Test code lives at `tests/` (created in Phase 6). It must not contain data; data
 Every phase in this plan must include all six of these. No exceptions.
 
 1. **Implementation.** What is created or changed.
-2. **Skills used.** Which existing skills are invoked. Note any new wrapping commands.
+2. **Skills authored.** Which TC-owned skills this phase creates or extends. **Design references.** Which community skills inform the design (no runtime dependency, per D1).
 3. **Documentation.** What is written. Always update `docs/user-guide/` for tester-facing changes, `docs/command-reference.md` for new commands, and `CHANGELOG.md` for the phase entry.
 4. **Review step.** A human or peer review checklist tied to phase-specific outputs. Must complete before the phase is marked done.
 5. **Test step.** Automated verification: `make verify` plus phase-specific tests. Must pass before the phase is marked done.
@@ -386,7 +386,7 @@ When a Claude Code prompt is provided for a phase, it ends with this standing in
 **Implementation.**
 
 - `README.md` (MIT), `LICENSE` (MIT), `CONTRIBUTING.md`, `CHANGELOG.md`, `TODO.md`
-- `bootstrap.sh` — POSIX shell, platform detection, prereq verification, suggested-install output, hands off to `make install`
+- `bootstrap.sh` — POSIX shell, platform detection, prereq verification, suggested-install output, prints `Next step: make install` and exits 0 (per D14, bootstrap and install stay separate)
 - `Makefile` with `install`, `lint`, `test`, `build`, `run`, `verify`
 - `docker-compose.yml` (placeholder; populated as runtimes are introduced)
 - `pyproject.toml` (PDM, `requires-python = ">=3.12"`)
@@ -399,9 +399,9 @@ When a Claude Code prompt is provided for a phase, it ends with this standing in
 - `docs/install.md` — platform-by-platform install guide (macOS, Linux, WSL, Git Bash; explicit no-PowerShell note)
 - `scripts/verify_skills.py` — used by `make install`; parses `plugins/test-commander/skills/*/SKILL.md` frontmatter
 
-**Skills authored.** `tc-core` umbrella SKILL.md (init/status/journal commands only — `/tc:next` deferred to Phase 1 per Q7 default). Public-skill evaluation pass written to `docs/skill-evaluation.md`.
+**Skills authored.** `tc-core` SKILL.md (init/status/journal commands only — `/tc:next` deferred to Phase 1 per Q7 default; per D12, no separate umbrella SKILL.md — the plugin manifest provides plugin identity, `tc-core` is a sibling skill). Public-skill evaluation pass written to `docs/skill-evaluation.md`.
 
-**Design references.** `anthropic-skills:skill-creator` (umbrella SKILL.md patterns), `claude-code-setup:claude-automation-recommender` (hook/skill/MCP surface validation). These inform authoring; no runtime dependency.
+**Design references.** `anthropic-skills:skill-creator` (plugin manifest and skill-directory patterns), `claude-code-setup:claude-automation-recommender` (hook/skill/MCP surface validation). These inform authoring; no runtime dependency.
 
 **Documentation.** `docs/user-guide/getting-started.md` explains what Test Commander is, what to install, and how to confirm the environment is ready.
 
@@ -560,7 +560,7 @@ Seven sub-steps. Test-first: the pytest suite lands red before the script. Sub-s
 - **Definition of done.** Deterministic for a given workspace state; testable with fixture directories.
 
 ##### 0.6.4 — Reporter and exit code
-- **Deliverables.** A CLI entry point in `scripts/verify_skills.py` (`if __name__ == "__main__"`). Supports `--phase N` and `--help`. Default phase cap: unbounded (verify everything authored so far).
+- **Deliverables.** A CLI entry point in `scripts/verify_skills.py` (`if __name__ == "__main__"`). Supports `--phase N` and `--help`. Default phase cap: `0` (bumped one phase at a time as later phases ship — see Phase 1 sub-step 1.7 for the first bump).
 - **Output format.** One line per checked skill, aligned: `skill-name        PRESENT (phase N)`. Summary footer with counts and overall verdict.
 - **Exit code.** `0` if every expected skill is `PRESENT` and no `MALFORMED` exists. `1` otherwise. `UNEXPECTED` does not affect the exit code (warn only).
 - **Definition of done.** Matches the documented contract; output is grep-friendly.
@@ -1095,7 +1095,7 @@ No implementation lands before its tests. No tests are added after the fact.
 
 **Review step.**
 
-- `mcp-exploratory-testing:review-exploration` is run against new session reports as part of the review gate.
+- `tc-explore`'s internal review sub-mode (designed after `mcp-exploratory-testing:review-exploration`) runs against new session reports as part of the review gate.
 - Findings link back to charter ID and product knowledge.
 
 **Test step.**
@@ -1104,7 +1104,7 @@ No implementation lands before its tests. No tests are added after the fact.
 
 **Definition of done.**
 
-- Exploration produces charters, notes, ideas, risks, and evidence in the right folders; review skill passes the artifacts; user guide is complete.
+- Exploration produces charters, notes, ideas, risks, and evidence in the right folders; `tc-explore`'s review sub-mode passes the artifacts; user guide is complete.
 
 ---
 
@@ -1132,7 +1132,7 @@ No implementation lands before its tests. No tests are added after the fact.
 
 **Review step.**
 
-- `exploratory-to-bdd:review-bdd` runs against new specs; traceability map updated and verified.
+- `tc-bdd`'s internal review sub-mode (designed after `exploratory-to-bdd:review-bdd`) runs against new specs; traceability map updated and verified.
 
 **Test step.**
 
@@ -1140,7 +1140,7 @@ No implementation lands before its tests. No tests are added after the fact.
 
 **Definition of done.**
 
-- Feature files live under `.test-commander/bdd/features/`, summaries written, traceability complete, review skill passes, user guide complete.
+- Feature files live under `.test-commander/bdd/features/`, summaries written, traceability complete, `tc-bdd`'s review sub-mode passes, user guide complete.
 
 ---
 
@@ -1189,7 +1189,7 @@ Test data is **not** under `tests/`. It is under `.test-commander/test-data/` an
 
 **Review step.**
 
-- `agentic-playwright-automation:review-playwright-test` runs on generated tests.
+- `tc-automate`'s internal review sub-mode (designed after `agentic-playwright-automation:review-playwright-test`) runs on generated tests.
 - Test data files are referenced from at least one fixture; nothing inline.
 
 **Test step.**
@@ -1198,7 +1198,7 @@ Test data is **not** under `tests/`. It is under `.test-commander/test-data/` an
 
 **Definition of done.**
 
-- Framework builds on demand, tests reference data via fixtures, suitability rubric is applied in the automation plan, review skill passes, user guide complete.
+- Framework builds on demand, tests reference data via fixtures, suitability rubric is applied in the automation plan, `tc-automate`'s review sub-mode passes, user guide complete.
 
 ---
 
@@ -1335,7 +1335,7 @@ Structure as previously specified under `apps/web/`, `apps/api/`, `runtime/`.
 
 **Review step.**
 
-- Pages render against a populated workspace; SSE updates appear on journal append; chat enforces the approval gate.
+- Pages render against a populated workspace; SSE updates appear on journal append; chat refuses any action above `read-only` and surfaces proposal cards only — execution gating ships in Phase 10.5.
 
 **Test step.**
 
@@ -1343,7 +1343,7 @@ Structure as previously specified under `apps/web/`, `apps/api/`, `runtime/`.
 
 **Definition of done.**
 
-- All pages work, SSE delivers updates, indexer keeps up with workspace changes, chat enforces gating, user guide complete.
+- All pages work, SSE delivers updates, indexer keeps up with workspace changes, chat is read-only + proposal cards only (execution gating ships in Phase 10.5), user guide complete.
 
 ---
 
@@ -1709,7 +1709,7 @@ Phase 0 complete (2026-05-26) — see Completed.
 - [ ] Author `/tc:create-charter`, `/tc:explore`, `/tc:test-ideas`, `/tc:session-summary`
 - [ ] Author methodology and templates
 - [ ] Author `docs/user-guide/exploring-an-app.md`
-- [ ] Wire `mcp-exploratory-testing:review-exploration` into the review gate
+- [ ] Author `tc-explore`'s internal review sub-mode (designed after `mcp-exploratory-testing:review-exploration`) and wire it into the review gate
 - [ ] Confirm review and test gates green
 
 ### Phase 5
@@ -1832,4 +1832,4 @@ These apply across every phase.
 - No over-engineering. No defensive programming. Exception handlers only when justified.
 - Test data lives under `.test-commander/test-data/`, never inline in test code, regenerable via `/tc:generate-test-data`.
 - Quality-report history is committed.
-- Every Test Commander skill is owned in-repo under `.claude/skills/test-commander/`. No runtime dependency on external skill plugins.
+- Every Test Commander skill is owned in-repo under `plugins/test-commander/skills/`. No runtime dependency on external skill plugins.
