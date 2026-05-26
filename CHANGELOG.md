@@ -10,6 +10,7 @@ All notable changes to this project are documented in this file. The format foll
 - Step 0.1: MIT `LICENSE`, expanded `README.md`, `CONTRIBUTING.md`, this `CHANGELOG.md`, and `TODO.md` placeholder.
 - Step 0.2: documentation skeleton under `docs/` (vision, architecture, roadmap, methodology, command-reference, workspace-reference, glossary, install) and `docs/user-guide/getting-started.md`. Markdown link checker at `scripts/check_links.py`.
 - Step 0.3: Python project foundation. `pyproject.toml` (PDM-managed, `requires-python = ">=3.12"`, ruff and pytest dev deps, tool config inline). `Makefile` with `install`, `lint`, `test`, `build`, `run`, `verify` targets. `docker-compose.yml` placeholder. `.gitignore` for Python/PDM/IDE artifacts. `tests/test_placeholder.py` so pytest exits cleanly before real tests arrive.
+- Step 0.4: POSIX `bootstrap.sh` that detects platform (macOS / Linux / WSL / Git Bash); verifies `git`, `make`, Python 3.12, PDM, Docker; auto-installs PDM via the official installer; auto-installs `git` and `make` on Linux/WSL via apt; prints suggested-install hints for the rest and exits non-zero. Idempotent. Never modifies `PATH` or writes a make shim. Bootstrap and `make install` are separate concerns — bootstrap verifies, install installs. Syntax-checked under both bash and dash.
 
 ### Plan and architecture
 

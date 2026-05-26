@@ -65,9 +65,10 @@ These decisions are settled. They constrain every phase below.
     - Checks for `make`, Python 3.12, PDM, Docker, Git.
     - Auto-installs what is safe and non-controversial (PDM via its official installer; Git if missing on Linux).
     - For "questionable" tools (Docker runtime choice — Docker Desktop, Colima, Rancher Desktop, Podman; Python via system package manager vs pyenv), **prints a suggested install list and exits** without installing.
-    - Once all prereqs are present, hands off to `make install`.
+    - Once all prereqs are present, prints `Next step: make install` and exits 0. Does not run `make install` itself — keeps verify and install as separate concerns.
     - Is idempotent: re-running detects what's already installed and does nothing for those.
     - Does not write a `make` shim or modify PATH in destructive ways.
+    - Supports `--help` for usage; otherwise verifies unconditionally.
 
 15. **Runtime topology: three patterns, MVP locks to A with B opt-in.** Test Commander has three runtime roles — orchestrator (the brain), test runtime (Playwright/Postman/etc.), and viewer (web console). These can be deployed in three patterns:
     - **Pattern A — Local-first.** Claude Code runs on the user's laptop. Docker hosts auxiliary services and the viewer for local dev. No Claude in the cloud. **This is the MVP default.**
@@ -225,7 +226,7 @@ POSIX shell script at the repo root. Detects platform and verifies/installs prer
 - Never modifies `PATH` destructively.
 - Never writes a `make` shim or fake executable in `PATH`.
 - On any "questionable" missing tool, prints a clear suggested install list and exits with non-zero so the user can decide.
-- Once all prerequisites are present, the final step is `exec make install`.
+- Once all prerequisites are present, prints `Next step: make install` and exits 0. The user runs `make install` explicitly; bootstrap and install stay separate.
 
 ### Stage 2 — `make install`
 
