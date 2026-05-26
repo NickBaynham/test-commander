@@ -788,9 +788,92 @@ Six automated, four code-review.
 - Candidate is dramatically better than what we can author. **Mitigation:** that is a question, not a unilateral pivot. Raise it as an Open Question; D1 (vendor-and-own) is not bypassed without explicit reconsideration.
 
 #### 0.9 — Smoke test and Phase 0 sign-off
-- **Deliverables.** Phase 0 entry in `CHANGELOG.md`; Phase 0 items moved from `To Do` to `Completed` in `plan.md` with date.
-- **Definition of done.** End-to-end walkthrough of `docs/user-guide/getting-started.md` as a cold user (fresh shell, follow instructions verbatim); every step 0.1–0.8 passed its review; no remaining blockers.
-- **Review.** Final read of README and `getting-started.md` for accuracy; CHANGELOG accurate; commit and tag `phase-0`.
+
+Six sub-steps. Verification + documentation + ceremony. The final sub-step is the explicit DoD evaluation that closes Phase 0 with evidence and a git tag.
+
+##### 0.9.1 — Cold-user smoke test of getting-started.md
+- **Deliverables.** A captured log of an end-to-end walkthrough of `docs/user-guide/getting-started.md`. Reach a clean state via `make uninstall`, then follow each numbered step in the guide verbatim.
+- **Steps executed (verbatim from the guide).**
+  1. Clone the repository (skip if already cloned; document the equivalence).
+  2. `./bootstrap.sh` — should pass on this machine.
+  3. `make install` — full five-step chain succeeds end to end.
+  4. Confirm the plugin loaded — `claude plugin list` shows `test-commander@test-commander-marketplace`; `claude plugin details test-commander` lists `tc-core` under `Skills (1)`.
+- **Definition of done.** Each numbered step succeeds. Output captured to `/tmp/tc-phase0-walkthrough.log`. If any step fails, fix the cause and re-run before continuing to 0.9.2.
+
+##### 0.9.2 — Per-step DoD audit
+- **Deliverables.** A line-by-line audit of every Step 0.1 through 0.8 against its DoD list in this plan.
+- **What to check for each step.** Every DoD item green; every test in the step's pytest file passes; every deliverable present on disk; every cross-link resolves; every Failure Mode has its mitigation in place.
+- **Definition of done.** All eight prior steps' DoD lists pass with no exceptions. Any unmet item is a blocker — fix it before continuing.
+
+##### 0.9.3 — Plan and CHANGELOG updates
+- **Deliverables.**
+  - `planning/plan.md` — replace the `### Phase 0` To Do sub-section with a single line: `Phase 0 complete (YYYY-MM-DD) — see Completed`. Move the nine Phase 0 To Do items into the `## Completed` section under a `### Phase 0 — Repository foundation (YYYY-MM-DD)` heading, each item marked done.
+  - `CHANGELOG.md` — change the heading `Phase 0 — Repository foundation (in progress)` to `Phase 0 — Repository foundation (complete YYYY-MM-DD)`. Add a one-line summary at the top of the Phase 0 section.
+- **Definition of done.** To Do Phase 0 section reduced to the marker line; Completed section has all nine items with the date; CHANGELOG reflects the closing.
+
+##### 0.9.4 — Documentation final pass
+- **Deliverables.** Edits where any documentation drift has accumulated during Phase 0.
+- **What to read.** README, `docs/user-guide/getting-started.md`, `docs/install.md`, `plugins/test-commander/README.md`. Cross-references and links checked manually.
+- **Definition of done.** Every Phase 0 fact in the docs matches reality. No stale "in Phase 0 we will do X" wording. All links resolve. Tone consistent.
+
+##### 0.9.5 — Pre-flight tests for sign-off
+- **Deliverables.** `tests/test_phase_0_signoff.py`.
+- **Coverage.**
+  - All five Phase 0 pytest files exist (`test_plugin_scaffold`, `test_verify_skills`, `test_make_install`, `test_skill_evaluation`, plus the placeholder).
+  - CHANGELOG's Phase 0 section is marked complete.
+  - `plan.md` Completed section contains Phase 0 entries with a date.
+  - `plan.md` To Do Phase 0 sub-section is the marker line, not the original checklist.
+- **Definition of done.** Sign-off test suite green. Test-first: it lands red before 0.9.3's plan/CHANGELOG edits.
+
+##### 0.9.6 — Final DoD evaluation (close Phase 0)
+- **Procedure.**
+  1. Run `make verify` — every test green, link checker clean.
+  2. Run `python3 scripts/verify_skills.py` — `tc-core PRESENT`, exit 0.
+  3. Run `claude plugin list` — confirm `test-commander@test-commander-marketplace`.
+  4. Re-run the smoke test from 0.9.1 to confirm idempotency.
+  5. Capture all output to `/tmp/tc-phase0-signoff.log`.
+  6. Commit the plan/CHANGELOG/docs updates and the sign-off test in one final commit.
+  7. Push to origin.
+  8. Create annotated tag: `git tag -a phase-0 -m "Phase 0 — Repository foundation complete."`.
+  9. Push tag: `git push origin phase-0`.
+- **Definition of done.** All nine numbered steps complete. Tag visible on origin (`git ls-remote origin phase-0` resolves). Evidence log captured. Phase 0 is closed.
+
+##### Definition of done — consolidated 13 checks
+
+Eight automated; five evidence-based.
+
+| # | Check | Type | How |
+| --- | --- | --- | --- |
+| 1 | All five Phase 0 pytest files exist | auto | `test_phase_0_signoff.py` file-existence asserts |
+| 2 | CHANGELOG Phase 0 section marked complete | auto | sign-off test grep |
+| 3 | `plan.md` Completed section has Phase 0 entries | auto | sign-off test grep |
+| 4 | `plan.md` To Do Phase 0 sub-section is the marker line | auto | sign-off test grep |
+| 5 | `make verify` chain clean | auto | full chain |
+| 6 | `verify_skills.py` reports OK with `tc-core PRESENT` | auto | direct invocation |
+| 7 | Total pytest count meets expected minimum (≥ 41) | auto | sign-off test |
+| 8 | `tests/test_phase_0_signoff.py` passes | auto | pytest |
+| 9 | Cold-user walkthrough of `getting-started.md` succeeds | evidence | `/tmp/tc-phase0-walkthrough.log` |
+| 10 | Per-step DoD audit: 0.1–0.8 all green | evidence | manual review notes |
+| 11 | README and user-guide read clean (no stale facts) | evidence | code review |
+| 12 | `phase-0` annotated tag created and pushed | evidence | `git tag -l phase-0` + `git ls-remote origin phase-0` |
+| 13 | Final commit + push complete | evidence | `git log --oneline -1` shows the sign-off commit on origin |
+
+##### Validation sequence
+
+1. Run cold-user smoke test (0.9.1). Capture log. Fix anything that fails before proceeding.
+2. Audit each previous step's DoD (0.9.2). Block on any unmet item.
+3. Update `plan.md` and `CHANGELOG.md` (0.9.3).
+4. Final doc read-through (0.9.4). Edit any drift.
+5. Write `tests/test_phase_0_signoff.py` (0.9.5). Run `make test` — confirm green.
+6. Run the full DoD evaluation (0.9.6) including the annotated tag and tag push.
+
+##### Failure modes
+
+- A previous step's DoD turns out not to be green. **Mitigation:** that step reopens. 0.9 cannot close while any earlier DoD is unmet. Fix, re-verify, then return to 0.9.
+- The cold-user smoke test surfaces an undocumented step. **Mitigation:** update `docs/user-guide/getting-started.md` so the gap closes; re-run the walkthrough. Treat as a Phase 0 doc bug, not a Phase 1 issue.
+- Tag already exists locally (replay of 0.9). **Mitigation:** the annotated tag is intentional. If the prior tag was wrong, delete it (`git tag -d phase-0` then `git push origin :refs/tags/phase-0`) and recreate. Never force-overwrite an existing tag on origin without explicit user confirmation.
+- CHANGELOG closing entry diverges from To Do completion. **Mitigation:** the sign-off test (0.9.5) checks both. Both must agree before the test passes.
+- `make verify` fails late in 0.9.6 because of an unrelated change. **Mitigation:** the sign-off commit must follow a green verify. Do not push the sign-off if verify is red.
 
 #### Ordering and parallelism
 
