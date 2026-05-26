@@ -35,12 +35,25 @@ make install
 
 All bootstrap output is prefixed with `[bootstrap]` so it is easy to recognize and grep.
 
-`make install` is also idempotent. It:
+`make install` is idempotent. It runs the following targets in order:
 
-1. Runs `pdm install` for project Python dependencies.
-2. Registers this repo as a local Claude Code marketplace.
-3. Installs the `test-commander` plugin.
-4. Runs `scripts/verify_skills.py` to confirm all expected skills are present and well-formed.
+1. `pdm-install` — installs Python dependencies via PDM.
+2. `validate-manifests` — schema-validates `marketplace.json` and `plugin.json` via `claude plugin validate`. Schema errors here abort before any state change.
+3. `marketplace-add` — registers this repo as a Claude Code marketplace if not already registered.
+4. `plugin-install` — installs `test-commander@test-commander-marketplace` if not already installed.
+5. `verify-skills` — runs `scripts/verify_skills.py` to confirm all expected skills are present and well-formed.
+
+Re-running `make install` is safe: each step detects existing state and skips if there is nothing to do.
+
+### Uninstall
+
+To remove the plugin and unregister the marketplace:
+
+```sh
+make uninstall
+```
+
+`make uninstall` tolerates an already-clean state — running it on a system where the plugin was never installed will not error.
 
 ## Verifying the install
 
@@ -87,6 +100,19 @@ When `git` or `make` are missing on Linux or WSL, the script auto-installs them 
 ### Bootstrap exited non-zero with a suggestion list
 
 The script blocks on tools it will not auto-install (Python 3.12, Docker). Install them per the printed suggestion list, then re-run `./bootstrap.sh`. The script re-checks everything from scratch each run.
+
+### `make install` says "already registered" or "already installed"
+
+These are normal idempotency messages, not errors. `make install` re-runs are safe and turn into a no-op when there is nothing to change. To force a fresh install (e.g. after fixing the manifest):
+
+```sh
+make uninstall
+make install
+```
+
+### `make install` aborts at `validate-manifests`
+
+Schema validation failed before any state was changed. The CLI prints the specific field that failed. Fix the manifest, then re-run `make install`. No cleanup is needed because nothing was registered yet.
 
 ### More
 

@@ -29,7 +29,7 @@ See [../install.md](../install.md) for the full prerequisite list and per-platfo
    make install
    ```
 
-   This installs Python dependencies, registers this repo as a local Claude Code marketplace, installs the `test-commander` plugin, and verifies the installed skills.
+   This installs Python dependencies, validates the manifests, registers this repo as a local Claude Code marketplace, installs the `test-commander` plugin, and verifies the installed skills. Re-running `make install` is safe — each step skips when there is nothing to change. To remove everything later, run `make uninstall`.
 
 4. **Confirm the plugin loaded.**
 

@@ -35,7 +35,7 @@ This plugin is consumed via the local marketplace at the repository root.
 make install
 ```
 
-`make install` registers the marketplace and installs `test-commander` into Claude Code. See [docs/install.md](../../docs/install.md) for the full guide.
+`make install` validates the manifests, registers the marketplace, installs `test-commander` into Claude Code, and verifies the loaded skills. It is idempotent — re-runs are safe. Use `make uninstall` to reverse. See [docs/install.md](../../docs/install.md) for the full guide.
 
 ## License
 
