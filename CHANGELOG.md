@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Phase 1 — Workspace and artifact model (in progress)
+
+#### Added
+- Step 1.1: `templates/workspace/` — canonical `.test-commander/` workspace template that `/tc:init` will copy into consuming projects in Step 1.2. 63 starter files: 35 directories, 33 explicitly-named files from the Workspace Layout (project.md, config.yaml, methodology.md, the 6 requirements files, the 9 product-knowledge files, the 3 traceability maps, the 4 learning files, policy/permissions.yaml + approvals.yaml, audit/actions.jsonl, etc.), plus per-directory README.md placeholders so every empty-by-design directory is reachable through git. Every Markdown starter has an H1 heading and a "Populated by `<command>` (Phase N)" note; YAML starters have the same shape in a `#` comment header; `audit/actions.jsonl` is empty by design (append-only log). Pre-flight `tests/test_workspace_template.py` (7 tests) covers structural completeness (REQUIRED_DIRS + REQUIRED_FILES lists kept in sync by code review per Step 1.1 failure modes), Markdown heading + phase-note conventions, YAML comment-header conventions, and the empty-jsonl invariant.
+
 ### Phase 0 — Repository foundation (complete 2026-05-26)
 
 Repository ready for Phase 1. End-to-end clean install verified: `./bootstrap.sh` → `make install` → `test-commander:tc-core` loaded in Claude Code. 46-test suite green; 23-file Markdown link check clean. Tagged `phase-0` on origin.
