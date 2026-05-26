@@ -1587,21 +1587,8 @@ Then later: Phase 11 (API/MCP), Phase 12 (sandboxes), Phase 13 (continuous quali
 Phase-by-phase work items. Move to *Completed* as each lands.
 
 ### Phase 0
-- [ ] Author `README.md`, `LICENSE` (MIT), `CONTRIBUTING.md`, `CHANGELOG.md`, `TODO.md`
-- [ ] Author `bootstrap.sh` (POSIX, platform detection: macOS, Linux, WSL, Git Bash; prereq checks for make/python3.12/PDM/Docker/Git; suggested-install output for questionable tools; idempotent)
-- [ ] Create `Makefile` with `install`, `lint`, `test`, `build`, `run`, `verify`
-- [ ] Create `pyproject.toml` (PDM, `requires-python = ">=3.12"`) and `docker-compose.yml` placeholder
-- [ ] Author `.claude-plugin/marketplace.json` (declares the local marketplace)
-- [ ] Author `plugins/test-commander/.claude-plugin/plugin.json` (declares the plugin)
-- [ ] Author `plugins/test-commander/README.md`, `plugins/test-commander/LICENSE`
-- [ ] Author `plugins/test-commander/skills/tc-core/SKILL.md` (init/status/journal commands; defer `/tc:next` to Phase 1 per Q7)
-- [ ] Stub `docs/` (vision, architecture, roadmap, methodology, command-reference, workspace-reference, glossary, install)
-- [ ] Author `docs/user-guide/getting-started.md` and `docs/install.md` (per-platform; no-PowerShell note)
-- [ ] Run the public-skill evaluation pass and write `docs/skill-evaluation.md` (Mermaid, devbox/sandbox, traceability-matrix, a11y, perf)
-- [ ] Author `scripts/verify_skills.py` — verifies skills under `plugins/test-commander/skills/`
-- [ ] Wire `make install` to register the local marketplace and install the plugin via `claude plugin` CLI; ensure idempotency
-- [ ] Smoke-test on macOS and WSL; document Git Bash limitations
-- [ ] Confirm review and test gates green
+
+Phase 0 complete (2026-05-26) — see Completed.
 
 ### Phase 1
 - [ ] Extend `tc-core` with `/tc:next` heuristics (or split into `tc-next` if Q7 escalates)
@@ -1718,7 +1705,19 @@ Phase-by-phase work items. Move to *Completed* as each lands.
 
 Move To Do items here as phases finish, with date and short note.
 
-_(empty)_
+### Phase 0 — Repository foundation (2026-05-26)
+
+End-to-end clean install verified: `./bootstrap.sh` → `make install` → `test-commander:tc-core` loaded in Claude Code. 42-test suite green; 23-file Markdown link check clean. Tagged `phase-0` on origin.
+
+- [x] Step 0.1: MIT `LICENSE`, expanded `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `TODO.md`.
+- [x] Step 0.2: documentation skeleton under `docs/` (vision, architecture, roadmap, methodology, command-reference, workspace-reference, glossary, install) and `docs/user-guide/getting-started.md`. Markdown link checker `scripts/check_links.py`.
+- [x] Step 0.3: Python project foundation. `pyproject.toml` (PDM, `requires-python = ">=3.12"`, ruff + pytest dev deps), `Makefile` with six targets, `docker-compose.yml` placeholder, `.gitignore`, `.python-version`, `tests/test_placeholder.py`.
+- [x] Step 0.4: POSIX `bootstrap.sh` — platform detection, prereq verification, PDM auto-install, suggested-install output for Docker/Python. Idempotent.
+- [x] Step 0.5: plugin scaffold. `.claude-plugin/marketplace.json`, `plugins/test-commander/.claude-plugin/plugin.json`, plugin LICENSE + README, `tc-core/SKILL.md`. Validated via `claude plugin validate`, installed via `claude plugin install`. `tests/test_plugin_scaffold.py` (11 tests).
+- [x] Step 0.6: `scripts/verify_skills.py` walks `plugins/test-commander/skills/`, classifies skills as PRESENT/MISSING/MALFORMED/UNEXPECTED, supports `--phase N`. 20-entry catalog. Wired into `make verify`. `tests/test_verify_skills.py` (16 tests). All five live drills passed.
+- [x] Step 0.7: `make install` decomposed into a five-step chain (`pdm-install` → `validate-manifests` → `marketplace-add` → `plugin-install` → `verify-skills`). New `make uninstall`. Idempotent re-runs verified end-to-end. `tests/test_make_install.py` (9 tests).
+- [x] Step 0.8: `docs/skill-evaluation.md` — public-marketplace scan of 209 plugin entries across Mermaid, sandbox, traceability, a11y, perf. All five decisions "pass"; no plan deltas. `tests/test_skill_evaluation.py` (4 tests).
+- [x] Step 0.9: Phase 0 sign-off. Cold-user smoke test passed, per-step DoD audit clean, plan + CHANGELOG updated, `tests/test_phase_0_signoff.py` (5 tests), annotated tag `phase-0` pushed to origin.
 
 ---
 
