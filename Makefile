@@ -26,4 +26,5 @@ run:
 	@echo "Nothing to run yet. docker compose stack arrives in Phase 10+."
 
 verify: lint test
+	python3 scripts/verify_skills.py
 	python3 scripts/check_links.py
