@@ -69,6 +69,14 @@ These decisions are settled. They constrain every phase below.
     - Is idempotent: re-running detects what's already installed and does nothing for those.
     - Does not write a `make` shim or modify PATH in destructive ways.
 
+15. **Runtime topology: three patterns, MVP locks to A with B opt-in.** Test Commander has three runtime roles — orchestrator (the brain), test runtime (Playwright/Postman/etc.), and viewer (web console). These can be deployed in three patterns:
+    - **Pattern A — Local-first.** Claude Code runs on the user's laptop. Docker hosts auxiliary services and the viewer for local dev. No Claude in the cloud. **This is the MVP default.**
+    - **Pattern B — Headless Claude in CI.** GitHub Actions runs Claude Code with an API token. Single-tenant per token. **Opt-in for Phase 13 continuous quality only.**
+    - **Pattern C — Anthropic API via Agent SDK.** Backend calls the API directly; multi-tenant SaaS. **Deferred past v1.**
+    Docker is for auxiliary services (databases) and the viewer/test-runtime, never for the orchestrator. See *Runtime Topology* section.
+
+16. **Frontend users drive Test Commander workflows, not raw Claude Code.** Any UI that fronts the orchestrator must route every request through the controlled execution pipeline introduced in Phase 10.5: intent router → command planner → permission policy → approval gate → bounded execution → artifact capture → diff validation → audit log. The web console is never a raw Claude terminal in a browser. This rule applies to Phase 10, 10.5, 11, 12, and 13 without exception.
+
 ---
 
 ## Open Questions
@@ -89,6 +97,8 @@ Unresolved decisions. Each should be answered before its dependent phase begins.
 | Q10 | Quality-report history retention: keep forever in git, rotate after N snapshots, archive externally? | Phase 7, revisit at 8 | Keep forever in git for now. Add a `tc:archive-history` command later if size becomes painful. |
 | Q11 | Test-data generator format: Python factories, YAML manifests, Markdown specs, or a mix? | Phase 6 | Markdown specs plus YAML manifests for declarative data; Python factories only where a generator is too complex to express declaratively. |
 | Q12 | Should we evaluate a public Mermaid/diagram skill before authoring `tc-visualize`, or build it ourselves from the start? | Phase 9 | Author `tc-visualize` ourselves; Mermaid is simple enough that a wrapper is not worth the dependency. Evaluate public options only if scope grows. |
+| Q13 | Default policy for `safe-write` actions: always approve, always prompt, or configurable per deployment? | Phase 10.5 | Configurable per deployment, default to "always prompt" so single-user installs do not surprise the operator. |
+| Q14 | Role assignment in a single-user local install vs multi-user deployment? | Phase 10.5 | Single-user local default: caller is `Admin`. Multi-user: requires explicit identity provider integration; not in v1. |
 
 ---
 
@@ -127,6 +137,7 @@ Every skill listed here is created by the phase noted in the *Created in* column
 | `tc-learning` | Phase 8 | `/tc:learn`, `/tc:learn-from-failures`, `/tc:learn-from-exploration`, `/tc:learn-from-feedback`, `/tc:review-lessons`, `/tc:promote-lessons` | superpowers (receiving-code-review, systematic-debugging) |
 | `tc-visualize` | Phase 9 | `/tc:visualize`, all `/tc:diagram-*`, `/tc:generate-infographic`, `/tc:render-visuals` | frontend-design (infographics only) |
 | `tc-web` | Phase 10 | `/tc:web-init`, `/tc:web-start`, `/tc:web-sync`, `/tc:web-index-artifacts`, `/tc:web-export` | web-scaffold:create-website, frontend-design |
+| `tc-governance` | Phase 10.5 | (templates and policy schemas; invoked by runtime, not user commands) | (none — novel layer) |
 | `tc-mcp` | Phase 11 | (server, not commands) | anthropic-skills:skill-creator |
 | `tc-sandbox` | Phase 12 | `/tc:sandbox-*` | (none) |
 | `tc-continuous-quality` | Phase 13 | `/tc:watch-changes`, `/tc:impact-analysis`, `/tc:coverage-gap-analysis`, `/tc:propose-tests`, `/tc:create-test-pr`, `/tc:continuous-quality-check` | agentic-playwright-automation:investigate-playwright-failure |
@@ -144,6 +155,41 @@ Before authoring new skills from scratch, Phase 0 includes a brief evaluation pa
 - A performance-testing skill (informs scope decision under Q1).
 
 The evaluation outputs to `docs/skill-evaluation.md` and feeds the To Do list.
+
+---
+
+## Runtime Topology
+
+Test Commander has three runtime roles. Each can be deployed in different ways. This section names them, locks the MVP target, and constrains every later phase.
+
+### Three roles
+
+| Role | What it does | Where it can run |
+| --- | --- | --- |
+| Orchestrator | Reads workspace, generates BDD, decides what to automate, drafts the quality report | Claude (desktop Claude Code or Anthropic API) |
+| Test runtime | Executes Playwright tests, runs Postman collections, collects evidence | Node.js + browsers, locally or containerized |
+| Viewer | Renders workspace artifacts as a team-accessible dashboard | FastAPI + Next.js + Postgres |
+
+### Three deployment patterns
+
+- **Pattern A — Local-first (MVP default).** Orchestrator is the user's local Claude Code. Workspace files live in the consuming project's git. Docker hosts auxiliary services (Postgres, the viewer, optional containerized Playwright) on the same machine. The team sees results by reading committed workspace files or by running the viewer themselves. No Claude in the cloud. Cheap, simple, no API billing.
+- **Pattern B — Headless Claude in CI (opt-in for Phase 13).** A GitHub Actions runner installs Claude Code in headless mode with an Anthropic API token stored as a CI secret. Used for the continuous quality agent. Single-tenant per token; usage bills to that account.
+- **Pattern C — Anthropic API via Agent SDK (deferred past v1).** Backend invokes the Anthropic API directly using the Agent SDK. Skills are loaded by the SDK at runtime. Real multi-tenant SaaS. Major rearchitecture; not in scope until Phase 14+.
+
+### What Docker is for
+
+Docker hosts the **test runtime** and the **viewer** (and their auxiliary services). Docker does not host the **orchestrator**. The compose stack grows per phase:
+
+| Phase | Compose service added |
+| --- | --- |
+| 6 | Optional `playwright` for reproducible browsers |
+| 10 | `db` (Postgres), `api` (FastAPI), `web` (Next.js) |
+| 11 | `mcp` (MCP server) |
+| 12 | The same stack, deployed to a sandbox provider |
+
+### Frontend never drives raw Claude
+
+The web console (Phase 10) and every later UI route requests through the controlled execution pipeline defined in Phase 10.5. There is no raw Claude prompt in a browser. See Decision D16.
 
 ---
 
@@ -295,6 +341,12 @@ Single source of truth for what lives where. Updated by every phase that adds ar
   sessions/
   journal/
   runs/
+  policy/                  # phase 10.5
+    permissions.yaml
+    approvals.yaml
+  audit/                   # phase 10.5
+    actions.jsonl
+    approvals/
 ```
 
 Test code lives at `tests/` (created in Phase 6). It must not contain data; data flows via fixtures from `.test-commander/test-data/`.
@@ -760,9 +812,9 @@ Test data is **not** under `tests/`. It is under `.test-commander/test-data/` an
 
 ## Phase 10 — Web Console MVP
 
-**Goal.** Team-facing console for Test Commander.
+**Goal.** Team-facing console for Test Commander, scoped to **read-only and proposed workflows only**. Execution lands in Phase 10.5, behind the controlled execution pipeline. Phase 10 ships the UI shell, indexing, and the proposal-card surface; it does not execute anything that changes the workspace or runs tests.
 
-**Implementation.** Next.js + FastAPI + SQLite + SSE + local-filesystem artifacts. Pages: Dashboard, Quality Report, Journal, Sessions, Requirements, Test Runs, Evidence, Chat, Settings. Realtime via SSE. Backend services for artifact indexing, command execution, journal, quality report.
+**Implementation.** Next.js + FastAPI + SQLite + SSE + local-filesystem artifacts. Pages: Dashboard, Quality Report, Journal, Sessions, Requirements, Test Runs, Evidence, Chat, Settings. Realtime via SSE. Backend services for artifact indexing, journal viewing, quality-report rendering, and **proposal generation** (not execution).
 
 Structure as previously specified under `apps/web/`, `apps/api/`, `runtime/`.
 
@@ -772,7 +824,7 @@ Structure as previously specified under `apps/web/`, `apps/api/`, `runtime/`.
 
 **Commands.** `/tc:web-init`, `/tc:web-start`, `/tc:web-sync`, `/tc:web-index-artifacts`, `/tc:web-export`.
 
-**Chat (MVP).** Answers from indexed artifacts. Suggests Test Commander commands. Requires approval before file-modifying or test-running commands.
+**Chat (MVP).** Read-only Q&A from indexed artifacts. Suggests Test Commander commands as **proposal cards** that the user can review. Cannot execute file-modifying or test-running commands — that capability arrives in Phase 10.5 via the controlled execution pipeline.
 
 **Documentation.** `docs/user-guide/web-console.md`, `docs/web-console.md`, `docs/runtime-api.md`.
 
@@ -790,11 +842,182 @@ Structure as previously specified under `apps/web/`, `apps/api/`, `runtime/`.
 
 ---
 
+## Phase 10.5 — Controlled Agent Execution and Policy-Governed Chat
+
+**Goal.** Make the web console safe to expose. Every user request — chat message, button click, automation — flows through a policy-governed pipeline before it can touch Claude or the workspace. Users drive Test Commander workflows; they never drive raw Claude Code.
+
+**Why this phase exists.** A web console with a raw chat prompt that talks to Claude Code is a security liability: prompt injection, arbitrary file write, unbounded test execution, secret exfiltration. Phase 10.5 inserts the controls that make multi-user use possible. It also constrains Phases 11, 12, and 13 so they cannot bypass governance.
+
+**Execution pipeline.**
+
+```
+Frontend chat / request
+  -> Intent router
+  -> Command planner
+  -> Permission policy
+  -> Approval gate
+  -> Bounded agent execution
+  -> Artifact capture
+  -> Diff validation
+  -> Journal / audit log
+```
+
+### Components
+
+1. **Intent router.** Maps natural-language requests and button actions to known Test Commander workflows. Examples: "review these requirements" -> `/tc:review-requirements`; "generate BDD for checkout" -> `/tc:generate-bdd --area checkout`; "why did checkout fail?" -> read-only artifact query. Unknown intents default to a read-only Q&A path; the router cannot synthesize new commands on its own.
+
+2. **Command planner.** Produces an explicit, displayable plan before execution. The plan includes: command, files likely to be read, files likely to be created or changed, permission level required, target environment if applicable, expected artifacts, and whether human approval is required.
+
+3. **Permission policy engine.** Classifies every action into one of: `read-only`, `safe-write`, `code-write`, `execute-tests`, `external-network`, `destructive`, `admin`. Policy is configurable per deployment and per role. Examples by level:
+
+| Level | Examples |
+| --- | --- |
+| read-only | View quality report, ask questions from indexed artifacts, summarize test results, show screenshots, explain failures |
+| safe-write | Review requirements, generate open questions, create test ideas, update risk register, generate diagrams, update quality report |
+| code-write | Generate Playwright tests, modify page objects, update fixtures, change test data, refactor automation |
+| execute-tests | Run smoke / regression / feature tests, run browser exploration |
+| external-network | Explore target website, call target APIs, run tests against staging |
+| destructive | Reset test data, delete artifacts, install dependencies, modify environment config, change GitHub Actions, destroy sandbox |
+| admin | Manage secrets, change provider credentials, change sandbox policy, change permission rules |
+
+4. **Approval gate.** Required for `code-write`, `execute-tests`, `external-network`, `destructive`, and `admin` actions. Configurable for `safe-write`. The UI shows an approval card before execution.
+
+   ```
+   Command:
+     /tc:automate --feature checkout
+   This will:
+     - read .test-commander/bdd/features/checkout.feature
+     - create or modify tests/e2e/checkout.spec.ts
+     - create or modify tests/pages/CheckoutPage.ts
+     - update .test-commander/traceability/automation-map.md
+     - optionally run checkout tests
+   Permission level:
+     code-write + execute-tests
+   Approve?
+   ```
+
+5. **Bounded agent execution.** The agent receives a structured instruction, not the raw user prompt. Includes command name, scope, allowed and disallowed paths, allowed and disallowed actions, expected outputs, safety rules, and journal requirements. Example:
+
+   ```
+   You are running Test Commander command /tc:coverage-gap-analysis.
+   Scope:
+     - Read-only analysis
+     - Do not modify application source files
+     - Do not run tests
+     - Do not access external network
+   Allowed reads:
+     - .test-commander/
+     - specs/
+     - tests/
+     - src/
+   Outputs:
+     - Update .test-commander/coverage/coverage-gap-analysis.md
+     - Add a journal entry
+     - Propose next actions requiring approval
+   ```
+
+6. **Agent adapter abstraction.** `AgentAdapter` interface so the runtime is decoupled from any specific backend. Implementations: `ClaudeCodeCliAdapter`, `AnthropicApiAdapter`, `MockAgentAdapter`, future provider adapters. Interface methods: `execute_command`, `stream_events`, `capture_result`, `report_files_changed`, `report_artifacts_created`, `report_usage_if_available`.
+
+   Scaffolding lives at `runtime/agent_adapters/` (`base.py`, `mock_agent.py`, `claude_code_cli.py`, `anthropic_api.py`). Phase 10.5 ships the mock adapter and the Claude Code adapter; the API adapter is stubbed.
+
+7. **Output validation.** After execution, the runtime diffs the workspace and verifies: files changed match the planned scope, no secret files touched, no unexpected network access, expected outputs were produced. Violations mark the run failed and require admin review. Per level:
+
+   - `safe-write` may update `.test-commander/**`, `specs/bdd/**`.
+   - `code-write` may update `tests/**`, `playwright.config.ts`, `package.json` only when approved.
+   - **No command** may modify `.env`, secrets files, deployment credentials, production config, or cloud credentials without admin approval.
+
+8. **Secret safety.** Frontend users never see provider secrets. AI provider keys stay server-side, injected only into runtime jobs that need them. Logs and artifacts redact secrets. Environment variables are never dumped into prompts or reports. Commands that attempt to print environment variables are flagged. Tokens are scoped and short-lived where possible.
+
+9. **Audit journal.** Append-only log of every action. Entry fields: user, timestamp, original user request, mapped intent, proposed command, approval status, approver, permission level, files read, files changed, artifacts created, tests run, target URLs used, status, summary, evidence links.
+
+### Roles
+
+| Role | Default permissions |
+| --- | --- |
+| Viewer | View reports, view evidence, ask read-only questions |
+| Tester | Viewer + upload docs, review requirements, generate test ideas, generate BDD, approved exploration, approved test runs |
+| Automation Engineer | Tester + generate Playwright tests (with approval), modify page objects, update fixtures, review automation plans |
+| Maintainer | Automation Engineer + approve code-write actions, create PRs, manage project settings |
+| Admin | All actions including manage secrets, manage provider credentials, manage sandbox policy, manage users and roles |
+
+### Frontend behavior (constrains Phase 10 UI)
+
+The chat interface must support:
+
+- Read-only Q&A from indexed artifacts.
+- Workflow suggestions.
+- Command proposal cards.
+- Approval cards.
+- Live execution logs (server-streamed, redacted).
+- Artifact links.
+- File diff summaries.
+- Test result summaries.
+
+The frontend must not expose:
+
+- Raw shell.
+- Raw Claude Code prompt input.
+- Unrestricted file editing.
+- Secret values.
+- Uncontrolled network targeting.
+
+These can be relaxed per-role only with explicit admin configuration. Default deny.
+
+### Workspace additions
+
+```
+.test-commander/
+  policy/
+    permissions.yaml   # role -> allowed permission levels
+    approvals.yaml     # which actions require approval
+  audit/
+    actions.jsonl      # append-only audit log
+    approvals/         # individual approval records
+```
+
+### Skills authored
+
+`tc-governance` — owns policy templates, approval-card templates, bounded-prompt templates per command, and the audit log schema.
+
+### Documentation
+
+- `docs/controlled-agent-execution.md` — full architecture and flow.
+- `docs/security-and-permissions.md` — roles, permissions, secret safety, output validation rules.
+- `docs/chat-command-governance.md` — intent router and command planner behavior.
+- `docs/runtime-approval-flow.md` — approval card lifecycle and gate semantics.
+- `docs/agent-adapters.md` — adapter interface and implementations.
+- `docs/user-guide/governance.md` — tester-facing explainer.
+
+### Review step
+
+- Every action above `safe-write` shows an approval card before execution.
+- Every executed action produces an audit entry.
+- Output validation catches at least one seeded violation (out-of-scope file write).
+- Bounded prompts contain no raw user text in instruction-critical sections.
+
+### Test step
+
+- Integration test: simulate an unsafe user request ("delete all evidence") and assert the policy engine blocks it before reaching the agent.
+- Integration test: simulate a code-write request, generate the approval card, deny it, assert no files change.
+- Integration test: approve the same request via the mock adapter; assert the audit log records the approval and the post-execution diff matches the plan.
+- Integration test: bypass attempt — directly call the agent adapter with no plan; assert the runtime refuses.
+
+### Definition of done
+
+- Intent router, command planner, permission engine, approval gate, bounded executor, output validator, and audit journal all implemented end-to-end with the mock adapter.
+- `ClaudeCodeCliAdapter` implemented and gated behind the same controls.
+- `tc-governance` skill authored with templates.
+- All five new docs written.
+- Web console (Phase 10) wired to the pipeline; no UI path can execute an action without it.
+- `docs/user-guide/governance.md` explains the model.
+
+---
+
 ## Phase 11 — Runtime API and MCP Server
 
-**Goal.** Expose Test Commander to other tools and agents.
+**Goal.** Expose Test Commander to other tools and agents — **through the same controlled execution pipeline** introduced in Phase 10.5. The API and MCP server are alternative front-ends to the same governance layer; they cannot bypass intent routing, planning, permissions, approvals, output validation, or audit.
 
-**Implementation.** Expanded FastAPI Runtime API and a new MCP server at `apps/mcp/`. MCP tools as previously specified. Permission levels: read-only, safe-write, code-write, execute-tests, destructive — all enforced.
+**Implementation.** Expanded FastAPI Runtime API and a new MCP server at `apps/mcp/`. MCP tools as previously specified. Every API and MCP endpoint enters the Phase 10.5 pipeline; there is no "direct execution" backdoor. Permission levels (`read-only`, `safe-write`, `code-write`, `execute-tests`, `external-network`, `destructive`, `admin`) are enforced server-side.
 
 **Skills authored.** `tc-mcp` (server package and tool definitions).
 
@@ -827,7 +1050,7 @@ Structure as previously specified under `apps/web/`, `apps/api/`, `runtime/`.
 
 **Design references.** Public devbox/sandbox skills (Coder, Daytona, Sprites.dev) — evaluated in Phase 0 per `docs/skill-evaluation.md`; design patterns may be borrowed.
 
-**Safety.** Allowed target domains, blocked private network ranges by default, secret-scanning guidance, approvals for external targets and destructive commands, clear environment labels.
+**Safety.** Allowed target domains, blocked private network ranges by default, secret-scanning guidance, approvals for external targets and destructive commands, clear environment labels. **The Phase 10.5 controlled execution pipeline runs inside the sandbox just as it does locally** — sandboxing does not relax governance. Provider credentials (Anthropic API tokens, cloud creds) live as **server-side secrets**, are never exposed to the frontend, and are scoped to the runtime jobs that need them.
 
 **Documentation.** `docs/sandboxed-environments.md`, `docs/github-actions-sandbox.md`, `docs/no-code-tester-workflow.md`, `docs/user-guide/sandbox.md`.
 
@@ -849,7 +1072,9 @@ Structure as previously specified under `apps/web/`, `apps/api/`, `runtime/`.
 
 **Goal.** Monitor application changes and propose quality updates.
 
-**Implementation.** Commands `/tc:watch-changes`, `/tc:impact-analysis`, `/tc:coverage-gap-analysis`, `/tc:propose-tests`, `/tc:create-test-pr`, `/tc:continuous-quality-check`. Autonomy modes 0–4. Workflow `.github/workflows/test-commander-continuous-quality.yml` on `pull_request`, `push`, `schedule`, `workflow_dispatch`.
+**Implementation.** Commands `/tc:watch-changes`, `/tc:impact-analysis`, `/tc:coverage-gap-analysis`, `/tc:propose-tests`, `/tc:create-test-pr`, `/tc:continuous-quality-check`. Autonomy modes 0–4 (read-only-advisor, assisted-testing, approved-execution, pull-request-automation, governed-autonomy). Workflow `.github/workflows/test-commander-continuous-quality.yml` on `pull_request`, `push`, `schedule`, `workflow_dispatch`.
+
+Continuous mode runs through the **same Phase 10.5 pipeline** as the web console. The configured autonomy level decides which permission levels are auto-approved; nothing above the configured level executes without explicit human approval. Continuous agent mode must not bypass approvals.
 
 **Skills authored.** `tc-continuous-quality` with all six commands and the five autonomy-mode gates. Reuses `tc-run`'s failure-triage logic for impacted-test runs (no separate skill needed).
 
@@ -874,7 +1099,9 @@ Structure as previously specified under `apps/web/`, `apps/api/`, `runtime/`.
 
 ## Capstone MVP Ordering
 
-Phase 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 10.
+Phase 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 10 → 10.5.
+
+Phase 10.5 joins the capstone because exposing the web console without governance is unsafe. Without 10.5, the web console is read-only-only; with 10.5, it can drive workflows safely.
 
 Story:
 
@@ -934,8 +1161,9 @@ Then later: Phase 11 (API/MCP), Phase 12 (sandboxes), Phase 13 (continuous quali
 | 7 | Evidence + Reporting | Run tests, collect evidence, live report with committed history |
 | 8 | Continuous Learning | Lessons and governed improvement |
 | 9 | Visuals | Diagrams, risk maps, infographics |
-| 10 | Web Console | Team-facing quality center |
-| 11 | API/MCP | Tool and agent access |
+| 10 | Web Console | Team-facing quality center (read-only and proposals) |
+| 10.5 | Controlled Agent Execution | Policy-governed execution pipeline; users drive workflows, not raw Claude |
+| 11 | API/MCP | Tool and agent access (through the same governance pipeline) |
 | 12 | Sandboxes | GitHub Actions-launched QA workspaces |
 | 13 | Continuous Quality Agent | Monitors change and proposes improvements |
 
@@ -1031,9 +1259,24 @@ Phase-by-phase work items. Move to *Completed* as each lands.
 - [ ] Scaffold `apps/web/` and `apps/api/`
 - [ ] Implement all MVP pages and the artifact indexer
 - [ ] Implement SSE streams
-- [ ] Implement chat with approval gating
+- [ ] Implement read-only chat (Q&A + proposal cards only — execution arrives in Phase 10.5)
 - [ ] Author `docs/user-guide/web-console.md`, `docs/web-console.md`, `docs/runtime-api.md`
 - [ ] Confirm review and test gates green
+
+### Phase 10.5
+- [ ] Author `plugins/test-commander/skills/tc-governance/SKILL.md` with policy/approval/bounded-prompt templates
+- [ ] Scaffold `runtime/agent_adapters/` (`base.py`, `mock_agent.py`, `claude_code_cli.py`, `anthropic_api.py` stub)
+- [ ] Implement intent router (NL + button -> known TC workflow)
+- [ ] Implement command planner (produces displayable plan)
+- [ ] Implement permission policy engine (7 levels, role-aware)
+- [ ] Implement approval gate (UI card + record)
+- [ ] Implement bounded executor (structured instruction wrapping)
+- [ ] Implement output validator (diff against plan, secret-redaction, network checks)
+- [ ] Implement audit journal (`.test-commander/audit/actions.jsonl` + per-approval records)
+- [ ] Wire Phase 10 web console to the pipeline; remove any direct-execution paths
+- [ ] Seed default `policy/permissions.yaml` and `policy/approvals.yaml`
+- [ ] Author `docs/controlled-agent-execution.md`, `docs/security-and-permissions.md`, `docs/chat-command-governance.md`, `docs/runtime-approval-flow.md`, `docs/agent-adapters.md`, `docs/user-guide/governance.md`
+- [ ] Confirm review and test gates green (including the four integration tests in Phase 10.5 Test step)
 
 ### Phase 11
 - [ ] Expand FastAPI Runtime API

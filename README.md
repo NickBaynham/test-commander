@@ -135,6 +135,11 @@ The per-project quality workspace lives at `.test-commander/` in *consuming* pro
 - [Glossary](docs/glossary.md)
 - [Install guide](docs/install.md)
 - [User guide — getting started](docs/user-guide/getting-started.md)
+- [Controlled agent execution](docs/controlled-agent-execution.md)
+- [Security and permissions](docs/security-and-permissions.md)
+- [Chat command governance](docs/chat-command-governance.md)
+- [Runtime approval flow](docs/runtime-approval-flow.md)
+- [Agent adapters](docs/agent-adapters.md)
 - [Phased plan](planning/plan.md)
 
 Most `docs/` files are stubs in Phase 0 and get filled in by their owning phase.
