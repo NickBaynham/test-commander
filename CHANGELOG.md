@@ -6,7 +6,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Phase 0 — Repository foundation (complete 2026-05-26)
 
-Repository ready for Phase 1. End-to-end clean install verified: `./bootstrap.sh` → `make install` → `test-commander:tc-core` loaded in Claude Code. 42-test suite green; 23-file Markdown link check clean. Tagged `phase-0` on origin.
+Repository ready for Phase 1. End-to-end clean install verified: `./bootstrap.sh` → `make install` → `test-commander:tc-core` loaded in Claude Code. 46-test suite green; 23-file Markdown link check clean. Tagged `phase-0` on origin.
 
 #### Added
 - Step 0.1: MIT `LICENSE`, expanded `README.md`, `CONTRIBUTING.md`, this `CHANGELOG.md`, and `TODO.md` placeholder.

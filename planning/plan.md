@@ -1799,7 +1799,7 @@ Move To Do items here as phases finish, with date and short note.
 
 ### Phase 0 — Repository foundation (2026-05-26)
 
-End-to-end clean install verified: `./bootstrap.sh` → `make install` → `test-commander:tc-core` loaded in Claude Code. 42-test suite green; 23-file Markdown link check clean. Tagged `phase-0` on origin.
+End-to-end clean install verified: `./bootstrap.sh` → `make install` → `test-commander:tc-core` loaded in Claude Code. 46-test suite green; 23-file Markdown link check clean. Tagged `phase-0` on origin.
 
 - [x] Step 0.1: MIT `LICENSE`, expanded `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `TODO.md`.
 - [x] Step 0.2: documentation skeleton under `docs/` (vision, architecture, roadmap, methodology, command-reference, workspace-reference, glossary, install) and `docs/user-guide/getting-started.md`. Markdown link checker `scripts/check_links.py`.
