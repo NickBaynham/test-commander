@@ -885,39 +885,131 @@ Eight automated; five evidence-based.
 
 ## Phase 1 — Workspace and Artifact Model
 
-**Goal.** Canonical `.test-commander/` workspace and the first four core commands.
+**Goal.** Canonical `.test-commander/` workspace and the first four core commands (`/tc:init`, `/tc:status`, `/tc:journal`, `/tc:next`).
 
-**Implementation.**
+**Architecture.** Each `/tc:*` command is implemented as a small Python helper script plus a Markdown command file inside `tc-core/`. The SKILL.md command file describes the workflow Claude follows; the helper does the deterministic work (file I/O, state inspection, heuristics). This split is what makes TDD possible — helpers are unit-testable; command files are reviewed against their behavior contract.
 
-- `/tc:init` — create the workspace and starter files; idempotent.
-- `/tc:status` — summarize current workspace state.
-- `/tc:journal` — add or summarize journal entries.
-- `/tc:next` — **infer the next recommended commands** by reading workspace state (e.g. requirements present but unreviewed → suggest `/tc:review-requirements`; BDD generated but no automation plan → suggest `/tc:automation-plan`).
-- Workspace template under `templates/workspace/` so `/tc:init` has a source of truth.
+**Phase-1 design decisions (folded in).**
 
-**Skills authored.** Extend `tc-core` to include `/tc:next`. Author the heuristics file under `.claude/skills/test-commander/tc-core/methodology/next-step-inference.md`.
+- **Per-command page location.** Command pages live next to their SKILL.md inside the plugin (`plugins/test-commander/skills/tc-core/commands/<command>.md`). Single source of truth: the same file is what Claude reads and what users read. `docs/command-reference.md` becomes an index that links into the plugin.
+- **`/tc:next` returns a ranked list.** Top recommendation surfaces as `next:` for one-glance reading; ranked alternatives follow with explanations.
+
+**Skills authored.** Extend `tc-core` with `/tc:next`, the workspace template, and the four command files.
 
 **Design references.** `superpowers:writing-skills` (command file structure), `superpowers:writing-plans` (planning heuristics for `/tc:next`).
 
-**Documentation.**
+### Phase 1 — Execution outline
 
-- `docs/workspace-reference.md` lists every directory and file, with purpose and producer command.
-- `docs/command-reference.md` documents the four commands with inputs, outputs, preconditions, files read, files written, safety rules, definition of done.
-- `docs/user-guide/workflow.md` — first walk-through: `/tc:init → /tc:status → /tc:next`.
+Eight sub-steps. TDD throughout: every implementation step lands its tests red before turning them green. Sub-step 1.6 is the dedicated documentation pass; 1.7 is the dedicated testing finalization; 1.8 is the sign-off with a `phase-1` tag.
 
-**Review step.**
+#### 1.1 — Workspace template
+- **Deliverables.** `templates/workspace/` directory tree mirroring the canonical `.test-commander/` layout from this plan. Every starter file has a heading and a "filled in by Phase N" note.
+- **Tests first.** `tests/test_workspace_template.py` asserts every directory and starter file from the plan's Workspace Layout exists in the template.
+- **Definition of done.** Template matches the layout exactly; pytest green.
+- **Review.** Manual diff against the plan's Workspace Layout block; no surprise files added later.
 
-- Workspace template is exhaustive (no surprise files appear in later phases).
-- `/tc:next` correctly handles: empty workspace, partially populated workspace, fully populated workspace.
+#### 1.2 — `/tc:init` (TDD)
+- **Helper.** `scripts/init_workspace.py` — copies the template into a target directory; idempotent; reports created vs skipped.
+- **Command file.** `plugins/test-commander/skills/tc-core/commands/init.md` (also serves as the user-facing reference per the per-command-page decision).
+- **Tests first.** `tests/test_init_workspace.py` — fresh init, idempotent re-init on existing workspace, partial-existing case (some files present), refusal on invalid target (e.g. a file path, not a directory).
+- **Definition of done.** Helper passes all four cases; command file follows the per-command structure; nothing executes outside the target directory.
+- **Verification.** Pytest + smoke run against a tmp dir leaves the expected tree.
 
-**Test step.**
+#### 1.3 — `/tc:status` (TDD)
+- **Helper.** `scripts/workspace_state.py` — reads `.test-commander/`, returns a structured snapshot (artifact counts, last-modified, completeness per phase). Shared with `/tc:next` in 1.5.
+- **Command file.** `tc-core/commands/status.md` formats the snapshot for users.
+- **Tests first.** `tests/test_workspace_state.py` — empty workspace, partial workspace, full workspace (fixtures generated from the template + selective additions).
+- **Definition of done.** Helper returns the documented snapshot shape (typed); command file authored; output is grep-friendly.
+- **Verification.** Snapshot deterministic per fixture; output passes a structural assertion.
 
-- Unit-style verification: a script seeds different workspace states and asserts `/tc:next` returns the expected recommendation.
-- `make verify` runs the seed harness.
+#### 1.4 — `/tc:journal` (TDD)
+- **Helper.** `scripts/journal.py` — append (timestamped) and summarize (chronological, by date range).
+- **Command file.** `tc-core/commands/journal.md`.
+- **Tests first.** `tests/test_journal.py` — append to empty, append to existing, summarize range, summarize empty, malformed entry refused.
+- **Definition of done.** Helper passes all five cases; command file authored; journal files are valid Markdown.
+- **Verification.** Pytest; resulting journal files render cleanly.
+- **Out of scope.** AI-generated summaries — that lives in Phase 8 (learning loop).
 
-**Definition of done.**
+#### 1.5 — `/tc:next` heuristics engine (TDD)
+- **Methodology.** `plugins/test-commander/skills/tc-core/methodology/next-step-inference.md` — documents the recommendation rules with examples.
+- **Engine.** `scripts/next_step.py` — reads `workspace_state`, applies heuristics, returns a ranked recommendation list with explanations.
+- **Command file.** `tc-core/commands/next.md`.
+- **Tests first.** `tests/test_next_step.py` with one fixture per heuristic: empty workspace, requirements-unreviewed, BDD-without-automation-plan, automation-without-runs, run-without-report, etc. Every rule documented in `next-step-inference.md` has at least one passing fixture.
+- **Definition of done.** Every documented heuristic has a passing test case; recommendations include an explanation, not just a command name; the top recommendation surfaces as `next:` on its own line.
+- **Verification.** Pytest with per-heuristic fixtures; ranked list output passes a structural assertion.
 
-- Workspace created by `/tc:init`, status summarized correctly, journal append works, `/tc:next` recommends sensibly, tester walkthrough in `workflow.md` is end-to-end runnable.
+#### 1.6 — Documentation pass *(dedicated step)*
+- **Deliverables.**
+  - Fill in `docs/workspace-reference.md` (canonical layout, per-directory purpose, owning phase).
+  - Update `docs/command-reference.md` so the four commands link into their per-command pages inside the plugin.
+  - Author `docs/user-guide/workflow.md` — first end-to-end walkthrough: `/tc:init` → `/tc:status` → `/tc:journal` → `/tc:next`.
+  - Refresh `README.md`, `docs/install.md`, and `docs/user-guide/getting-started.md` for any Phase 1 mentions ("Phase 1 starts next" → "Phase 1 in progress" / "complete").
+- **Definition of done.** Every doc accurate against the implementation; all cross-links resolve; link checker green.
+- **Verification.** `python3 scripts/check_links.py` clean; manual read-through against the Phase 1 deliverables.
+
+#### 1.7 — Testing finalization *(dedicated step, separate from per-command TDD)*
+- **Deliverables.**
+  - Bump `DEFAULT_PHASE_CAP` in `scripts/verify_skills.py` from `0` to `1` so the verifier expects `tc-core` to ship `/tc:next`.
+  - `tests/test_phase_1_integration.py` — integration smoke that creates a fresh tmp consuming project, invokes the four helpers in sequence (`init` → `status` → `journal` → `next`), and asserts each transition matches expectations.
+- **Definition of done.** Integration smoke passes; phase cap bump reflected; full `make verify` chain green.
+- **Verification.** Captured `make verify` output; `verify_skills.py` reports `tc-core PRESENT (phase 1)`.
+
+#### 1.8 — Sign-off *(matches the Phase 0 sign-off pattern)*
+- **Deliverables.**
+  - Cold-user walkthrough following `docs/user-guide/workflow.md` from a fresh tmp consuming project; output to `/tmp/tc-phase1-walkthrough.log`.
+  - Per-step DoD audit across 1.1–1.7.
+  - `planning/plan.md` — move Phase 1 To Do items to Completed with the date.
+  - `CHANGELOG.md` — mark Phase 1 complete; add the closing summary.
+  - `tests/test_phase_1_signoff.py` (test-first; mirrors `test_phase_0_signoff.py`).
+- **Final DoD evaluation.** `make verify` → smoke replay → commit → push → annotated `phase-1` tag → tag push. Capture to `/tmp/tc-phase1-signoff.log`.
+- **Definition of done.** 13-check table (8 automated + 5 evidence-based) all green; tag visible on origin.
+
+#### Definition of done — consolidated 13 checks
+
+Eight automated; five evidence-based.
+
+| # | Check | Type | How |
+| --- | --- | --- | --- |
+| 1 | All Phase 1 test files exist (`test_workspace_template`, `test_init_workspace`, `test_workspace_state`, `test_journal`, `test_next_step`, `test_phase_1_integration`, `test_phase_1_signoff`) | auto | sign-off test |
+| 2 | All four helpers exist (`init_workspace.py`, `workspace_state.py`, `journal.py`, `next_step.py`) | auto | sign-off test |
+| 3 | All four command files exist (`init.md`, `status.md`, `journal.md`, `next.md` under `tc-core/commands/`) | auto | sign-off test |
+| 4 | `tc-core/methodology/next-step-inference.md` exists | auto | sign-off test |
+| 5 | `templates/workspace/` matches the plan's Workspace Layout | auto | template test |
+| 6 | `verify_skills.py` cap bumped to 1; reports `tc-core PRESENT (phase 1)` | auto | `make verify` |
+| 7 | Integration smoke (`test_phase_1_integration`) passes | auto | pytest |
+| 8 | `make verify` chain clean | auto | full chain |
+| 9 | Cold-user walkthrough of `workflow.md` succeeds | evidence | `/tmp/tc-phase1-walkthrough.log` |
+| 10 | Per-step DoD audit clean (1.1–1.7) | evidence | audit notes |
+| 11 | Plan: To Do Phase 1 collapsed to marker; Completed has Phase 1 entries | evidence | grep + sign-off test |
+| 12 | CHANGELOG Phase 1 section marked complete with date | evidence | sign-off test |
+| 13 | `phase-1` annotated tag created and pushed | evidence | `git tag -l phase-1` + `git ls-remote origin phase-1` |
+
+#### TDD pattern used in 1.2–1.5
+
+```
+write tests (red)             # define expected behavior per case
+  → implement helper (green)  # minimum code to pass
+    → author SKILL.md command file
+      → verify (pytest + make verify)
+```
+
+No implementation lands before its tests. No tests are added after the fact.
+
+#### Validation sequence
+
+1. Author 1.1 (template) with its test. Confirm pytest red → green.
+2. For each of 1.2, 1.3, 1.4, 1.5 in order: write tests, implement helper, author command file, run pytest.
+3. 1.6 documentation pass. Run `make verify`.
+4. 1.7 testing finalization: bump cap, integration smoke. Run `make verify`.
+5. 1.8 sign-off: cold-user walkthrough, audit, plan/CHANGELOG updates, sign-off test, commit, push, tag.
+
+#### Failure modes
+
+- A heuristic's expected output is ambiguous. **Mitigation:** the test fixture is the source of truth; if the fixture is unclear, fix the fixture and the heuristic together.
+- `workspace_state` snapshot grows over time and breaks fixture asserts. **Mitigation:** structural asserts (field presence) rather than exact-string asserts; bump snapshot tests deliberately when the shape changes.
+- Per-command page in the plugin is too prose-heavy for Claude to follow. **Mitigation:** structure each command file with explicit sections (`Inputs`, `Outputs`, `Preconditions`, `Behavior`, `Safety`, `Definition of Done`); reviewable.
+- `/tc:next` recommends something the user already did. **Mitigation:** the helper reads timestamps and journal entries; recently-completed work is excluded from recommendations.
+- Workspace template drifts from the plan's Workspace Layout. **Mitigation:** `test_workspace_template.py` parses the plan's layout block and asserts equivalence (or compares against a frozen list documented inline).
 
 ---
 
