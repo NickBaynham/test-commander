@@ -535,9 +535,94 @@ Eight automated; two interactive. The interactive checks gate 0.5.6.
 - Slash commands (`/plugin marketplace add`, `/plugin install`) unavailable in the session. **Mitigation:** per Decision D17, the plan uses `claude plugin ...` CLI subcommands, which work in every environment. Do not fall back to slash commands.
 
 #### 0.6 — Skill verifier
-- **Deliverables.** `scripts/verify_skills.py`.
-- **Definition of done.** Parses every `plugins/test-commander/skills/*/SKILL.md`; reports each as PRESENT / MISSING / MALFORMED; aggregates exit code (non-zero on any non-PRESENT); supports `--phase N` to restrict the expected skill set per phase.
-- **Review.** Run against the current state — `tc-core` reports PRESENT. Break the frontmatter — verifier reports MALFORMED. Rename the dir — verifier reports MISSING. Restore and re-verify.
+
+Seven sub-steps. Test-first: the pytest suite lands red before the script. Sub-steps 0.6.1–0.6.4 can be authored in one pass (one file); 0.6.5 is the parallel test file; 0.6.6 wires `make verify`; 0.6.7 is the live drill.
+
+##### 0.6.1 — Expected-skill catalog
+- **Deliverables.** A module-level constant in `scripts/verify_skills.py` mapping every TC-owned skill name to the phase that creates it. Sourced from the *TC-Owned Skill Catalog* table earlier in this plan.
+- **Definition of done.** Catalog contains an entry for every skill the plan declares (currently 20). Phase numbers match the plan's catalog.
+- **Review.** Side-by-side diff against the plan's catalog table during code review.
+
+##### 0.6.2 — Frontmatter parser and validator
+- **Deliverables.** A pure function `parse_frontmatter(skill_md_path) -> ParseResult` that extracts the leading `---...---` YAML block. No PyYAML dependency; regex parsing only (same approach as `tests/test_plugin_scaffold.py`).
+- **Validation rules.**
+  - `name` field present.
+  - `name` matches the parent directory name.
+  - `name` is kebab-case (`^[a-z][a-z0-9-]*$`).
+  - `description` field present and non-empty after `strip()`.
+- **Definition of done.** Returns a `ParseResult` with one of: `ok`, `malformed(reason)`. Pure; no I/O outside the file read.
+
+##### 0.6.3 — Walker and phase filter
+- **Deliverables.** A function that, given the catalog and an optional `phase_cap: int`, walks `plugins/test-commander/skills/*/SKILL.md` and returns a `dict[str, Status]` where `Status` is `PRESENT | MISSING | MALFORMED | UNEXPECTED`.
+- **Behavior.**
+  - For each expected skill (with `phase <= phase_cap`, default = unbounded): check directory + SKILL.md existence; parse; classify.
+  - For each on-disk skill not in the catalog: report `UNEXPECTED` (warn only — does not fail the run).
+- **Definition of done.** Deterministic for a given workspace state; testable with fixture directories.
+
+##### 0.6.4 — Reporter and exit code
+- **Deliverables.** A CLI entry point in `scripts/verify_skills.py` (`if __name__ == "__main__"`). Supports `--phase N` and `--help`. Default phase cap: unbounded (verify everything authored so far).
+- **Output format.** One line per checked skill, aligned: `skill-name        PRESENT (phase N)`. Summary footer with counts and overall verdict.
+- **Exit code.** `0` if every expected skill is `PRESENT` and no `MALFORMED` exists. `1` otherwise. `UNEXPECTED` does not affect the exit code (warn only).
+- **Definition of done.** Matches the documented contract; output is grep-friendly.
+
+##### 0.6.5 — Pre-flight tests
+- **Deliverables.** `tests/test_verify_skills.py`.
+- **Coverage.** One test per DoD assertion (see table below): valid frontmatter, four MALFORMED variants, MISSING, UNEXPECTED, phase filter, exit codes, live tc-core PRESENT.
+- **Fixture pattern.** `tmp_path` per test; each test materializes a tiny synthetic `plugins/test-commander/skills/<name>/SKILL.md` and points the verifier at it.
+- **Definition of done.** Suite is red before 0.6.4 is written; green after.
+
+##### 0.6.6 — Wire into `make verify`
+- **Deliverables.** Update `Makefile` so the `verify` target runs `pdm run python3 scripts/verify_skills.py` after `lint` and `test`, before `check_links.py`. Order matters: catch skill drift before chasing link errors.
+- **Definition of done.** `make verify` prints the per-skill report; exits 0 when state is good; non-zero (and stops the chain) when a skill is `MALFORMED` or `MISSING`.
+
+##### 0.6.7 — Live drill
+- **Deliverables.** No new files. Validation only.
+- **Drills.**
+  1. `python3 scripts/verify_skills.py` (no flags) — expect `tc-core PRESENT`, exit 0.
+  2. `python3 scripts/verify_skills.py --phase 0` — expect `tc-core PRESENT`, exit 0.
+  3. `python3 scripts/verify_skills.py --phase 2` — expect `tc-core PRESENT` and `tc-requirements MISSING`, exit 1.
+  4. Temporarily strip the `description:` line from `tc-core/SKILL.md`. Re-run — expect `tc-core MALFORMED`, exit 1. Restore the file.
+  5. Temporarily rename the `tc-core` directory to `_tc-core-tmp`. Re-run — expect `tc-core MISSING`, exit 1. Restore.
+- **Definition of done.** Every drill matches expectations exactly.
+
+##### Definition of done — consolidated 12 checks
+
+Ten automated; two manual (the Makefile wiring and the live drill).
+
+| # | Check | Type | How |
+| --- | --- | --- | --- |
+| 1 | `scripts/verify_skills.py` exists | auto | pytest file-existence |
+| 2 | Frontmatter parser extracts `name` and `description` from a valid SKILL.md | auto | pytest with fixture |
+| 3 | MALFORMED flagged when `name` is missing | auto | pytest with fixture |
+| 4 | MALFORMED flagged when `description` is missing or empty | auto | pytest |
+| 5 | MALFORMED flagged when `name` is not kebab-case | auto | pytest |
+| 6 | MALFORMED flagged when `name` does not match the directory | auto | pytest |
+| 7 | MISSING flagged when an expected skill directory is absent | auto | pytest |
+| 8 | `--phase N` restricts the expected skill set to skills with `phase <= N` | auto | pytest |
+| 9 | Exit code `0` when all expected skills are PRESENT | auto | pytest |
+| 10 | Exit code non-zero on any MALFORMED or MISSING | auto | pytest |
+| 11 | `make verify` invokes the verifier between `test` and `check_links` | manual | inspect Makefile, run `make verify` |
+| 12 | Live drills (0.6.7) all match expected output and exit codes | manual | run the five drills |
+
+##### Validation sequence
+
+1. Write `tests/test_verify_skills.py`. Run `make test` — expect failures for every assertion.
+2. Author 0.6.1–0.6.4 in `scripts/verify_skills.py`.
+3. Run `make test` — green.
+4. Update `Makefile` per 0.6.6. Run `make verify` — confirm the verifier is invoked between `test` and `check_links`.
+5. Run drills 1 and 2 (0.6.7). Confirm output and exit codes.
+6. Run drill 3 — confirm phase filter behavior.
+7. Run drill 4 with a temporary frontmatter corruption — confirm MALFORMED. Restore.
+8. Run drill 5 with a temporary directory rename — confirm MISSING. Restore.
+9. Final `make verify` clean.
+
+##### Failure modes
+
+- YAML parser edge cases (multi-line values, quoted strings). **Mitigation:** Phase 0 needs only `name` and `description` on single lines. Document the assumption in the parser; revisit when a later skill needs multi-line frontmatter.
+- Skill directory exists but no `SKILL.md` inside. **Mitigation:** Treat as MALFORMED with reason `"missing SKILL.md"`.
+- `SKILL.md` exists but is empty. **Mitigation:** Treat as MALFORMED with reason `"empty frontmatter"`.
+- Catalog drift between `verify_skills.py` and the plan's catalog table. **Mitigation:** Code review catches it; we do not write a brittle parser of the plan's Markdown table. Document the catalog as "kept in sync with `planning/plan.md` by code review."
+- Unexpected skill directory authored ahead of its phase. **Mitigation:** Reported as `UNEXPECTED` (warn only, exit 0). Useful when scaffolding ahead of schedule.
 
 #### 0.7 — `make install` wiring
 - **Deliverables.** Wire the `Makefile` `install` target to register the local marketplace and install the plugin via `claude plugin` CLI; run `scripts/verify_skills.py` as the final step.
