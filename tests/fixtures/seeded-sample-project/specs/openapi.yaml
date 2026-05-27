@@ -14,7 +14,7 @@ paths:
   /sessions:
     post:
       summary: Create a session (sign in).
-      operationId: create_session
+      operationId: sign_in
       requestBody:
         required: true
         content:
@@ -33,7 +33,7 @@ paths:
   /sessions/{id}:
     delete:
       summary: Destroy a session (sign out).
-      operationId: destroy_session
+      operationId: sign_out
       parameters:
         - name: id
           in: path
@@ -80,7 +80,7 @@ paths:
   /workspaces/{id}/assets:
     post:
       summary: Upload an asset into a workspace.
-      operationId: upload_asset
+      operationId: upload_file
       security:
         - bearerAuth: []
       parameters:
