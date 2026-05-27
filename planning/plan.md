@@ -1474,31 +1474,394 @@ Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Conventio
 
 ## Phase 3 — Project Knowledge Ingestion
 
-**Goal.** Learn from project artifacts and produce structured knowledge.
+**Goal.** Learn the consuming project's product narrative, contracts, source architecture, runtime behavior, and existing test coverage from its uploaded documents and source artifacts. Ship the `tc-knowledge` skill with five commands that read source artifacts, extract knowledge with explicit provenance, surface gaps as open questions, and populate `<workspace>/product-knowledge/` plus `<workspace>/requirements/open-questions.md`.
 
-**Implementation.**
+**Architecture.** Each `/tc:learn-from-*` command is a Python helper plus a Markdown command file inside `plugins/test-commander/skills/tc-knowledge/`. Helpers do the deterministic work (walk a source tree, parse a known format, extract structured facts with citations, write artifacts, regenerate the synthesis); Claude executes the judgment-heavy parts (synthesizing narrative, ranking importance, deciding whether an extracted candidate is an entity vs an attribute, flagging gaps as open questions, deduplicating across sources) by reading the per-command page and the methodology docs. The split keeps every command testable end-to-end with the seeded sample-project fixture.
 
-- `/tc:learn-from-docs`, `/tc:learn-from-specs`, `/tc:learn-from-code`, `/tc:learn-from-api`, `/tc:learn-from-tests`
-- Methodology docs: `project-knowledge.md`, `learning-from-code.md`, `learning-from-api.md`, `learning-from-documents.md`
-- Templates for system model, code-derived model, API model, documentation model, business rules, user journeys, entities, assumptions, open questions
+**Phase-3 design decisions (folded in).**
 
-**Skills authored.** `tc-knowledge` with five sub-commands. Includes methodology files for each source type and templates for the eight knowledge artifacts.
+- **Universal cores; project-specific vocabulary via `<workspace>/config.yaml`.** Per D19, every shipped detection keyword set, file-glob pattern, and language detector uses universal English / software-engineering vocabulary only. Project-specific term sets (compliance vocabularies, business-domain entities, permission verbs), language enable lists, and ignored-path patterns extend through a `tc-knowledge:` block in `<workspace>/config.yaml`. The shipped seeded fixture exercises only the universal cores; domain coverage is the consuming project's responsibility through their own uploaded source artifacts and config extensions.
+- **Per-source model files; cross-cutting artifacts use namespaced sections.** Each `/tc:learn-from-*` command owns its per-source model file (`documentation-model.md`, `spec-derived-model.md`, `code-derived-model.md`, `api-model.md`, `tests-coverage.md`). Cross-cutting artifacts (`entities.md`, `user-journeys.md`, `business-rules.md`, `assumptions.md`) are populated cumulatively — each command writes to a clearly-namespaced section (`## From documents`, `## From specs`, `## From code`, `## From api`, `## From tests`). Re-running a single command overwrites only its own namespaced section across cross-cutting artifacts; sections written by other commands are preserved.
+- **`system-model.md` is regenerated at the end of every `/tc:learn-from-*` run.** A shared `synthesize_system_model.py` helper reads the union of currently-populated per-source models and cross-cutting artifacts and rewrites `system-model.md` byte-deterministically. Running just one learn command yields a partial synthesis; running all five yields the full picture. This keeps the five-command count and avoids a sixth `/tc:synthesize-knowledge` step while still giving consumers a unified view.
+- **Provenance is mandatory.** Every extracted fact in every product-knowledge artifact cites its source: file path + line range for code / docs / specs / tests, and request method + path + status code for live-API responses. The methodology docs and templates make provenance a structural requirement. Tests assert that every finding carries a citation.
+- **Assumptions are flagged distinctly from confirmed facts.** A confirmed fact has a source citation; an assumption is text that Claude inferred without a direct citation, written into `assumptions.md` under a `## From <source>` section with a one-line rationale. The methodology codifies the distinction; the template's structure enforces it.
+- **Knowledge gaps surface as open questions, routed to `requirements/open-questions.md`.** Each helper detects gaps (a glossary term referenced but never defined, an endpoint in the spec with no implementing function, a function with no docstring, an unspecified endpoint that the live-API probe nonetheless returned a 2xx from) and appends them to `<workspace>/requirements/open-questions.md` using the Phase-2 contract (deduplicate by `(question-text, source-id)` pair). User-authored questions are preserved.
+- **Phase 3 does NOT write to `<workspace>/traceability/`.** Per the Phase-2 Step-2.9 lesson (writing into a downstream-owned directory bumps that phase to `in_progress` in `workspace_state.py` and skews `/tc:next`), Phase 3 confines its writes to `product-knowledge/` and `requirements/open-questions.md`. Cross-source traceability (requirement ↔ entity ↔ endpoint ↔ test) is Phase 5's responsibility; Phase 3 supplies the inputs but does not pre-populate the map.
+- **`/tc:learn-from-code` supports Python only in v1.** Uses the stdlib `ast` module — deterministic, fast, no extra dependencies. TypeScript, JavaScript, Go, Java are detected by extension and reported as "language detected but not parsed in v1" with a file count, *not* silently ignored. The set of parsed languages is extensible via `tc-knowledge.code.enabled-languages` in `<workspace>/config.yaml` (Python is the only entry shipped; future phases may add TS/JS via tree-sitter). The seeded fixture's `src/` tree is Python only.
+- **`/tc:learn-from-api` runs in two modes; tests use only `recorded` playback.** The default `recorded` mode reads a `recorded-api/responses.json` file from the workspace (or fixture) — a list of `{method, path, status, headers, body}` entries that the helper "probes" by lookup. The opt-in `live` mode (`tc-knowledge.api.mode: live` plus `tc-knowledge.api.base-url:` in `config.yaml`) issues real HTTP requests. Pytest never enters live mode — the seeded fixture is the contract. Live mode is documented and demonstrated in the customization guide but exercised only by manual smoke.
+- **Helper-mirroring is the design.** Per the Phase-2 Step-2.3 lesson (mirroring Step 2.2 closed 9/9 tests on first run), Steps 3.3–3.6 copy Step 3.2's helper skeleton and adapt only the per-source extraction logic. The integration smoke in Step 3.8 stresses the union; bug discovery concentrates in each step's new mechanical checks.
+
+**Skills authored.** `tc-knowledge` — `SKILL.md` plus five command files (one per `/tc:learn-from-*` command), six methodology files (`project-knowledge.md` umbrella plus `learning-from-documents.md`, `learning-from-specs.md`, `learning-from-code.md`, `learning-from-api.md`, `learning-from-tests.md`), and ten templates (`system-model-template.md`, `documentation-model-template.md`, `spec-derived-model-template.md`, `code-derived-model-template.md`, `api-model-template.md`, `tests-coverage-template.md`, `entities-template.md`, `user-journeys-template.md`, `business-rules-template.md`, `assumptions-template.md`).
+
+**Workspace addition.** `<workspace>/product-knowledge/tests-coverage.md` is added by Phase 3 as the 10th product-knowledge artifact (alongside the nine listed in the Workspace Layout). Update the Workspace Layout block in this plan and `docs/workspace-reference.md` in the same sub-step that ships it (3.6).
 
 **Design references.** `plugin:context7:context7` (library/framework doc lookup patterns), `postman:agent-ready-apis`, `postman:search`, `postman:generate-spec` (API discovery and spec extraction patterns). TC reads OpenAPI/Postman collections directly using its own logic; we do not call out to Postman MCP at runtime.
 
-**Documentation.** `docs/user-guide/building-project-knowledge.md`.
+**Knowledge rubric.** entities, terms (glossary), user journeys, business rules, assumptions, endpoints, schemas, auth schemes, modules / classes / functions, docstrings, test coverage, gap signals (undefined-term, unimplemented-endpoint, undocumented-function, untested-function, mismatched-status). The seeded fixture carries one defect per dimension marked with an inline `<!-- knowledge: <dimension> -->` HTML comment in the doc/spec sources and equivalent docstring / decorator tags in the code source, mirroring the Phase 2 fixture convention.
 
-**Review step.**
+### Phase 3 — Execution outline
 
-- Knowledge artifacts cite specific source files/lines; assumptions are flagged distinctly from confirmed facts; open questions are routed to `requirements/open-questions.md`.
+Nine sub-steps. TDD throughout: every implementation step lands its tests red before turning them green. Sub-step 3.1 scaffolds the skill and the shared seeded-sample-project fixture; 3.2–3.6 implement the five commands; 3.7 is the dedicated documentation pass; 3.8 is the dedicated testing finalization (cap bump + integration smoke); 3.9 is the sign-off with a `phase-3` tag.
 
-**Test step.**
+#### 3.1 — Skill scaffold and seeded-sample-project fixture
 
-- Seed a small repo with known content; assert that `/tc:learn-from-code` and `/tc:learn-from-api` produce the expected entity and endpoint inventories.
+- **Deliverables.**
+  - `plugins/test-commander/skills/tc-knowledge/SKILL.md` — YAML frontmatter (`name: tc-knowledge`, single-line trigger-style `description`). Body lists the five commands and notes that command behavior arrives in subsequent sub-steps. Mirrors Phase 2's initial `tc-requirements/SKILL.md` shape — each command paragraph carries the deferral wording until its own sub-step turns it into a shipped-behavior description (per the "SKILL.md surfaces shipped behavior" convention).
+  - `tests/fixtures/seeded-sample-project/` containing:
+    - `documents/` — three Markdown files: `product-overview.md` (narrative describing a generic SaaS dashboard — sign-in, search, file upload, settings), `glossary.md` (5–8 universal-vocabulary terms: Account, Session, Asset, Workspace, Permission), `user-journey-sign-in.md` (a journey with explicit steps and at least one untested branch). Each defect is marked with an inline `<!-- knowledge: <dimension> -->` HTML comment.
+    - `specs/openapi.yaml` — small OpenAPI 3.0 spec with 4–6 endpoints (`POST /sessions`, `GET /accounts/{id}`, `GET /workspaces`, `POST /workspaces/{id}/assets`, `GET /workspaces/{id}/assets`, `DELETE /sessions/{id}`). At least one endpoint declared but absent from `src/` (an `unimplemented-endpoint` gap).
+    - `src/` — Python tree: `app/__init__.py`, `app/models/account.py` (Account class with attributes), `app/models/workspace.py` (Workspace class), `app/api/auth.py` (`sign_in` function with docstring), `app/api/files.py` (`upload_file` function — no docstring; `undocumented-function` gap), `app/utils/validation.py`. At least one TS or JS file (`web/app.ts`) for the "language detected but not parsed in v1" assertion.
+    - `tests/` — `test_auth.py` (covers `sign_in`), `test_validation.py` (covers `validation.py`). `app/api/files.py::upload_file` deliberately has no test (`untested-function` gap).
+    - `recorded-api/responses.json` — a list of `{method, path, status, headers, body}` entries covering every endpoint in `specs/openapi.yaml` plus one undocumented endpoint (`GET /accounts/me`) returning 200 (`unspecified-endpoint` gap).
+    - `README.md` — explains the fixture's universal-SaaS narrative ("test asset, not a claim about scope" per the D19 lesson), the inline `<!-- knowledge: ... -->` defect-marking convention, and the per-dimension defect catalog.
+  - `plugins/test-commander/skills/tc-knowledge/methodology/.gitkeep`, `plugins/test-commander/skills/tc-knowledge/templates/.gitkeep`, `plugins/test-commander/skills/tc-knowledge/commands/.gitkeep` — empty directories that 3.2–3.6 fill in. Each `.gitkeep` is removed by the first sub-step that lands real content in that directory.
+- **Tests first.** `tests/test_tc_knowledge_scaffold.py` — asserts: skill directory and `SKILL.md` present with valid frontmatter; `name == "tc-knowledge"`; description non-empty; SKILL.md body references each of the five commands; fixture directory exists with the five sub-trees plus README; every knowledge dimension in the rubric is represented by at least one inline `<!-- knowledge: ... -->` comment (or equivalent code marker) somewhere in the fixture; `recorded-api/responses.json` parses as JSON and covers every endpoint in `specs/openapi.yaml`. Test-first: lands red before any deliverable is written.
+- **Definition of done.** Skill scaffolded; fixture covers every rubric dimension and every gap-signal type; scaffold test green; `scripts/verify_skills.py` still reports `tc-core PRESENT (phase 1)` and `tc-requirements PRESENT (phase 2)` under `DEFAULT_PHASE_CAP=2` (the cap bumps to 3 in Step 3.8, not here).
+- **Review.** Manual read of the fixture against the knowledge rubric — confirm every dimension has at least one seeded defect, every defect is realistic rather than contrived, and the narrative remains universal SaaS vocabulary (D19).
 
-**Definition of done.**
+#### 3.2 — `/tc:learn-from-docs` (TDD)
 
-- All five commands work, traceability maps populated, knowledge artifacts cite sources, tests pass, tester guide complete.
+- **Helper.** `plugins/test-commander/scripts/extract_knowledge_from_docs.py` (per D18). Reads every `*.md` file in `<workspace>/documents/uploaded/` that is *not* a requirements-source file (a file is a requirements-source iff it contains at least one `REQ-\d+` token — same filter the Phase 2 helpers use, but inverted). Parses each non-requirements doc with a Markdown-aware extractor that emits structured findings keyed by dimension. Writes:
+  - `<workspace>/product-knowledge/documentation-model.md` — **overwrites** (pure generated report).
+  - Updates the `## From documents` section in `entities.md`, `user-journeys.md`, `business-rules.md`, `assumptions.md` — **section-overwrite only** (other sources' sections preserved).
+  - Appends gap-signal questions to `<workspace>/requirements/open-questions.md` — deduplicated by `(question-text, source-id)` pair (Phase-2 contract).
+  - Calls `synthesize_system_model.py` to regenerate `<workspace>/product-knowledge/system-model.md`.
+
+  **Idempotency contract.** Re-running against unchanged input produces byte-identical `documentation-model.md`, byte-identical `## From documents` sections across cross-cutting artifacts, no new lines in `open-questions.md`, and a byte-identical `system-model.md`.
+
+  **Partition table — mechanical extraction per knowledge dimension.**
+
+  | Dimension | Universal-core extraction rule |
+  | --- | --- |
+  | entities | Markdown table rows whose first column is a single capitalized noun phrase under a heading containing `entit`, `model`, `noun`, or `glossary`; capitalized noun phrases appearing in ≥ 2 distinct documents. Extensible via `tc-knowledge.documents.entity-keywords` |
+  | terms | Definition-list entries (`Term`: `definition`) or table rows under a `glossary` or `terminology` heading |
+  | user-journeys | Numbered or bulleted lists under a heading containing `journey`, `flow`, `walkthrough`, or `scenario` — each list becomes a journey with ordered steps |
+  | business-rules | Bullets or sentences containing an RFC-2119 modal (`must`, `shall`, `should`, `may`) that are not inside a journey or AC context |
+  | assumptions | Sentences containing assumption markers from `{assume, expected, presumed, likely}` without an adjacent citation |
+  | gap: undefined-term | Capitalized noun phrase appears in ≥ 2 documents but is never the subject of a glossary or definition-list entry |
+  | gap: contradictory-rule | Two business rules with the same subject and opposing modals (reuses Phase-2's consistency check shape) |
+
+  Word-set membership is case-insensitive; single-token keywords use the `\b<word>s?\b` pattern (per the Phase-2 Step-2.2 lesson on plural handling).
+
+  **Configurable extensions — `<workspace>/config.yaml`.**
+
+  ```yaml
+  tc-knowledge:
+    documents:
+      entity-keywords: [Patient, Provider, Claim]   # domain-specific
+      journey-headings: [story, flow]               # extra journey headings
+  ```
+
+  Missing keys = no extension; the helper falls back to the universal core. Extensions union with defaults at runtime; they never replace. The seeded fixture exercises only the universal cores.
+
+- **Synthesizer.** `plugins/test-commander/scripts/synthesize_system_model.py` lands in 3.2 because it is the first command that needs it. It reads every existing `<workspace>/product-knowledge/*.md` per-source file plus the cross-cutting artifacts, then rewrites `system-model.md` from a deterministic template. Tests cover: partial input (only `documentation-model.md` populated), full input (all five populated), no input (system-model.md notes "no sources ingested yet"). 3.3–3.6 reuse the same helper unchanged.
+- **Methodology.** `plugins/test-commander/skills/tc-knowledge/methodology/learning-from-documents.md` — covers all seven dimensions in the partition table with definition, mechanical rule verbatim, one worked example from the seeded fixture (cite the doc file and line), and a Claude-judgment-layer paragraph (deciding entity vs attribute, ranking journey importance, distinguishing assumption from confirmed fact). Plus a "shared synthesis" section pointing at `synthesize_system_model.py`'s contract.
+- **Umbrella methodology.** `plugins/test-commander/skills/tc-knowledge/methodology/project-knowledge.md` — the cross-source synthesis model: how the five per-source artifacts compose into `system-model.md`, the provenance contract, the assumptions-vs-facts rule, the gap-to-open-question routing. Lands in 3.2 because it documents the synthesizer.
+- **Templates.** `documentation-model-template.md`, `entities-template.md`, `user-journeys-template.md`, `business-rules-template.md`, `assumptions-template.md`, `system-model-template.md` all land in 3.2 (3.3–3.6 reuse the cross-cutting and system templates).
+- **Command file.** `plugins/test-commander/skills/tc-knowledge/commands/learn-from-docs.md` — Inputs / Outputs / Preconditions / Behavior / Safety / Implementation / Definition of Done / See also.
+- **SKILL.md update.** `tc-knowledge/SKILL.md` updated in the same sub-step to describe `/tc:learn-from-docs`'s shipped behavior and the shared synthesizer; instruct Claude to invoke the bundled helper. Stale deferral wording for this command removed.
+- **Tests first.** `tests/test_learn_from_docs.py` — at minimum:
+  - Uninitialized workspace refused with a clear error.
+  - `documents/uploaded/` exists but contains only requirements-source files (`REQ-\d+` present): helper writes a documentation-model noting "no narrative documents found", exits 0, and writes a `system-model.md` reflecting no documentation source.
+  - Seeded-fixture input — only `tests/fixtures/seeded-sample-project/documents/*.md` is copied into `<workspace>/documents/uploaded/`. Helper writes the documentation-model file, populates the `## From documents` sections, appends the `undefined-term` and `contradictory-rule` open questions, and regenerates `system-model.md`.
+  - For every one of the seven dimensions in the partition table, at least one finding appears in `documentation-model.md` with the correct source citation.
+  - Provenance assertion: every finding in `documentation-model.md` carries a `file:line-line` citation that resolves to a real range in the source.
+  - Assumption-vs-fact separation: every entry in `assumptions.md`'s `## From documents` section has a "no direct citation" annotation; every entry in `entities.md` has a direct citation.
+  - Idempotent re-run: all overwrites and section-overwrites byte-identical; `open-questions.md` line count unchanged.
+  - `system-model.md` regenerated correctly: partial-only (only documentation source) state asserted byte-deterministic.
+- **Definition of done.** Helper passes all test cases; synthesizer passes its own tests; methodology covers all seven dimensions with worked examples and judgment-layer paragraphs; umbrella `project-knowledge.md` describes the cross-source synthesis model; six templates authored; per-command page complete; `tc-knowledge/SKILL.md` no longer carries deferral wording for `/tc:learn-from-docs` or the synthesizer.
+- **Verification.** Pytest green. Eyeball the generated `documentation-model.md` and `system-model.md` for tone, ordering, and structure before declaring 3.2 done.
+
+#### 3.3 — `/tc:learn-from-specs` (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/extract_knowledge_from_specs.py` — auto-detects spec source (`<workspace>/documents/uploaded/openapi.yaml`, `*.openapi.json`, or Postman collection v2.1 `*.postman_collection.json`). Parses the spec into `{endpoint, method, schema-in, schema-out, auth-scheme}` entries. Writes `<workspace>/product-knowledge/spec-derived-model.md` (overwrite), updates the `## From specs` sections in the cross-cutting artifacts (endpoints contribute to `entities.md` as resources; auth-schemes contribute to `business-rules.md`), appends `unimplemented-endpoint` open questions for any endpoint not detectable in `src/` (resolved in 3.4's cross-check), and regenerates `system-model.md`.
+
+  **Partition table — mechanical extraction.**
+
+  | Dimension | Universal-core extraction rule |
+  | --- | --- |
+  | endpoints | Every `paths.<path>.<method>` triple in OpenAPI; every `item.request` in a Postman collection |
+  | schemas | Every `components.schemas.<name>` (OpenAPI); every `body.raw` JSON shape (Postman) |
+  | auth-schemes | `components.securitySchemes` (OpenAPI); `auth.type` per request (Postman) |
+  | gap: unspecified-status | Endpoint declares no `responses` keys, or only `default` |
+  | gap: schema-without-type | A schema entry missing `type` and `$ref` |
+
+- **Methodology.** `learning-from-specs.md` — covers the five dimensions, the OpenAPI-vs-Postman auto-detection, and the Claude judgment layer (ranking endpoints by criticality, identifying response shapes that look unusual).
+- **Template.** `spec-derived-model-template.md`.
+- **Command file.** `plugins/test-commander/skills/tc-knowledge/commands/learn-from-specs.md`.
+- **SKILL.md update.** `tc-knowledge/SKILL.md` updated.
+- **Tests first.** `tests/test_learn_from_specs.py` — uninitialized workspace refused; no spec file present: helper writes a spec-derived-model noting "no spec found", exits 0; seeded `specs/openapi.yaml` parsed correctly (every endpoint, schema, auth-scheme captured with `file:line-line` provenance); idempotent re-run; the `gap: unspecified-status` defect surfaces as an open question; Postman-format auto-detection covered with a tiny synthetic Postman collection fixture; namespaced `## From specs` sections written without touching `## From documents`.
+- **Definition of done.** Helper passes all test cases; auto-detection works for both formats; methodology covers all five dimensions; SKILL.md updated.
+- **Verification.** Pytest green; smoke run produces a spec-derived model for the seeded fixture.
+
+#### 3.4 — `/tc:learn-from-code` (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/extract_knowledge_from_code.py` — walks `<workspace>/documents/uploaded/code/` (or a configurable root via `tc-knowledge.code.source-root`), uses the stdlib `ast` module to extract Python modules, classes, functions, decorators, and docstrings. Non-Python files are detected by extension and counted as "language detected but not parsed in v1" with no parse attempt. Writes `<workspace>/product-knowledge/code-derived-model.md` (overwrite), updates `## From code` sections in cross-cutting artifacts (classes contribute to `entities.md`; module-level constants to `business-rules.md` only when they carry an explicit rule docstring), appends `undocumented-function`, `unimplemented-endpoint` (cross-checks the spec-derived model if present), and `language-unsupported-in-v1` gap signals, and regenerates `system-model.md`.
+
+  **Partition table — mechanical extraction.**
+
+  | Dimension | Universal-core extraction rule |
+  | --- | --- |
+  | modules | Every Python file successfully parsed by `ast.parse` |
+  | classes | Every `ast.ClassDef`; attributes from `__init__` assignments |
+  | functions | Every `ast.FunctionDef` and `ast.AsyncFunctionDef` |
+  | docstrings | `ast.get_docstring()` per module/class/function |
+  | decorators | Decorator names captured for each function (used to cross-check spec endpoints in 3.4 when a future `@route` or `@app.get` decorator pattern is registered via config) |
+  | gap: undocumented-function | Public function (name not starting with `_`) with no docstring |
+  | gap: unimplemented-endpoint | An endpoint in `spec-derived-model.md` (if present) has no matching function in the parsed code (matched by configurable handler-name pattern, default `<method>_<path-segment>` lowercased) |
+  | gap: language-unsupported-in-v1 | File with extension in `{.ts, .tsx, .js, .jsx, .go, .java, .rb}` |
+
+  **Configurable extensions.**
+
+  ```yaml
+  tc-knowledge:
+    code:
+      source-root: src                          # default: documents/uploaded/code
+      enabled-languages: [python]               # extensible; v1 ships python only
+      ignored-paths: [migrations, __pycache__, .venv]
+      endpoint-decorator-patterns: ["@app.{method}", "@router.{method}"]
+  ```
+
+- **Methodology.** `learning-from-code.md` — covers Python AST extraction, the cross-check against `spec-derived-model.md`, the deferred-language convention, and the Claude judgment layer (deciding which class is a domain entity vs an implementation detail, ranking modules by surface area).
+- **Template.** `code-derived-model-template.md`.
+- **Command file.** `plugins/test-commander/skills/tc-knowledge/commands/learn-from-code.md`.
+- **SKILL.md update.** Updated.
+- **Tests first.** `tests/test_learn_from_code.py` — uninitialized workspace refused; no code root present: helper notes "no code source found"; seeded `src/` tree parsed correctly (every module, class, function captured with `file:line-line` provenance); `app/api/files.py::upload_file` (the seeded `undocumented-function` defect) surfaces as an open question; `web/app.ts` is counted as "language detected but not parsed in v1" rather than silently ignored; cross-check against the seeded OpenAPI spec produces an `unimplemented-endpoint` gap for the endpoint deliberately omitted from `src/`; `config.yaml`-driven extension of ignored paths is honored; idempotent re-run.
+- **Definition of done.** Helper passes all test cases; ast walk covers modules / classes / functions / docstrings / decorators; cross-check against the spec model works; non-Python detection is explicit; methodology covers all seven dimensions; SKILL.md updated.
+- **Verification.** Pytest green; smoke run produces a code-derived model for the seeded fixture.
+
+#### 3.5 — `/tc:learn-from-api` (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/extract_knowledge_from_api.py` — runs in `recorded` mode by default (reads `<workspace>/documents/uploaded/recorded-api/responses.json` or the configured path). Reads each `{method, path, status, headers, body}` entry, classifies it by status family (2xx / 3xx / 4xx / 5xx), extracts response-body shape (top-level keys for JSON), and writes `<workspace>/product-knowledge/api-model.md` (overwrite). Updates `## From api` sections in cross-cutting artifacts (response entities contribute to `entities.md`; auth-required endpoints contribute to `business-rules.md`). Cross-checks against `spec-derived-model.md` if present and appends `unspecified-endpoint` (recorded but not in spec) and `mismatched-status` (recorded status does not match any spec response) open questions. Regenerates `system-model.md`.
+
+  **Live mode** (`tc-knowledge.api.mode: live`) issues real HTTP requests against `tc-knowledge.api.base-url` using the endpoint list from `spec-derived-model.md`. Pytest never enters live mode — this is exercised only by manual smoke and documented in the customization guide.
+
+  **Partition table — mechanical extraction.**
+
+  | Dimension | Universal-core extraction rule |
+  | --- | --- |
+  | live-endpoints | Every entry in `responses.json` (recorded) or every spec endpoint probed (live) |
+  | response-shapes | Top-level JSON keys per response body |
+  | auth-required | Endpoints returning 401/403 without an `Authorization` header in the request |
+  | gap: unspecified-endpoint | A recorded request whose `(method, path)` does not appear in `spec-derived-model.md` |
+  | gap: mismatched-status | A recorded status not declared by the spec's `responses` map for that endpoint |
+
+  **Configurable extensions.**
+
+  ```yaml
+  tc-knowledge:
+    api:
+      mode: recorded                            # or: live
+      recorded-path: documents/uploaded/recorded-api/responses.json
+      base-url: http://localhost:8000           # live mode only
+      auth-header: "Authorization: Bearer ${TC_API_TOKEN}"
+  ```
+
+- **Methodology.** `learning-from-api.md` — covers the recorded-vs-live distinction, the cross-check against `spec-derived-model.md`, the Claude judgment layer (deciding which response shape is canonical vs error-path, identifying auth flows from header patterns).
+- **Template.** `api-model-template.md`.
+- **Command file.** `plugins/test-commander/skills/tc-knowledge/commands/learn-from-api.md`.
+- **SKILL.md update.** Updated.
+- **Tests first.** `tests/test_learn_from_api.py` — uninitialized workspace refused; no recorded file present: helper notes "no recorded API responses found"; seeded `recorded-api/responses.json` parsed correctly (every entry captured with `method path status` provenance); the seeded `unspecified-endpoint` (`GET /accounts/me`) surfaces as an open question; idempotent re-run; live mode refused in pytest (asserts the helper raises if `mode: live` is set during tests, ensuring no real network calls leak from the suite); namespaced `## From api` sections written cleanly.
+- **Definition of done.** Helper passes all test cases; recorded mode is the test contract; live mode is documented but not exercised by tests; methodology covers all five dimensions; SKILL.md updated.
+- **Verification.** Pytest green; smoke run produces an API model for the seeded fixture.
+
+#### 3.6 — `/tc:learn-from-tests` (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/extract_knowledge_from_tests.py` — walks `<workspace>/documents/uploaded/tests/` (or a configurable root via `tc-knowledge.tests.source-root`), detects pytest-style files (`test_*.py`, `*_test.py`) and Playwright spec files (`*.spec.ts`), counts test functions per file, and (for Python) uses `ast` to extract the symbols each test function references. Writes `<workspace>/product-knowledge/tests-coverage.md` (overwrite), updates `## From tests` sections in cross-cutting artifacts (covered symbols contribute to `entities.md`'s confidence column), appends `untested-function` open questions for any function in `code-derived-model.md` not referenced by any test, and regenerates `system-model.md`.
+
+  Also adds `tests-coverage.md` to the Workspace Layout block in this plan and to `docs/workspace-reference.md` in the same sub-step.
+
+  **Partition table — mechanical extraction.**
+
+  | Dimension | Universal-core extraction rule |
+  | --- | --- |
+  | test-files | Every file matching `test_*.py`, `*_test.py`, or `*.spec.ts` |
+  | test-functions | Every `ast.FunctionDef` starting with `test_` (Python); every `test(` call (Playwright, regex-detected for v1) |
+  | covered-symbols | For each Python test function, the set of `ast.Name` and `ast.Attribute` identifiers referenced (cross-checked against `code-derived-model.md` to identify which code-side functions/classes are exercised) |
+  | gap: untested-function | A function in `code-derived-model.md` (public, name not starting with `_`) not referenced by any test |
+  | gap: unsupported-test-runner | A test file whose extension is recognized (`.ts`) but not parsed in v1 — counted, not parsed |
+
+- **Methodology.** `learning-from-tests.md` — covers the pytest / Playwright detection model, the symbol-reference cross-check, the deferred-runner convention, and the Claude judgment layer (deciding which untested functions are critical, ranking coverage gaps by risk).
+- **Template.** `tests-coverage-template.md`.
+- **Command file.** `plugins/test-commander/skills/tc-knowledge/commands/learn-from-tests.md`.
+- **SKILL.md update.** Updated. By end of 3.6, `tc-knowledge/SKILL.md` describes all five Phase 3 commands plus the shared synthesizer with no deferral wording.
+- **Workspace Layout update.** Edit the Workspace Layout block in this plan and `docs/workspace-reference.md` to add `tests-coverage.md` under `product-knowledge/`. Land both edits in the 3.6 commit.
+- **Tests first.** `tests/test_learn_from_tests.py` — uninitialized workspace refused; no tests root present: helper notes "no tests found"; seeded `tests/` tree parsed correctly (every test function captured with `file:line-line` provenance); the seeded `untested-function` (`upload_file`) surfaces as an open question (only when `code-derived-model.md` is also populated, i.e. 3.4 has run); without `code-derived-model.md` the helper still writes `tests-coverage.md` but skips the cross-check; `web/spec/*.spec.ts` is counted as "test runner detected but not parsed in v1"; idempotent re-run; namespaced `## From tests` sections written cleanly.
+- **Definition of done.** Helper passes all test cases; Python detection and Playwright counting both work; the cross-check against `code-derived-model.md` is conditional and correct; `tests-coverage.md` added to the Workspace Layout block and `docs/workspace-reference.md`; methodology covers all five dimensions; SKILL.md describes all five commands plus the synthesizer.
+- **Verification.** Pytest green; smoke run produces a tests-coverage model for the seeded fixture.
+
+#### 3.7 — Documentation pass *(dedicated step)*
+
+- **Deliverables.**
+  - Author `docs/user-guide/building-project-knowledge.md` — end-to-end walkthrough: upload sample project → `/tc:learn-from-docs` → `/tc:learn-from-specs` → `/tc:learn-from-code` → `/tc:learn-from-api` → `/tc:learn-from-tests`. Sample input and sample output drawn from the seeded sample-project fixture so every example is reproducible. Each section shows the partial `system-model.md` after that command runs.
+  - Update `docs/command-reference.md` to add the five Phase 3 commands as links into their per-command pages inside the plugin.
+  - Update `docs/workspace-reference.md` to mark the ten `product-knowledge/` files as populated by Phase 3 commands (the `tests-coverage.md` row was added in 3.6); ensure each file's row identifies which command writes it (`documentation-model.md` ← `/tc:learn-from-docs`, etc.).
+  - Refresh `README.md`, `docs/install.md`, `docs/user-guide/getting-started.md`, `docs/user-guide/workflow.md`, `docs/user-guide/reviewing-requirements.md`'s "Beyond" footer, and `plugins/test-commander/README.md` Phase 3 mentions ("Phase 3 starts next" → "Phase 3 in progress" / "complete").
+  - **Customization-guide update (per the Per-Phase Convention).** Add a "Phase 3 schema (`tc-knowledge`)" section to [`docs/user-guide/customizing-for-your-project.md`](../docs/user-guide/customizing-for-your-project.md) covering all five command sub-blocks (`documents`, `specs`, `code`, `api`, `tests`). At least three worked extension examples spanning materially-different consuming-project shapes: a typical Python/FastAPI app, a Node/Express app (where `code.enabled-languages` is `[]` because v1 does not parse JS — the example shows what the project would set to extend), and a project using a Postman collection instead of OpenAPI. Add a "Phase 3 — what landed" subsection naming the universal cores, the schema keys, and the test that would fail if the helpers ignored extensions.
+  - **Final `tc-knowledge/SKILL.md` pass.** Confirm SKILL.md describes every shipped command and the shared synthesizer, links to all five per-command pages, and instructs Claude to invoke the bundled helpers. No "behavior arrives in Phase 4" wording for any shipped command. The per-sub-step SKILL.md updates from 3.2–3.6 should already cover this; 3.7 is the final check.
+- **Definition of done.** Every doc accurate against the implementation; all cross-links resolve; link checker green; `tc-knowledge/SKILL.md` is the consolidated entry point for Phase 3 commands; `customizing-for-your-project.md` accurately reflects the shipped config.yaml schema with at least three worked examples.
+- **Verification.** `python3 scripts/check_links.py` clean; manual read-through against the Phase 3 deliverables; grep for stale deferral wording in `tc-knowledge/SKILL.md` returns no hits; the YAML block in `customizing-for-your-project.md` parses as valid YAML.
+
+#### 3.8 — Testing finalization *(dedicated step, separate from per-command TDD)*
+
+- **Deliverables.**
+  - Bump `DEFAULT_PHASE_CAP` in `scripts/verify_skills.py` from `2` to `3` and add `CATALOG["tc-knowledge"] = 3` so the verifier expects `tc-core`, `tc-requirements`, and `tc-knowledge`.
+  - `tests/test_phase_3_integration.py` — integration smoke that creates a fresh tmp consuming project, runs `init_workspace.py`, copies the seeded sample-project fixture's sub-trees into `<workspace>/documents/uploaded/`, then invokes the five Phase 3 helpers in workflow order (`learn-from-docs` → `learn-from-specs` → `learn-from-code` → `learn-from-api` → `learn-from-tests`), asserting after each step that:
+    - the per-source model file is overwritten with the new content;
+    - the `## From <source>` sections appear in the expected cross-cutting artifacts;
+    - prior sources' namespaced sections are preserved (namespacing contract);
+    - `system-model.md` reflects the union of currently-populated sources;
+    - the expected gap-signal open questions are appended (without duplicating prior runs').
+  - A final assertion confirms that after all five commands run, every knowledge rubric dimension has at least one finding with provenance somewhere in `<workspace>/product-knowledge/`, and `/tc:next` (Phase 1) recommends a Phase 4 command (or at least advances past Phase 3) — assert `command != /tc:learn-from-docs` rather than asserting the specific next command (per the Phase-2 Step-2.9 lesson about R-rule interactions).
+  - Negative integration test: a `tc-knowledge.api.mode: live` config triggers a clear refusal under the test harness (no network calls leak).
+- **Definition of done.** Integration smoke passes; phase cap bump reflected; full `make verify` chain green; `verify_skills.py` reports `tc-core PRESENT (phase 1)`, `tc-requirements PRESENT (phase 2)`, and `tc-knowledge PRESENT (phase 3)`.
+- **Verification.** Captured `make verify` output.
+
+#### 3.9 — Sign-off
+
+Six sub-steps. Mirrors the Phase 2 sign-off pattern (2.9). Test-first: the sign-off test in 3.9.5 lands red before the plan/CHANGELOG edits in 3.9.3 turn it green. The final sub-step (3.9.6) captures evidence and pushes the `phase-3` annotated tag.
+
+##### 3.9.1 — Cold-user walkthrough of `building-project-knowledge.md`
+
+- **Deliverables.** Captured log of an end-to-end walkthrough of `docs/user-guide/building-project-knowledge.md` from a freshly-installed plugin against a fresh tmp consuming project.
+- **Steps to execute verbatim.**
+  1. `make uninstall` → `make install` to reach a known-clean plugin state.
+  2. Create a tmp consuming-project dir (`mktemp -d`).
+  3. `init_workspace.py <tmp>`. Copy `tests/fixtures/seeded-sample-project/*` into `<tmp>/.test-commander/documents/uploaded/` preserving the sub-tree structure.
+  4. Invoke the five Phase 3 helpers in workflow order.
+  5. Confirm each helper prints the output documented in `building-project-knowledge.md` (no fabricated examples).
+- **Definition of done.** All commands succeed end to end. Output captured to `/tmp/tc-phase3-walkthrough.log`. If any step fails, fix the cause and re-run before continuing to 3.9.2.
+
+##### 3.9.2 — Per-step DoD audit
+
+- **Deliverables.** A line-by-line audit of Steps 3.1 through 3.8 against their DoD lists.
+- **What to check per step.** Every DoD bullet green; every pytest file passes; every deliverable present on disk; every cross-link in the per-command pages resolves; every Failure Mode mitigation in place.
+- **Specifically.**
+  - 3.1: `tc-knowledge/SKILL.md` and `tests/fixtures/seeded-sample-project/` present; scaffold test green; rubric coverage and gap-signal coverage assertions pass.
+  - 3.2–3.6: helper, methodology, template, command file, and SKILL.md update all present; per-command test files all green; mechanical extraction findings traced to seeded fixture; provenance citations resolve.
+  - 3.7: `building-project-knowledge.md`, command-reference index, workspace-reference (`tests-coverage.md` row added), README + getting-started status lines all current; `tc-knowledge/SKILL.md` describes every shipped Phase 3 command and contains no stale deferral wording; `customizing-for-your-project.md` reflects the Phase 3 `tc-knowledge` config.yaml schema with at least three worked extension examples spanning materially-different consuming-project shapes.
+  - 3.8: `DEFAULT_PHASE_CAP >= 3`, `CATALOG["tc-knowledge"] == 3`, integration smoke passes, live-mode refusal under test harness asserted.
+  - **Lesson-capture audit (per the "Sub-step lesson capture" Per-Phase Convention):** every Phase 3 sub-step (3.1–3.8) has a corresponding entry in the `Phase 3 — Lessons learned (running)` subsection. Sub-steps that closed cleanly with no bugs explicitly record "no lessons".
+- **Definition of done.** All eight prior sub-steps audited green. Any unmet item blocks the sign-off.
+
+##### 3.9.3 — Plan and CHANGELOG updates
+
+- **Deliverables.**
+  - `planning/plan.md` — collapse the `### Phase 3` To Do sub-section to a single line: `Phase 3 complete (YYYY-MM-DD) — see Completed`. Add a `### Phase 3 — Project knowledge ingestion (YYYY-MM-DD)` section to `## Completed` with the per-step summary lines marked `[x]`, mirroring the Phase 2 closing format.
+  - `CHANGELOG.md` — add a new `### Phase 3 — Project knowledge ingestion (complete YYYY-MM-DD)` section above Phase 2 with a one-line closing summary plus per-sub-step Added bullets, mirroring the Phase 2 closing format.
+- **Definition of done.** To Do Phase 3 reduced to the marker line; Completed has the Phase 3 section with date and nine sub-step bullets; CHANGELOG reflects the closing.
+
+##### 3.9.4 — Documentation final pass
+
+- **Deliverables.** Edits wherever Phase 3 wording has drifted during the eight sub-steps.
+- **What to read.** README status line, `docs/user-guide/getting-started.md` "what's next", `docs/install.md` verifying-install paragraph, `docs/user-guide/building-project-knowledge.md` introductory paragraph, `docs/user-guide/reviewing-requirements.md` footer "Beyond" block, `docs/user-guide/workflow.md` (if it references Phase 3), `plugins/test-commander/README.md` skill table, `docs/user-guide/customizing-for-your-project.md` tense.
+- **Definition of done.** Every Phase 3 fact matches the implementation. "Phase 3 in progress" wording becomes "Phase 3 complete (YYYY-MM-DD); Phase 4 starts next" where applicable. All cross-links resolve.
+
+##### 3.9.5 — Pre-flight tests for sign-off
+
+- **Deliverables.** `tests/test_phase_3_signoff.py`.
+- **Coverage.**
+  - All eight Phase 3 pytest files exist (`test_tc_knowledge_scaffold`, `test_learn_from_docs`, `test_learn_from_specs`, `test_learn_from_code`, `test_learn_from_api`, `test_learn_from_tests`, `test_phase_3_integration`, `test_phase_3_signoff`).
+  - All five Phase 3 helpers plus the shared synthesizer exist under `plugins/test-commander/scripts/` (`extract_knowledge_from_docs.py`, `extract_knowledge_from_specs.py`, `extract_knowledge_from_code.py`, `extract_knowledge_from_api.py`, `extract_knowledge_from_tests.py`, `synthesize_system_model.py`).
+  - All five Phase 3 command files exist under `plugins/test-commander/skills/tc-knowledge/commands/`.
+  - All six methodology files exist under `plugins/test-commander/skills/tc-knowledge/methodology/` (`project-knowledge.md` umbrella plus five per-source).
+  - All ten templates exist under `plugins/test-commander/skills/tc-knowledge/templates/`.
+  - `tests/fixtures/seeded-sample-project/` exists with the five sub-trees plus README.
+  - `scripts/verify_skills.py` has `CATALOG["tc-knowledge"] == 3` and `DEFAULT_PHASE_CAP >= 3` (per the Phase-2 Step-2.8 lesson — never assert `==` on the cap).
+  - `tc-knowledge/SKILL.md` describes all five Phase 3 commands plus the shared synthesizer and contains no "behavior arrives in Phase 3" / "Coming in Phase 3" wording.
+  - `docs/user-guide/customizing-for-your-project.md` contains a `tc-knowledge:` YAML block whose top-level keys match the shipped config.yaml schema, and contains at least three worked extension examples in distinct project-shape headings.
+  - `Phase 3 — Lessons learned (running)` subsection in `planning/plan.md` contains an entry for every Phase 3 sub-step that has landed (`Step 3.1` through `Step 3.8`); each entry either describes a lesson + mitigation or explicitly records "no lessons".
+  - CHANGELOG Phase 3 section marked complete with a date.
+  - `plan.md` Completed has a Phase 3 subsection with a date.
+  - `plan.md` To Do Phase 3 is the marker line (no unchecked items remain).
+  - `plan.md` Workspace Layout includes `tests-coverage.md` under `product-knowledge/`.
+  - Total pytest count meets minimum (`>= 200` — Phase 2 finished at 172; Phase 3 adds the scaffold test, five per-command suites, synthesizer tests, integration, and sign-off).
+- **Definition of done.** Test-first: the suite lands red before 3.9.3's plan/CHANGELOG edits, green after.
+
+##### 3.9.6 — Final DoD evaluation (close Phase 3)
+
+- **Procedure.**
+  1. Run `make verify` — every test green, link checker clean, `verify_skills.py` reports `tc-core PRESENT (phase 1)`, `tc-requirements PRESENT (phase 2)`, `tc-knowledge PRESENT (phase 3)`.
+  2. Replay the 3.9.1 walkthrough end to end to confirm reproducibility.
+  3. Capture all output to `/tmp/tc-phase3-signoff.log`.
+  4. Commit the plan/CHANGELOG/docs updates and the sign-off test in one final commit.
+  5. Push to origin.
+  6. Create annotated tag: `git tag -a phase-3 -m "Phase 3 — Project knowledge ingestion complete."`.
+  7. Push tag: `git push origin phase-3`.
+- **Definition of done.** All seven numbered steps complete. Tag visible on origin (`git ls-remote origin phase-3` resolves). Evidence log captured. Phase 3 is closed.
+
+#### Definition of done — consolidated 15 checks
+
+Eleven automated; four evidence-based.
+
+| # | Check | Type | How |
+| --- | --- | --- | --- |
+| 1 | All eight Phase 3 test files exist (`test_tc_knowledge_scaffold`, `test_learn_from_docs`, `test_learn_from_specs`, `test_learn_from_code`, `test_learn_from_api`, `test_learn_from_tests`, `test_phase_3_integration`, `test_phase_3_signoff`) | auto | sign-off test |
+| 2 | All five helpers plus `synthesize_system_model.py` exist | auto | sign-off test |
+| 3 | All five command files exist under `tc-knowledge/commands/` | auto | sign-off test |
+| 4 | All six methodology files exist under `tc-knowledge/methodology/` | auto | sign-off test |
+| 5 | All ten templates exist under `tc-knowledge/templates/` | auto | sign-off test |
+| 6 | Seeded-sample-project fixture exists and covers every rubric dimension + every gap-signal type | auto | scaffold test |
+| 7 | `verify_skills.py` has `CATALOG["tc-knowledge"] == 3` and `DEFAULT_PHASE_CAP >= 3`; `make verify` prints all three skills PRESENT | auto | sign-off test + `make verify` |
+| 8 | Integration smoke `test_phase_3_integration` passes; live-mode refusal under test harness asserted | auto | pytest |
+| 9 | `tc-knowledge/SKILL.md` describes all five shipped Phase 3 commands plus the synthesizer with no deferral wording | auto | sign-off test |
+| 10 | `tests-coverage.md` added to Workspace Layout in `plan.md` and `docs/workspace-reference.md` | auto | sign-off test |
+| 11 | `make verify` chain clean (link checker covers the new docs) | auto | full chain |
+| 12 | Cold-user walkthrough of `building-project-knowledge.md` from clean state succeeds (3.9.1) | evidence | `/tmp/tc-phase3-walkthrough.log` |
+| 13 | Per-step DoD audit clean for 3.1–3.8 (3.9.2) | evidence | audit notes |
+| 14 | `plan.md` To Do Phase 3 collapsed to marker; Completed has Phase 3 subsection with date (3.9.3); CHANGELOG Phase 3 section marked complete | evidence | sign-off test + grep |
+| 15 | `phase-3` annotated tag created and pushed (3.9.6) | evidence | `git tag -l phase-3` + `git ls-remote origin phase-3` |
+
+#### TDD pattern used in 3.2–3.6
+
+```
+write tests (red)             # define expected extractions per dimension from the seeded fixture, including provenance
+  → implement helper (green)  # minimum code to pass; mechanical extraction only
+    → author methodology + template (each command owns one of each)
+      → author per-command page
+        → update SKILL.md to surface shipped behavior
+          → call synthesize_system_model.py (shared, lands in 3.2)
+            → verify (pytest + make verify)
+```
+
+No implementation lands before its tests. No tests are added after the fact. Every command's test suite drives the helper from the same seeded sample-project fixture so the rubric is the contract.
+
+#### Validation sequence
+
+1. Author 3.1 (skill scaffold + fixture) with its scaffold test. Confirm pytest red → green.
+2. Author 3.2 (`/tc:learn-from-docs` + the shared synthesizer): write tests, implement helper + synthesizer, author methodology (`learning-from-documents.md` + `project-knowledge.md` umbrella), author cross-cutting + per-source templates, author command file, update SKILL.md, run pytest.
+3. For each of 3.3, 3.4, 3.5, 3.6 in order: mirror 3.2's skeleton, adapt per-source extraction, write tests, implement helper, author the source-specific methodology and template, author command file, update SKILL.md, run pytest.
+4. 3.7 documentation pass. Run `make verify`.
+5. 3.8 testing finalization: bump `CATALOG["tc-knowledge"]` to 3 and `DEFAULT_PHASE_CAP` to 3, integration smoke. Run `make verify`.
+6. 3.9 sign-off, in order:
+   6a. Run the cold-user walkthrough from `building-project-knowledge.md` (3.9.1). Capture log. Fix anything that fails before proceeding.
+   6b. Audit each prior sub-step's DoD (3.9.2). Block on any unmet item.
+   6c. Write `tests/test_phase_3_signoff.py` (3.9.5). Run `make test` — expect failures for any not-yet-applied plan/CHANGELOG edits.
+   6d. Update `plan.md` and `CHANGELOG.md` (3.9.3). Re-run sign-off test — expect green.
+   6e. Doc final read-through (3.9.4). Edit any drift; re-run `make verify`.
+   6f. Final DoD evaluation (3.9.6): commit, push, annotated tag, tag push.
+
+#### Failure modes
+
+- An extraction dimension turns out to be hard to detect mechanically. **Mitigation:** the helper applies only the mechanical part; the AI-judgment part lives in the methodology doc and the command file's Behavior section. The seeded fixture marks each defect as `mechanical` or `judgment`, and the test suite only asserts on mechanical findings.
+- Source-format ambiguity (OpenAPI 2 vs 3, Postman v2.0 vs v2.1, JSON vs YAML). **Mitigation:** auto-detect by file extension and root keys; refuse with a clear error on unrecognized formats; document the supported format set in the per-command page.
+- Cross-source ordering matters in ways the integration smoke does not catch. **Mitigation:** every command must produce a valid (possibly partial) `system-model.md` even when run alone. The 3.2 tests cover the docs-only state; 3.3–3.6 tests each cover the single-source state. The integration smoke covers the union and the order-of-arrival invariants.
+- Provenance citations drift from real source lines after an upstream document is edited and the helper re-runs. **Mitigation:** every overwrite-mode artifact is regenerated from scratch on each run; citations are always against the current source. The idempotency contract makes drift detection a byte-diff.
+- `system-model.md` regeneration produces different output depending on the order commands ran. **Mitigation:** `synthesize_system_model.py` reads the current state of every per-source file (independent of which command invoked it) and writes from a canonical template. Tests assert byte-identical output for the same final state regardless of which command was the last to run.
+- `tc-knowledge.api.mode: live` accidentally enabled during tests. **Mitigation:** the helper inspects an `IS_TEST` environment variable (set by the pytest fixture) and refuses live mode under tests; the integration smoke includes a negative test that asserts this refusal.
+- Non-Python source detection (TS, JS, Go) silently skipped. **Mitigation:** every non-Python file is counted and emitted as a `language-unsupported-in-v1` gap; the seeded fixture includes `web/app.ts` to assert this is detected, not ignored.
+- Phase 3 writes to a downstream-owned directory and skews `/tc:next`. **Mitigation:** the design decision above forbids writes outside `product-knowledge/` and `requirements/open-questions.md`. The integration smoke in 3.8 asserts `<workspace>/traceability/` is unchanged after a full Phase 3 run.
+- Template-stub vs generated-artifact ambiguity (the Phase-2 Step-2.5 lesson). **Mitigation:** every Phase 3 helper that reads an upstream artifact (`spec-derived-model.md` is read by `extract_knowledge_from_code.py`; `code-derived-model.md` is read by `extract_knowledge_from_tests.py`) uses the generator-marker check pattern, not `path.is_file()` or `path.stat().st_size > 0`. Each per-source model template ships a placeholder; the helper detects the upstream's structural markers (`## Extracted endpoints`, `## Extracted modules`, etc.) before treating the file as populated.
+- Plural-form keyword mismatch (the Phase-2 Step-2.2 lesson). **Mitigation:** every keyword-matching helper uses `\b<word>s?\b` for single-token keywords.
+- Domain-leakage into shipped defaults (the Phase-2 Step-2.1 lesson). **Mitigation:** the seeded sample-project fixture and every default keyword set are audited against D19 universal-vocabulary criteria before each command's sub-step closes. Domain extensibility goes through `tc-knowledge:` config blocks.
+- Documentation walkthrough in 3.9.1 surfaces a gap. **Mitigation:** update `building-project-knowledge.md` to match reality and re-run the walkthrough. Treat as a Phase 3 doc bug, not a Phase 4 issue.
+- A prior sub-step's DoD turns out not to be green during 3.9.2. **Mitigation:** the failing sub-step reopens. 3.9 cannot close while any earlier DoD is unmet.
+- `phase-3` tag already exists locally. **Mitigation:** delete (`git tag -d phase-3` then `git push origin :refs/tags/phase-3`) and recreate. Never force-overwrite an existing tag on origin without explicit user confirmation.
+- CHANGELOG Phase 3 closing entry diverges from To Do/Completed movement. **Mitigation:** the sign-off test (3.9.5) checks all three sources. They must agree before the test passes.
+
+#### Phase 3 — Lessons learned (running)
+
+Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. Each entry is preventative care for future implementers of similar work. Populated during execution; empty at the time this plan section was authored.
 
 ---
 
@@ -2126,11 +2489,15 @@ Phase 1 complete (2026-05-26) — see Completed.
 Phase 2 complete (2026-05-27) — see Completed.
 
 ### Phase 3
-- [ ] Author `/tc:learn-from-docs`, `/tc:learn-from-specs`, `/tc:learn-from-code`, `/tc:learn-from-api`, `/tc:learn-from-tests`
-- [ ] Author methodology and templates
-- [ ] Build seeded sample-repo fixture for knowledge extraction tests
-- [ ] Author `docs/user-guide/building-project-knowledge.md`
-- [ ] Confirm review and test gates green
+- [ ] **3.1** — Scaffold `tc-knowledge` skill and seeded sample-project fixture (universal-SaaS narrative; defects tagged with `<!-- knowledge: ... -->`)
+- [ ] **3.2** — `/tc:learn-from-docs` (TDD) + shared `synthesize_system_model.py` + umbrella `project-knowledge.md` methodology + cross-cutting and per-source templates
+- [ ] **3.3** — `/tc:learn-from-specs` (TDD) — OpenAPI/Postman auto-detection
+- [ ] **3.4** — `/tc:learn-from-code` (TDD) — Python AST walk; non-Python languages counted as `language-unsupported-in-v1`
+- [ ] **3.5** — `/tc:learn-from-api` (TDD) — recorded playback in tests; live mode opt-in via config
+- [ ] **3.6** — `/tc:learn-from-tests` (TDD) — pytest + Playwright detection; add `tests-coverage.md` to Workspace Layout and `workspace-reference.md`
+- [ ] **3.7** — Documentation pass: author `docs/user-guide/building-project-knowledge.md`; update command-reference, workspace-reference, customizing-for-your-project (Phase 3 `tc-knowledge` schema + three worked extension examples), status lines
+- [ ] **3.8** — Testing finalization: bump `DEFAULT_PHASE_CAP` to 3 and `CATALOG["tc-knowledge"] = 3`; author `test_phase_3_integration.py`; assert live-mode refusal under test harness
+- [ ] **3.9** — Sign-off (six sub-sub-steps): cold-user walkthrough, per-step DoD audit, plan + CHANGELOG closing, doc final pass, test-first sign-off test, final DoD eval + `phase-3` annotated tag
 
 ### Phase 4
 - [ ] Author `/tc:create-charter`, `/tc:explore`, `/tc:test-ideas`, `/tc:session-summary`
