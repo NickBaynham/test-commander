@@ -45,9 +45,17 @@ Full spec: [commands/review-user-stories.md](commands/review-user-stories.md). R
 
 ### `/tc:review-acceptance-criteria`
 
-Review acceptance criteria for testability, edge-case coverage, negative-case coverage, data-rule clarity, and role/permission context.
+Review acceptance criteria against the Phase 2 AC rubric (five mechanical checks: `ac-missing-edge-cases`, `ac-missing-negative-cases`, `ac-untestable-predicate`, `ac-ambiguous-data-rule`, `ac-missing-role-context`) plus an `orphan` check that flags any AC whose parent user story is not in scope. Parses `AC-NNN[-NN]: Given ... When ... Then ...` entries; derives the parent story from the AC ID prefix (`AC-001-01` → `US-001`); strips parenthetical asides before applying checks so meta-commentary doesn't mask defects. Writes `<workspace>/requirements/acceptance-criteria-review.md` (overwritten byte-deterministically). Idempotent.
 
-Behavior arrives in Phase 2 Step 2.4. Until then, this command paragraph is a placeholder.
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/review_acceptance_criteria.py <project-root>
+```
+
+`<project-root>` defaults to the current working directory. The `ac-missing-role-context` check honors `<workspace>/config.yaml` extensions under `tc-requirements.roles-permissions:` for domain-specific verbs and roles (per D19).
+
+Full spec: [commands/review-acceptance-criteria.md](commands/review-acceptance-criteria.md). Rubric and per-dimension checks: [methodology/acceptance-criteria-quality.md](methodology/acceptance-criteria-quality.md).
 
 ### `/tc:requirements-coverage`
 
@@ -63,9 +71,9 @@ Behavior arrives in Phase 2 Step 2.6. Until then, this command paragraph is a pl
 
 ## What to do when a slash command fires
 
-For shipped commands (currently `/tc:review-requirements` and `/tc:review-user-stories`): resolve `<plugin-root>` relative to this SKILL.md, determine `<project-root>` (the user's current working directory unless specified otherwise), run the bundled helper via `Bash`, and report the helper's CLI output. Then add the narrative judgment layer described in the relevant methodology doc — explain *why* each finding matters in product context, rank severity, and identify gaps the keyword check could miss. If the helper exits non-zero, surface its stderr and the relevant per-command page.
+For shipped commands (currently `/tc:review-requirements`, `/tc:review-user-stories`, and `/tc:review-acceptance-criteria`): resolve `<plugin-root>` relative to this SKILL.md, determine `<project-root>` (the user's current working directory unless specified otherwise), run the bundled helper via `Bash`, and report the helper's CLI output. Then add the narrative judgment layer described in the relevant methodology doc — explain *why* each finding matters in product context, rank severity, and identify gaps the keyword check could miss. If the helper exits non-zero, surface its stderr and the relevant per-command page.
 
-For not-yet-shipped commands (`/tc:review-acceptance-criteria`, `/tc:requirements-coverage`, `/tc:requirements-to-tests`): point the user at the planning entry in `planning/plan.md` (Phase 2 — Requirements and User Story Intelligence) and at the per-command page for the command they invoked, if it exists. Do not improvise behavior — the helpers are the source of truth and they arrive incrementally.
+For not-yet-shipped commands (`/tc:requirements-coverage`, `/tc:requirements-to-tests`): point the user at the planning entry in `planning/plan.md` (Phase 2 — Requirements and User Story Intelligence) and at the per-command page for the command they invoked, if it exists. Do not improvise behavior — the helpers are the source of truth and they arrive incrementally.
 
 ## See also
 

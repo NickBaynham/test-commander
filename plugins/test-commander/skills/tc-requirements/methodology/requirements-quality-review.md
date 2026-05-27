@@ -4,7 +4,7 @@ The rubric `/tc:review-requirements` applies to every parsed `REQ-NNN` entry. Si
 
 This doc is the contract: every dimension has at least one seeded defect in `tests/fixtures/seeded-flawed-requirements/requirements.md` and at least one mechanical check the helper performs. The seeded fixture is the test contract; this doc explains the *why* alongside the *what*.
 
-The dimensions below cover **requirement-level** concerns. The AC-specific rubric (`ac-missing-edge-cases`, `ac-missing-negative-cases`, `ac-untestable-predicate`, `ac-ambiguous-data-rule`, `ac-missing-role-context`) belongs to `/tc:review-acceptance-criteria` and is documented in `acceptance-criteria-quality.md` when Step 2.4 lands.
+The dimensions below cover **requirement-level** concerns. The AC-specific rubric (`ac-missing-edge-cases`, `ac-missing-negative-cases`, `ac-untestable-predicate`, `ac-ambiguous-data-rule`, `ac-missing-role-context`) belongs to `/tc:review-acceptance-criteria` and is documented in [`acceptance-criteria-quality.md`](acceptance-criteria-quality.md).
 
 ## Universal cores and project extensions
 
