@@ -1101,33 +1101,244 @@ No implementation lands before its tests. No tests are added after the fact.
 
 ## Phase 2 — Requirements and User Story Intelligence
 
-**Goal.** Review requirements, user stories, and acceptance criteria before automation exists.
+**Goal.** Review requirements, user stories, and acceptance criteria before automation exists. Ship the `tc-requirements` skill with five commands that read source documents, apply a deterministic rubric, surface defects, and produce reviewable artifacts under `.test-commander/requirements/`.
 
-**Implementation.**
+**Architecture.** Each `/tc:*` command is implemented as a Python helper script plus a Markdown command file inside `plugins/test-commander/skills/tc-requirements/`. Helpers do the deterministic work (parse documents, apply mechanical rubric checks, write artifacts, update traceability); Claude executes the judgment-heavy parts (atomicity, ambiguity, NFR completeness, automation suitability) by reading the per-command page and the methodology docs. The split keeps every command testable end-to-end with seeded fixtures.
 
-- `/tc:review-requirements`, `/tc:review-user-stories`, `/tc:review-acceptance-criteria`, `/tc:requirements-coverage`, `/tc:requirements-to-tests`
-- Methodology docs: `requirements-quality-review.md`, `user-story-readiness.md`, `acceptance-criteria-quality.md`
-- Templates: `requirements-review-template.md`, `user-story-review-template.md`, `acceptance-criteria-review-template.md`, `requirements-coverage-template.md`
+**Phase-2 design decisions (folded in).**
 
-**Skills authored.** `tc-requirements` with five sub-commands. Includes methodology files for the review rubric and INVEST, plus the four templates.
+- **Methodology lives with the command it serves.** Each of the three review commands authors its own methodology file inside `plugins/test-commander/skills/tc-requirements/methodology/`. Templates live in `plugins/test-commander/skills/tc-requirements/templates/`. No standalone "shared methodology" file — shared rubric items repeat in the command-specific docs because each is a self-contained reference.
+- **Seeded-flawed-requirements fixture is the source of truth for the review rubric.** A small Markdown corpus under `tests/fixtures/seeded-flawed-requirements/` carries intentional defects, each tagged with the rubric dimension it violates via an inline `<!-- defect: <dimension> -->` HTML comment. Every rubric dimension has at least one seeded defect; every command's test fixture asserts the corresponding finding is produced. Adding a new rubric dimension means adding a seeded defect — the fixture is the contract.
+- **Per-requirement artifacts use stable IDs.** Every parsed requirement is assigned an ID (sourced from the input document if present, else generated as `REQ-NNN`). All five command outputs use the same ID space so cross-command traceability works. Traceability updates land in `.test-commander/traceability/requirements-map.md`.
+- **`/tc:requirements-to-tests` seeds `.test-commander/test-ideas/`.** Phase 4 ultimately owns the rich charter/exploration model; Phase 2 only seeds bare test ideas (one or more per requirement). The seed file's schema is forward-compatible with Phase 4's idea model — Phase 4 enriches, Phase 2 does not block on it. `workspace_state.py`'s `PHASE_OWNERSHIP` keeps `test-ideas/` under Phase 4; Phase 2 writes are scored as populated content but do not change ownership.
+- **Mechanical vs. judgment split is explicit in tests.** Helpers cover only the mechanical part of the rubric (length, presence of acceptance language, dependency cycles, contradicting verbs, INVEST size heuristics, AC predicate testability). Judgment items (atomicity, ambiguity, NFR completeness, automation suitability) are described in the methodology docs and exercised by the cold-user walkthrough in sign-off, not by the pytest suite. The seeded fixture marks each defect's category so test assertions stay deterministic.
+
+**Skills authored.** `tc-requirements` — `SKILL.md` plus five command files (one per `/tc:*` command), three methodology files (`requirements-quality-review.md`, `user-story-readiness.md`, `acceptance-criteria-quality.md`), and four templates (`requirements-review-template.md`, `user-story-review-template.md`, `acceptance-criteria-review-template.md`, `requirements-coverage-template.md`).
 
 **Design references.** `business-requirements:brd` and `business-requirements:analyze-requirements` (review structure, BRD output shape), `logical-consistency:logic-check` (contradictions, undefined terms, faulty inference rubric).
 
 **Review rubric.** clarity, testability, completeness, consistency, atomicity, measurability, AC quality, edge cases, negative cases, data rules, roles/permissions, NFRs, dependencies, ambiguity, risk, automation suitability. INVEST for stories.
 
-**Documentation.** `docs/user-guide/reviewing-requirements.md` — how a tester uploads requirements, runs the review, and reads the output.
+### Phase 2 — Execution outline
 
-**Review step.**
+Nine sub-steps. TDD throughout: every implementation step lands its tests red before turning them green. Sub-step 2.1 scaffolds the skill and the shared seeded-flawed-requirements fixture; 2.2–2.6 implement the five commands; 2.7 is the dedicated documentation pass; 2.8 is the dedicated testing finalization; 2.9 is the sign-off with a `phase-2` tag.
 
-- Sample requirement set is run through the commands; reviewer confirms outputs flag the seeded defects (we maintain a small fixture set of intentionally-flawed requirements for this).
+#### 2.1 — Skill scaffold and seeded-flawed-requirements fixture
 
-**Test step.**
+- **Deliverables.**
+  - `plugins/test-commander/skills/tc-requirements/SKILL.md` — YAML frontmatter (`name: tc-requirements`, single-line trigger-style `description`). Body lists the five commands and notes that command behavior arrives in subsequent sub-steps. Mirrors Phase 0's initial `tc-core/SKILL.md` shape — each command paragraph carries the deferral wording until its own sub-step turns the wording into a shipped-behavior description (per the "SKILL.md surfaces shipped behavior" convention).
+  - `tests/fixtures/seeded-flawed-requirements/` directory containing:
+    - `requirements.md` — at least one intentionally-flawed requirement per rubric dimension. Each defect is marked with an inline `<!-- defect: <dimension> -->` HTML comment used by the fixture loader.
+    - `user-stories.md` — at least one INVEST violation per INVEST letter (Independent, Negotiable, Valuable, Estimable, Small, Testable).
+    - `acceptance-criteria.md` — at least one AC defect per AC-rubric dimension (missing edge cases, missing negative cases, untestable predicate, ambiguous data rule, missing role context).
+    - `README.md` — explains the fixture's intent, the inline-comment defect-marking convention, and how to add a new seeded defect.
+  - `plugins/test-commander/skills/tc-requirements/methodology/.gitkeep` and `plugins/test-commander/skills/tc-requirements/templates/.gitkeep` — empty directories that 2.2–2.6 fill in. `.gitkeep` is removed by the first sub-step that lands real content in each directory.
+- **Tests first.** `tests/test_tc_requirements_scaffold.py` — asserts: skill directory and `SKILL.md` present with valid frontmatter; `name == "tc-requirements"`; description non-empty; SKILL.md body references each of the five commands; fixture directory exists with the three Markdown files plus README; every rubric dimension named in the high-level Phase 2 rubric list appears in at least one inline defect comment in the fixture; every INVEST letter appears in `user-stories.md`. Test-first: lands red before any deliverable is written.
+- **Definition of done.** Skill scaffolded; fixture covers every rubric dimension and every INVEST letter; scaffold test green; `scripts/verify_skills.py` still reports `tc-core PRESENT (phase 1)` (phase cap does not move until Step 2.8); `tc-requirements` directory present but expected `UNEXPECTED` by the verifier under `DEFAULT_PHASE_CAP=1` only if the catalog entry's phase is ≤ cap — since `tc-requirements` is mapped to phase 2 in the catalog, it is simply ignored by `--phase 1` and reported by `--phase 2`.
+- **Review.** Manual read of the fixture against the rubric table in the top-of-phase summary — confirm every dimension has at least one seeded defect, and that the defects are realistic rather than contrived.
 
-- Fixture-driven test: known-bad requirements produce expected findings. `make verify` runs it.
+#### 2.2 — `/tc:review-requirements` (TDD)
 
-**Definition of done.**
+- **Helper.** `plugins/test-commander/scripts/review_requirements.py` (per D18) — reads a target Markdown document (default: every `*.md` in `<workspace>/documents/uploaded/`), parses requirements (numbered headings, bulleted items, or explicit `REQ-NNN` markers), applies the mechanical rubric checks (length, presence of acceptance language, dependency cycle detection across requirements, contradicting verbs across requirements that name the same entity), and writes `<workspace>/requirements/requirements-review.md` plus updates `<workspace>/requirements/requirements-inventory.md`. Open questions detected during the review are appended to `<workspace>/requirements/open-questions.md`.
+- **Methodology.** `plugins/test-commander/skills/tc-requirements/methodology/requirements-quality-review.md` — documents the rubric (clarity, testability, completeness, consistency, atomicity, measurability, dependencies, ambiguity, risk) with one worked example per dimension drawn from the seeded fixture. Marks each dimension as `mechanical` or `judgment` so the split with helper coverage is explicit.
+- **Template.** `plugins/test-commander/skills/tc-requirements/templates/requirements-review-template.md` — output structure: executive summary, findings table, per-requirement detail blocks, open-questions section, traceability footer.
+- **Command file.** `plugins/test-commander/skills/tc-requirements/commands/review-requirements.md` — Inputs / Outputs / Preconditions / Behavior / Safety / Implementation / Definition of Done / See also.
+- **SKILL.md update.** `tc-requirements/SKILL.md` updated in the same sub-step to describe `/tc:review-requirements`'s shipped behavior and instruct Claude to invoke the bundled helper. Stale deferral wording for this command removed.
+- **Tests first.** `tests/test_review_requirements.py` — at minimum: uninitialized workspace refused, empty `documents/uploaded/` produces a review file noting "no requirements found" (not an error), seeded-fixture input writes the expected three files, every mechanical rubric dimension produces at least one finding traced to the seeded fixture, idempotent re-run does not duplicate findings, open-questions routed to the dedicated file (not embedded in the review), inventory updated with the correct ID list, requirement-ID collisions refused with a clear error.
+- **Definition of done.** Helper passes all test cases; methodology doc covers every rubric dimension (mechanical or judgment) with a worked example; template authored; per-command page complete; `tc-requirements/SKILL.md` no longer carries deferral wording for `/tc:review-requirements`.
+- **Verification.** Pytest green; smoke run against the seeded fixture produces a `requirements-review.md` that names every mechanical defect dimension at least once.
 
-- All five commands work end-to-end, traceability writes occur, open questions surface, fixture test passes, tester guide is complete.
+#### 2.3 — `/tc:review-user-stories` (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/review_user_stories.py` — parses user stories from a target document (default `<workspace>/documents/uploaded/`), applies the INVEST rubric mechanically (Small = body-length heuristic; Testable = presence of AC pointer; Independent = dependency-graph check across stories; Estimable = presence of size-hint), and writes `<workspace>/requirements/user-story-review.md`. Stories without ACs are flagged for the downstream `/tc:review-acceptance-criteria` step.
+- **Methodology.** `plugins/test-commander/skills/tc-requirements/methodology/user-story-readiness.md` — documents INVEST with one seeded-fixture violation per letter and explains the role-action-benefit shape Test Commander expects (`As a ... I want ... So that ...`).
+- **Template.** `plugins/test-commander/skills/tc-requirements/templates/user-story-review-template.md` — structure: executive summary, INVEST findings table, per-story detail, readiness verdict (`ready` / `needs-refinement` / `blocked`).
+- **Command file.** `plugins/test-commander/skills/tc-requirements/commands/review-user-stories.md`.
+- **SKILL.md update.** `tc-requirements/SKILL.md` updated to describe `/tc:review-user-stories`'s shipped behavior and instruct Claude to invoke the bundled helper.
+- **Tests first.** `tests/test_review_user_stories.py` — uninitialized workspace refused, fresh workspace runs and writes `user-story-review.md`, every INVEST letter produces at least one finding traced to the seeded fixture, idempotent re-run, stories without ACs are tagged with `needs-acceptance-criteria` and surface in the review, role-action-benefit shape violations are flagged, malformed input refused.
+- **Definition of done.** Helper passes all test cases; INVEST coverage complete with one mechanical or judgment finding per letter; methodology doc complete; SKILL.md updated.
+- **Verification.** Pytest green; smoke run produces a user-story review that flags every seeded INVEST violation.
+
+#### 2.4 — `/tc:review-acceptance-criteria` (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/review_acceptance_criteria.py` — parses ACs (Given/When/Then bullets, scenario tables, or numbered ACs under a story), applies the AC rubric (testability of each predicate, edge-case coverage, negative-case coverage, data-rule clarity, role/permission context, NFR coverage), and writes `<workspace>/requirements/acceptance-criteria-review.md`. ACs that name a story ID not present in the parsed stories are flagged as orphans.
+- **Methodology.** `plugins/test-commander/skills/tc-requirements/methodology/acceptance-criteria-quality.md` — documents the AC rubric with worked examples per dimension; explains the Given/When/Then expectation and what disqualifies an AC from being automatable.
+- **Template.** `plugins/test-commander/skills/tc-requirements/templates/acceptance-criteria-review-template.md` — structure: summary, findings table grouped by story, per-AC detail.
+- **Command file.** `plugins/test-commander/skills/tc-requirements/commands/review-acceptance-criteria.md`.
+- **SKILL.md update.** `tc-requirements/SKILL.md` updated to describe `/tc:review-acceptance-criteria`'s shipped behavior.
+- **Tests first.** `tests/test_review_acceptance_criteria.py` — uninitialized workspace refused, fresh workspace runs and writes `acceptance-criteria-review.md`, every AC-rubric dimension produces at least one finding traced to the seeded fixture, ACs without an owning story are flagged as orphans, idempotent re-run, malformed input refused.
+- **Definition of done.** Helper passes all test cases; AC rubric coverage complete; methodology doc complete; SKILL.md updated.
+- **Verification.** Pytest green; smoke run produces an AC review that flags every seeded AC defect.
+
+#### 2.5 — `/tc:requirements-coverage` (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/requirements_coverage.py` — cross-references requirement IDs with downstream artifacts (existing test ideas at `<workspace>/test-ideas/`, BDD scenarios at `<workspace>/bdd/features/` when present, automation candidates) and writes `<workspace>/requirements/requirements-coverage.md` plus updates `<workspace>/traceability/requirements-map.md`. In Phase 2 the downstream artifacts are largely empty (Phases 4–6 populate them); the coverage file accurately reports `not yet covered` for every requirement until 2.6 lands seed test ideas.
+- **Template.** `plugins/test-commander/skills/tc-requirements/templates/requirements-coverage-template.md` — structure: coverage matrix (requirements × downstream artifact types), unmapped-requirement list, unmapped-test list.
+- **Command file.** `plugins/test-commander/skills/tc-requirements/commands/requirements-coverage.md`.
+- **SKILL.md update.** `tc-requirements/SKILL.md` updated to describe `/tc:requirements-coverage`'s shipped behavior.
+- **Tests first.** `tests/test_requirements_coverage.py` — uninitialized workspace refused, workspace with no requirements review yet refused (the command requires the inventory artifact), workspace with only requirements (no downstream artifacts) produces `not yet covered` for every requirement, workspace with seeded test ideas links them correctly, orphan downstream artifacts (test idea that names a non-existent requirement ID) are flagged, idempotent re-run, traceability map updated with the same ID space `/tc:review-requirements` produced in 2.2.
+- **Definition of done.** Helper passes all test cases; coverage shape is forward-compatible with Phases 4–6 artifacts; SKILL.md updated.
+- **Verification.** Pytest green; smoke run against the seeded fixture (after 2.2 lands) produces a coverage file whose unmapped-requirement list equals the full requirement list.
+
+#### 2.6 — `/tc:requirements-to-tests` (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/requirements_to_tests.py` — for every reviewed requirement, generates a seed test-idea file under `<workspace>/test-ideas/<requirement-id>.md` containing: requirement ID, requirement title, candidate scenario titles (happy path, edge cases, negative cases derived from the AC review when available), risk category, and a forward-compatible schema header that Phase 4 enriches. Updates `<workspace>/traceability/requirements-map.md` to link the requirement ID to the new test-idea file path.
+- **Command file.** `plugins/test-commander/skills/tc-requirements/commands/requirements-to-tests.md`. Documents the seed test-idea schema header — this is the Phase 4 contract.
+- **SKILL.md update.** `tc-requirements/SKILL.md` updated to describe `/tc:requirements-to-tests`'s shipped behavior. By end of 2.6, `tc-requirements/SKILL.md` describes all five Phase 2 commands with no deferral wording.
+- **Tests first.** `tests/test_requirements_to_tests.py` — uninitialized workspace refused, fresh workspace with requirements but no review yet refused (the command requires the requirements-review artifact), requirements + review present generates one test-idea file per requirement with the documented schema, AC-derived candidate scenarios appear when the AC review is also present, idempotent re-run does not duplicate files, traceability map updated, schema header is the agreed Phase-4-compatible shape.
+- **Definition of done.** Helper passes all test cases; emitted test-idea files validate against the documented schema; traceability links present; SKILL.md describes all five commands.
+- **Verification.** Pytest green; smoke run produces one test-idea file per seeded requirement.
+
+#### 2.7 — Documentation pass *(dedicated step)*
+
+- **Deliverables.**
+  - Author `docs/user-guide/reviewing-requirements.md` — end-to-end walkthrough: upload requirements → `/tc:review-requirements` → `/tc:review-user-stories` → `/tc:review-acceptance-criteria` → `/tc:requirements-coverage` → `/tc:requirements-to-tests`. Sample input and sample output drawn from the seeded fixture so every example is reproducible.
+  - Update `docs/command-reference.md` to add the five Phase 2 commands as links into their per-command pages inside the plugin.
+  - Update `docs/workspace-reference.md` to mark the six `requirements/` files as populated by Phase 2 commands, and note that `test-ideas/` is seeded by `/tc:requirements-to-tests` ahead of its Phase 4 ownership.
+  - Refresh `README.md`, `docs/install.md`, and `docs/user-guide/getting-started.md` Phase 2 mentions ("Phase 2 starts next" → "Phase 2 in progress" / "complete").
+  - Update `docs/user-guide/workflow.md` (the Phase 1 walkthrough) so the "what's next" footer links to `reviewing-requirements.md`.
+  - **Final `tc-requirements/SKILL.md` pass.** Confirm SKILL.md describes every shipped command, links to all five per-command pages, and instructs Claude to invoke the bundled helpers. No "behavior arrives in Phase N+1" wording for any shipped command. The per-sub-step SKILL.md updates from 2.2–2.6 should already cover this; 2.7 is the final check.
+- **Definition of done.** Every doc accurate against the implementation; all cross-links resolve; link checker green; `tc-requirements/SKILL.md` is the consolidated entry point for Phase 2 commands.
+- **Verification.** `python3 scripts/check_links.py` clean; manual read-through against the Phase 2 deliverables; grep for stale deferral wording in `tc-requirements/SKILL.md` returns no hits.
+
+#### 2.8 — Testing finalization *(dedicated step, separate from per-command TDD)*
+
+- **Deliverables.**
+  - Bump `DEFAULT_PHASE_CAP` in `scripts/verify_skills.py` from `1` to `2` so the verifier expects both `tc-core` and `tc-requirements`.
+  - `tests/test_phase_2_integration.py` — integration smoke that creates a fresh tmp consuming project, runs `init_workspace.py`, copies the seeded fixture's `requirements.md` / `user-stories.md` / `acceptance-criteria.md` into `<workspace>/documents/uploaded/`, then invokes the five Phase 2 helpers in order (`review-requirements` → `review-user-stories` → `review-acceptance-criteria` → `requirements-coverage` → `requirements-to-tests`), asserting after each step that the expected artifact lands and that the next step's preconditions are satisfied. A final assertion confirms the traceability map links every seeded requirement to a test-idea file and that `/tc:next` (Phase 1) now recommends a Phase 3 command instead of `/tc:review-requirements`.
+- **Definition of done.** Integration smoke passes; phase cap bump reflected; full `make verify` chain green; `verify_skills.py` reports `tc-core PRESENT (phase 1)` and `tc-requirements PRESENT (phase 2)`.
+- **Verification.** Captured `make verify` output.
+
+#### 2.9 — Sign-off
+
+Six sub-steps. Mirrors the Phase 1 sign-off pattern (1.8). Test-first: the sign-off test in 2.9.5 lands red before the plan/CHANGELOG edits in 2.9.3 turn it green. The final sub-step (2.9.6) captures evidence and pushes the `phase-2` annotated tag.
+
+##### 2.9.1 — Cold-user walkthrough of `reviewing-requirements.md`
+
+- **Deliverables.** Captured log of an end-to-end walkthrough of `docs/user-guide/reviewing-requirements.md` from a freshly-installed plugin against a fresh tmp consuming project.
+- **Steps to execute verbatim.**
+  1. `make uninstall` → `make install` to reach a known-clean plugin state.
+  2. Create a tmp consuming-project dir (`mktemp -d`).
+  3. `init_workspace.py <tmp>`. Copy `tests/fixtures/seeded-flawed-requirements/*.md` into `<tmp>/.test-commander/documents/uploaded/`.
+  4. Invoke the five Phase 2 helpers in workflow order: `review_requirements.py`, `review_user_stories.py`, `review_acceptance_criteria.py`, `requirements_coverage.py`, `requirements_to_tests.py`.
+  5. Confirm each helper prints the output documented in `reviewing-requirements.md` (no fabricated examples).
+- **Definition of done.** All commands succeed end to end. Output captured to `/tmp/tc-phase2-walkthrough.log`. If any step fails, fix the cause and re-run before continuing to 2.9.2.
+
+##### 2.9.2 — Per-step DoD audit
+
+- **Deliverables.** A line-by-line audit of Steps 2.1 through 2.8 against their DoD lists.
+- **What to check per step.** Every DoD bullet green; every pytest file passes; every deliverable present on disk; every cross-link in the per-command pages resolves; every Failure Mode mitigation in place.
+- **Specifically.**
+  - 2.1: `tc-requirements/SKILL.md` and `tests/fixtures/seeded-flawed-requirements/` present; scaffold test green; rubric coverage and INVEST coverage assertions pass.
+  - 2.2–2.6: helper, methodology (where applicable), template (where applicable), command file, and SKILL.md update all present; per-command test files all green; mechanical rubric findings traced to seeded fixture.
+  - 2.7: `reviewing-requirements.md`, command-reference index, workspace-reference, README + getting-started status lines all current; `tc-requirements/SKILL.md` describes every shipped Phase 2 command and contains no stale deferral wording.
+  - 2.8: `DEFAULT_PHASE_CAP == 2`, `CATALOG["tc-requirements"] == 2`, integration smoke passes.
+- **Definition of done.** All eight prior sub-steps audited green. Any unmet item blocks the sign-off.
+
+##### 2.9.3 — Plan and CHANGELOG updates
+
+- **Deliverables.**
+  - `planning/plan.md` — collapse the `### Phase 2` To Do sub-section to a single line: `Phase 2 complete (YYYY-MM-DD) — see Completed`. Add a `### Phase 2 — Requirements and user story intelligence (YYYY-MM-DD)` section to `## Completed` with the per-step summary lines marked `[x]`, mirroring the Phase 1 closing format.
+  - `CHANGELOG.md` — add a new `### Phase 2 — Requirements and user story intelligence (complete YYYY-MM-DD)` section above Phase 1 with a one-line closing summary plus per-sub-step Added bullets, mirroring the Phase 1 closing format.
+- **Definition of done.** To Do Phase 2 reduced to the marker line; Completed has the Phase 2 section with date and nine sub-step bullets; CHANGELOG reflects the closing.
+
+##### 2.9.4 — Documentation final pass
+
+- **Deliverables.** Edits wherever Phase 2 wording has drifted during the eight sub-steps.
+- **What to read.** README status line, `docs/user-guide/getting-started.md` "what's next", `docs/install.md` verifying-install paragraph, `docs/user-guide/reviewing-requirements.md` introductory paragraph, `docs/user-guide/workflow.md` footer link, `plugins/test-commander/README.md` skill table.
+- **Definition of done.** Every Phase 2 fact matches the implementation. "Phase 2 in progress" wording becomes "Phase 2 complete (YYYY-MM-DD); Phase 3 starts next" where applicable. All cross-links resolve.
+
+##### 2.9.5 — Pre-flight tests for sign-off
+
+- **Deliverables.** `tests/test_phase_2_signoff.py`.
+- **Coverage.**
+  - All eight Phase 2 pytest files exist (`test_tc_requirements_scaffold`, `test_review_requirements`, `test_review_user_stories`, `test_review_acceptance_criteria`, `test_requirements_coverage`, `test_requirements_to_tests`, `test_phase_2_integration`, `test_phase_2_signoff`).
+  - All five Phase 2 helpers exist under `plugins/test-commander/scripts/` (`review_requirements.py`, `review_user_stories.py`, `review_acceptance_criteria.py`, `requirements_coverage.py`, `requirements_to_tests.py`).
+  - All five Phase 2 command files exist under `plugins/test-commander/skills/tc-requirements/commands/`.
+  - All three methodology files exist under `plugins/test-commander/skills/tc-requirements/methodology/`.
+  - All four templates exist under `plugins/test-commander/skills/tc-requirements/templates/`.
+  - `tests/fixtures/seeded-flawed-requirements/` exists with the three Markdown files plus README.
+  - `scripts/verify_skills.py` has `CATALOG["tc-requirements"] == 2` and `DEFAULT_PHASE_CAP == 2`.
+  - `tc-requirements/SKILL.md` describes all five Phase 2 commands and contains no "behavior arrives in Phase 2" / "Coming in Phase 2" wording.
+  - CHANGELOG Phase 2 section marked complete with a date.
+  - `plan.md` Completed has a Phase 2 subsection with a date.
+  - `plan.md` To Do Phase 2 is the marker line (no unchecked items remain).
+  - Total pytest count meets minimum (≥ 140 — Phase 1 finished at 96; Phase 2 adds the scaffold test, five per-command suites, integration, and sign-off).
+- **Definition of done.** Test-first: the suite lands red before 2.9.3's plan/CHANGELOG edits, green after.
+
+##### 2.9.6 — Final DoD evaluation (close Phase 2)
+
+- **Procedure.**
+  1. Run `make verify` — every test green, link checker clean, `verify_skills.py` reports `tc-core PRESENT (phase 1)` and `tc-requirements PRESENT (phase 2)`.
+  2. Replay the 2.9.1 walkthrough end to end to confirm reproducibility.
+  3. Capture all output to `/tmp/tc-phase2-signoff.log`.
+  4. Commit the plan/CHANGELOG/docs updates and the sign-off test in one final commit.
+  5. Push to origin.
+  6. Create annotated tag: `git tag -a phase-2 -m "Phase 2 — Requirements and user story intelligence complete."`.
+  7. Push tag: `git push origin phase-2`.
+- **Definition of done.** All seven numbered steps complete. Tag visible on origin (`git ls-remote origin phase-2` resolves). Evidence log captured. Phase 2 is closed.
+
+#### Definition of done — consolidated 14 checks
+
+Ten automated; four evidence-based.
+
+| # | Check | Type | How |
+| --- | --- | --- | --- |
+| 1 | All eight Phase 2 test files exist (`test_tc_requirements_scaffold`, `test_review_requirements`, `test_review_user_stories`, `test_review_acceptance_criteria`, `test_requirements_coverage`, `test_requirements_to_tests`, `test_phase_2_integration`, `test_phase_2_signoff`) | auto | sign-off test |
+| 2 | All five helpers exist (`review_requirements.py`, `review_user_stories.py`, `review_acceptance_criteria.py`, `requirements_coverage.py`, `requirements_to_tests.py`) | auto | sign-off test |
+| 3 | All five command files exist under `tc-requirements/commands/` | auto | sign-off test |
+| 4 | All three methodology files exist under `tc-requirements/methodology/` | auto | sign-off test |
+| 5 | All four templates exist under `tc-requirements/templates/` | auto | sign-off test |
+| 6 | Seeded-flawed-requirements fixture exists and covers every rubric dimension + every INVEST letter | auto | scaffold test |
+| 7 | `verify_skills.py` has `CATALOG["tc-requirements"] == 2` and `DEFAULT_PHASE_CAP == 2`; `make verify` prints both skills PRESENT | auto | sign-off test + `make verify` |
+| 8 | Integration smoke `test_phase_2_integration` passes | auto | pytest |
+| 9 | `tc-requirements/SKILL.md` describes all five shipped Phase 2 commands with no deferral wording | auto | sign-off test |
+| 10 | `make verify` chain clean (link checker covers the new docs) | auto | full chain |
+| 11 | Cold-user walkthrough of `reviewing-requirements.md` from clean state succeeds (2.9.1) | evidence | `/tmp/tc-phase2-walkthrough.log` |
+| 12 | Per-step DoD audit clean for 2.1–2.8 (2.9.2) | evidence | audit notes |
+| 13 | `plan.md` To Do Phase 2 collapsed to marker; Completed has Phase 2 subsection with date (2.9.3); CHANGELOG Phase 2 section marked complete | evidence | sign-off test + grep |
+| 14 | `phase-2` annotated tag created and pushed (2.9.6) | evidence | `git tag -l phase-2` + `git ls-remote origin phase-2` |
+
+#### TDD pattern used in 2.2–2.6
+
+```
+write tests (red)             # define expected behavior per case, including fixture-driven defect detection
+  → implement helper (green)  # minimum code to pass; mechanical rubric only
+    → author methodology + template (where applicable)
+      → author per-command page
+        → update SKILL.md to surface shipped behavior
+          → verify (pytest + make verify)
+```
+
+No implementation lands before its tests. No tests are added after the fact. Every command's test suite drives the helper from the same seeded fixture so the rubric is the contract.
+
+#### Validation sequence
+
+1. Author 2.1 (skill scaffold + fixture) with its scaffold test. Confirm pytest red → green.
+2. For each of 2.2, 2.3, 2.4, 2.5, 2.6 in order: write tests, implement helper, author methodology and template where applicable, author command file, update SKILL.md, run pytest.
+3. 2.7 documentation pass. Run `make verify`.
+4. 2.8 testing finalization: bump `CATALOG["tc-requirements"]` to 2 and `DEFAULT_PHASE_CAP` to 2, integration smoke. Run `make verify`.
+5. 2.9 sign-off, in order:
+   5a. Run the cold-user walkthrough from `reviewing-requirements.md` (2.9.1). Capture log. Fix anything that fails before proceeding.
+   5b. Audit each prior sub-step's DoD (2.9.2). Block on any unmet item.
+   5c. Write `tests/test_phase_2_signoff.py` (2.9.5). Run `make test` — expect failures for any not-yet-applied plan/CHANGELOG edits.
+   5d. Update `plan.md` and `CHANGELOG.md` (2.9.3). Re-run sign-off test — expect green.
+   5e. Doc final read-through (2.9.4). Edit any drift; re-run `make verify`.
+   5f. Final DoD evaluation (2.9.6): commit, push, annotated tag, tag push.
+
+#### Failure modes
+
+- A rubric dimension turns out to be hard to detect mechanically. **Mitigation:** the helper applies only the mechanical part; the AI-judgment part lives in the methodology doc and the command file's Behavior section. The seeded fixture marks each defect as `mechanical` or `judgment`, and the test suite only asserts on mechanical findings. Judgment findings are reviewed by the cold-user walkthrough in 2.9.1.
+- Requirement-ID collisions between input documents. **Mitigation:** the parser raises on collision and prints the conflicting source lines. The seeded fixture deliberately includes no collisions; a separate negative test asserts the helper refuses collision input.
+- Seeded fixture grows stale as the rubric evolves. **Mitigation:** the scaffold test (2.1) asserts every rubric dimension named in the methodology docs appears in the fixture. Adding a rubric dimension without seeding it fails the scaffold test.
+- `/tc:requirements-to-tests` writes a schema Phase 4 can't read. **Mitigation:** the schema header is documented in `commands/requirements-to-tests.md` and asserted in `test_requirements_to_tests.py`. Phase 4 inherits the same schema and is reviewed against this contract before enriching.
+- Traceability map drift between commands. **Mitigation:** all five commands share the same ID space; each test asserts the traceability map is updated and that the same IDs flow from `/tc:review-requirements` through `/tc:requirements-to-tests`. The integration smoke in 2.8 enforces the end-to-end invariant.
+- `workspace_state.py`'s `PHASE_OWNERSHIP` does not know that `/tc:requirements-to-tests` writes test-idea seeds. **Mitigation:** `test-ideas/` remains Phase-4-owned. Phase-2 seed writes show as populated content under Phase 4; status reporting treats this as "in_progress" for Phase 4 once seeds exist. Document the convention in `commands/requirements-to-tests.md` so the behavior is intentional, not a bug.
+- `/tc:next` (Phase 1) does not recommend a Phase 3 command after Phase 2 completes. **Mitigation:** the integration smoke in 2.8 asserts `/tc:next` advances past Phase 2 once all five artifacts are populated. If the heuristic R-rules need an update, fold the change into Phase 1's `next-step-inference.md` in the same commit; do not silently break the heuristic.
+- Documentation walkthrough in 2.9.1 surfaces a gap (a step that doesn't work as documented). **Mitigation:** update `reviewing-requirements.md` to match reality and re-run the walkthrough. Treat as a Phase 2 doc bug, not a Phase 3 issue.
+- A prior sub-step's DoD turns out not to be green during 2.9.2. **Mitigation:** the failing sub-step reopens. 2.9 cannot close while any earlier DoD is unmet. Fix, re-verify the sub-step, then return to 2.9.2.
+- `phase-2` tag already exists locally (replay of 2.9). **Mitigation:** the annotated tag is intentional. If the prior tag was wrong, delete it (`git tag -d phase-2` then `git push origin :refs/tags/phase-2`) and recreate. Never force-overwrite an existing tag on origin without explicit user confirmation.
+- CHANGELOG Phase 2 closing entry diverges from To Do/Completed movement. **Mitigation:** the sign-off test (2.9.5) checks all three sources. They must agree before the test passes.
 
 ---
 
@@ -1773,11 +1984,15 @@ Phase 0 complete (2026-05-26) — see Completed.
 Phase 1 complete (2026-05-26) — see Completed.
 
 ### Phase 2
-- [ ] Author `/tc:review-requirements`, `/tc:review-user-stories`, `/tc:review-acceptance-criteria`, `/tc:requirements-coverage`, `/tc:requirements-to-tests`
-- [ ] Author methodology and template files
-- [ ] Build the seeded-flawed-requirements fixture
-- [ ] Author `docs/user-guide/reviewing-requirements.md`
-- [ ] Confirm review and test gates green
+- [ ] Step 2.1: `tc-requirements` skill scaffold + seeded-flawed-requirements fixture (`tests/fixtures/seeded-flawed-requirements/` covering every rubric dimension and every INVEST letter) + `tests/test_tc_requirements_scaffold.py`
+- [ ] Step 2.2: `/tc:review-requirements` — `review_requirements.py` + `commands/review-requirements.md` + `methodology/requirements-quality-review.md` + `templates/requirements-review-template.md` + SKILL.md update + `tests/test_review_requirements.py`
+- [ ] Step 2.3: `/tc:review-user-stories` — `review_user_stories.py` + `commands/review-user-stories.md` + `methodology/user-story-readiness.md` + `templates/user-story-review-template.md` + SKILL.md update + `tests/test_review_user_stories.py`
+- [ ] Step 2.4: `/tc:review-acceptance-criteria` — `review_acceptance_criteria.py` + `commands/review-acceptance-criteria.md` + `methodology/acceptance-criteria-quality.md` + `templates/acceptance-criteria-review-template.md` + SKILL.md update + `tests/test_review_acceptance_criteria.py`
+- [ ] Step 2.5: `/tc:requirements-coverage` — `requirements_coverage.py` + `commands/requirements-coverage.md` + `templates/requirements-coverage-template.md` + SKILL.md update + `tests/test_requirements_coverage.py`
+- [ ] Step 2.6: `/tc:requirements-to-tests` — `requirements_to_tests.py` + `commands/requirements-to-tests.md` (documents Phase-4 schema contract) + SKILL.md update + `tests/test_requirements_to_tests.py`
+- [ ] Step 2.7: documentation pass — `docs/user-guide/reviewing-requirements.md`, `docs/command-reference.md` index update, `docs/workspace-reference.md` Phase 2 marks, README/install/getting-started/workflow status refresh, final `tc-requirements/SKILL.md` consolidation pass
+- [ ] Step 2.8: testing finalization — bump `CATALOG["tc-requirements"]` to 2 and `DEFAULT_PHASE_CAP` to 2; `tests/test_phase_2_integration.py` (five-helper end-to-end smoke + `/tc:next` advances past Phase 2)
+- [ ] Step 2.9: Phase 2 sign-off — cold-user walkthrough of `reviewing-requirements.md`, per-step DoD audit, plan + CHANGELOG updates, doc final pass, `tests/test_phase_2_signoff.py` (≥ 140 total tests), annotated `phase-2` tag pushed to origin
 
 ### Phase 3
 - [ ] Author `/tc:learn-from-docs`, `/tc:learn-from-specs`, `/tc:learn-from-code`, `/tc:learn-from-api`, `/tc:learn-from-tests`
