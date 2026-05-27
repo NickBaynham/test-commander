@@ -1,6 +1,6 @@
-# Bookstore Requirements (intentionally flawed)
+# Requirements (intentionally flawed)
 
-These requirements describe a fictional online bookstore. Each entry below carries at least one intentional defect, marked with an inline `<!-- defect: <dimension> -->` comment. See `README.md` for the defect-marking convention.
+These requirements describe a fictional, deliberately-generic software system. Each entry below carries at least one intentional defect, marked with an inline `<!-- defect: <dimension> -->` comment. The narrative is domain-neutral on purpose — Test Commander is a generic testing tool. See `README.md` for the defect-marking convention.
 
 ## Functional requirements
 
@@ -8,49 +8,49 @@ These requirements describe a fictional online bookstore. Each entry below carri
 REQ-001: The system shall provide a robust and seamless user experience leveraging modern best-of-breed paradigms.
 
 <!-- defect: testability -->
-REQ-002: The site shall be user-friendly.
+REQ-002: The system shall be user-friendly.
 
 <!-- defect: completeness -->
-REQ-003: The user shall be able to check out.
+REQ-003: The user shall be able to log in.
 
 <!-- defect: consistency -->
-REQ-004: Guest users may purchase books without creating an account.
+REQ-004: Anonymous users may access the API without authentication.
 
 <!-- defect: consistency -->
-REQ-005: All purchases require an authenticated user account.
+REQ-005: All API access requires an authenticated user account.
 
 <!-- defect: atomicity -->
-REQ-006: The system shall allow users to search the catalog, add items to cart, apply coupons, and complete checkout.
+REQ-006: The system shall allow users to register an account, configure preferences, view reports, schedule jobs, and export data.
 
 <!-- defect: measurability -->
-REQ-007: The catalog search shall return results quickly.
+REQ-007: The search shall return results quickly.
 
 <!-- defect: ac-quality -->
-REQ-008: The recommendations engine shall surface relevant titles for each user. See acceptance criteria below (acceptance criteria deliberately omitted to exercise the rubric).
+REQ-008: The notification engine shall surface relevant updates for each user. See acceptance criteria below (acceptance criteria deliberately omitted to exercise the rubric).
 
 <!-- defect: edge-cases -->
-REQ-009: When a user submits an order, the system shall process payment and confirm the order.
+REQ-009: When a user submits a form, the system shall process the input and confirm acceptance.
 
 <!-- defect: negative-cases -->
-REQ-010: Users can apply promo codes at checkout to receive a discount.
+REQ-010: Users can apply filters to the report view to narrow the results.
 
 <!-- defect: data-rules -->
 REQ-011: User passwords are stored by the system.
 
 <!-- defect: roles-permissions -->
-REQ-012: Users can issue refunds for completed orders.
+REQ-012: Users can delete completed records.
 
 <!-- defect: nfrs -->
 REQ-013: The system shall be available for use.
 
 <!-- defect: dependencies -->
-REQ-014: The order-confirmation email is sent only after REQ-099 (inventory deduction) completes successfully. REQ-099 is referenced but does not exist in this document.
+REQ-014: The confirmation email is sent only after REQ-099 (record finalization) completes successfully. REQ-099 is referenced but does not exist in this document.
 
 <!-- defect: ambiguity -->
-REQ-015: The shopping cart shall persist across sessions for a reasonable time.
+REQ-015: The user session shall persist for a reasonable time.
 
 <!-- defect: risk -->
-REQ-016: The site shall accept and store credit-card primary account numbers directly, without third-party tokenization, to simplify the checkout flow.
+REQ-016: The system shall store authentication credentials in plain text in the database to simplify password recovery.
 
 <!-- defect: automation-suitability -->
-REQ-017: The visual theme of every page shall match the brand style guide and feel inviting to readers. Marked as a candidate for automated regression checks.
+REQ-017: The visual theme of every page shall match the design style guide and feel inviting to users. Marked as a candidate for automated regression checks.

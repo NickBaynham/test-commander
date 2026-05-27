@@ -1,8 +1,8 @@
 # Seeded-flawed-requirements fixture
 
-A small Markdown corpus that carries intentional defects, one per rubric dimension. The Test Commander Phase 2 commands (`/tc:review-requirements`, `/tc:review-user-stories`, `/tc:review-acceptance-criteria`, `/tc:requirements-coverage`, `/tc:requirements-to-tests`) are tested against this fixture: every command suite asserts that the corresponding finding is produced for each seeded defect.
+A deliberately-generic Markdown corpus that exercises every rubric dimension the Phase 2 commands check. Each entry carries at least one intentional defect, marked with an inline `<!-- defect: <dimension> -->` comment. The Test Commander Phase 2 commands (`/tc:review-requirements`, `/tc:review-user-stories`, `/tc:review-acceptance-criteria`, `/tc:requirements-coverage`, `/tc:requirements-to-tests`) are tested against this fixture: every command suite asserts that the corresponding finding is produced for each seeded defect.
 
-The fixture is the rubric's contract. Adding a new rubric dimension means adding a seeded defect here first, then turning the corresponding command test green.
+The fixture is a **test asset, not part of the shipped plugin**. Its narrative is intentionally domain-neutral because Test Commander is a generic testing tool — at runtime it works against whatever requirements the consuming project supplies, not against any pre-known product. Defects here use only universal English and software-engineering vocabulary; nothing in this fixture should be read as a claim about a specific product domain (e-commerce, banking, healthcare, etc.). Domain-specific vocabulary enters at runtime through `<workspace>/config.yaml` extensions, not through this fixture.
 
 ## Files
 
@@ -36,9 +36,9 @@ Where `<dimension>` is a lowercase, kebab-case dimension key. The fixture loader
 
 1. Pick a dimension key (kebab-case, lowercase).
 2. Add the dimension to the appropriate list in this README and in `tests/test_tc_requirements_scaffold.py`.
-3. Add a defect example in the corresponding fixture file, marked with the inline `<!-- defect: <dimension> -->` comment.
-4. Add a test case in the relevant command test (`test_review_requirements.py`, etc.) that asserts the command surfaces a finding for the new dimension.
+3. Add a defect example in the corresponding fixture file, marked with the inline `<!-- defect: <dimension> -->` comment. Keep the wording domain-neutral: universal English and software-engineering vocabulary only.
+4. Add a test case in the relevant command test (`test_review_requirements.py`, etc.) that asserts the command surfaces a finding for the new dimension using the helper's universal-core keyword set.
 
-## Narrative
+## Domain-specific defects
 
-The fixture documents requirements for a fictional online bookstore. The narrative is intentionally light — the goal is to exercise the rubric, not to design a real product.
+Domain vocabulary (PCI: PAN, primary account number; HIPAA: PHI; commerce: refund, gift card; research: investigator, principal) does **not** belong in this fixture. Domain-specific defects are exercised by consuming projects via their own requirements documents and their own `<workspace>/config.yaml` keyword extensions; they are not part of Test Commander's universal contract.

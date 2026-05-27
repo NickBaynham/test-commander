@@ -1111,7 +1111,7 @@ No implementation lands before its tests. No tests are added after the fact.
 - **Seeded-flawed-requirements fixture is the source of truth for the review rubric.** A small Markdown corpus under `tests/fixtures/seeded-flawed-requirements/` carries intentional defects, each tagged with the rubric dimension it violates via an inline `<!-- defect: <dimension> -->` HTML comment. Every rubric dimension has at least one seeded defect; every command's test fixture asserts the corresponding finding is produced. Adding a new rubric dimension means adding a seeded defect — the fixture is the contract.
 - **Per-requirement artifacts use stable IDs.** Every parsed requirement is assigned an ID (sourced from the input document if present, else generated as `REQ-NNN`). All five command outputs use the same ID space so cross-command traceability works. Traceability updates land in `.test-commander/traceability/requirements-map.md`.
 - **`/tc:requirements-to-tests` seeds `.test-commander/test-ideas/`.** Phase 4 ultimately owns the rich charter/exploration model; Phase 2 only seeds bare test ideas (one or more per requirement). The seed file's schema is forward-compatible with Phase 4's idea model — Phase 4 enriches, Phase 2 does not block on it. `workspace_state.py`'s `PHASE_OWNERSHIP` keeps `test-ideas/` under Phase 4; Phase 2 writes are scored as populated content but do not change ownership.
-- **Mechanical vs. judgment split is explicit in tests.** Helpers cover only the mechanical part of the rubric (length, presence of acceptance language, dependency cycles, contradicting verbs, INVEST size heuristics, AC predicate testability). Judgment items (atomicity, ambiguity, NFR completeness, automation suitability) are described in the methodology docs and exercised by the cold-user walkthrough in sign-off, not by the pytest suite. The seeded fixture marks each defect's category so test assertions stay deterministic.
+- **Helpers detect every rubric dimension mechanically using universal cores; projects extend domain-specific keyword sets via `<workspace>/config.yaml`.** Every dimension in the Phase 2 rubric has a deterministic check the helper performs against a *shipped universal core* — regex over generic English, RFC-2119 modal detection, simple graph analysis for dependencies, mutual-exclusion comparison for consistency. Test Commander ships only universal vocabulary: no PCI/HIPAA/e-commerce/research/finance terms in the core, because the tool does not know what product a consuming team is testing until exploratory testing (Phase 4) tells us. Dimensions that meaningfully need domain vocabulary (`data-rules` sensitive-data terms, `risk` compliance terms, `roles-permissions` role and verb taxonomies) accept optional extensions from `<workspace>/config.yaml` under `tc-requirements:`. The shipped seeded fixture exercises only the universal cores; domain coverage is the consuming project's responsibility through their own requirements documents and config extensions. Tests assert universal-core triggering. Claude's runtime role is the narrative layer on top: explaining *why* each finding matters in product context, ranking severity, identifying gaps the keyword check would miss. The cold-user walkthrough in 2.9.1 validates judgment quality; the pytest suite validates universal-core coverage. Per-dimension cores and extension hooks are enumerated in a partition table inside each command's sub-step (see 2.2 for the requirement-level table; 2.3 and 2.4 will add their own).
 
 **Skills authored.** `tc-requirements` — `SKILL.md` plus five command files (one per `/tc:*` command), three methodology files (`requirements-quality-review.md`, `user-story-readiness.md`, `acceptance-criteria-quality.md`), and four templates (`requirements-review-template.md`, `user-story-review-template.md`, `acceptance-criteria-review-template.md`, `requirements-coverage-template.md`).
 
@@ -1139,14 +1139,73 @@ Nine sub-steps. TDD throughout: every implementation step lands its tests red be
 
 #### 2.2 — `/tc:review-requirements` (TDD)
 
-- **Helper.** `plugins/test-commander/scripts/review_requirements.py` (per D18) — reads a target Markdown document (default: every `*.md` in `<workspace>/documents/uploaded/`), parses requirements (numbered headings, bulleted items, or explicit `REQ-NNN` markers), applies the mechanical rubric checks (length, presence of acceptance language, dependency cycle detection across requirements, contradicting verbs across requirements that name the same entity), and writes `<workspace>/requirements/requirements-review.md` plus updates `<workspace>/requirements/requirements-inventory.md`. Open questions detected during the review are appended to `<workspace>/requirements/open-questions.md`.
-- **Methodology.** `plugins/test-commander/skills/tc-requirements/methodology/requirements-quality-review.md` — documents the rubric (clarity, testability, completeness, consistency, atomicity, measurability, dependencies, ambiguity, risk) with one worked example per dimension drawn from the seeded fixture. Marks each dimension as `mechanical` or `judgment` so the split with helper coverage is explicit.
-- **Template.** `plugins/test-commander/skills/tc-requirements/templates/requirements-review-template.md` — output structure: executive summary, findings table, per-requirement detail blocks, open-questions section, traceability footer.
+- **Helper.** `plugins/test-commander/scripts/review_requirements.py` (per D18). Reads every `*.md` file in `<workspace>/documents/uploaded/` whose body declares one or more `REQ-NNN` markers (other Markdown files in that directory — README, design notes — are skipped). Parses each `REQ-NNN` entry into `{id, body}` pairs. Applies the mechanical checks in the partition table below, one per requirement-level rubric dimension. Writes three artifacts:
+  - `<workspace>/requirements/requirements-review.md` — **overwrites** on every run; user edits to this file are not preserved (it is a generated report).
+  - `<workspace>/requirements/requirements-inventory.md` — **overwrites** with the freshly-parsed ID list in document order.
+  - `<workspace>/requirements/open-questions.md` — **appends**, deduplicated by the `(question-text, requirement-id)` pair. Existing user-authored questions are preserved.
+
+  **Idempotency contract.** Re-running the helper against unchanged input produces byte-identical `requirements-review.md` and `requirements-inventory.md`, and adds no new lines to `open-questions.md`.
+
+  **Open-questions rule.** The helper emits one open question for every detected broken dependency reference (`"<source-REQ> references <target-REQ> which does not exist"`) and one open question for every detected mutual-exclusion pair (`"<REQ-A> and <REQ-B> assert mutually-exclusive constraints over <shared subject> — which is authoritative?"`). Other findings appear in `requirements-review.md` only.
+
+  **Input-file filter.** A file in `documents/uploaded/` is treated as a requirements source iff it contains at least one `REQ-\d+` token. This excludes the workspace template's `README.md` placeholder and any non-requirements docs the user has uploaded.
+
+  **Requirement-ID collision rule.** If two source files declare the same `REQ-NNN` ID, the helper exits non-zero with a message naming both files and the colliding ID. No artifacts are written on collision.
+
+  **Partition table — mechanical checks per rubric dimension.** Every dimension below has a deterministic check; the seeded fixture has at least one defect per dimension and the helper must find each one. The helper produces a finding for every triggered dimension on every requirement (a single requirement may trigger multiple dimensions).
+
+  | Dimension | Mechanical check |
+  | --- | --- |
+  | clarity | body contains any buzzword from `{robust, seamless, modern, best-of-breed, world-class, leverage}` |
+  | testability | body contains a vague predicate from `{user-friendly, easy, intuitive, fast, slow}` without a numeric threshold nearby, **or** body lacks an RFC-2119 modal (`shall`/`must`/`should`) |
+  | completeness | body length ≤ 10 tokens, **or** body specifies an action verb without naming an outcome or acceptance condition |
+  | consistency | two or more requirements share a subject noun-phrase (case-insensitive) but assert mutually-exclusive predicates — detected by comparing modal phrases (`may`/`shall`/`require`/`prohibit`) over the shared subject |
+  | atomicity | body joins ≥ 2 independent clauses with coordinating conjunctions (a comma-list of ≥ 3 items ending in `and`/`or`, or two `and`-joined verb phrases) |
+  | measurability | body uses a qualitative quantifier from `{quickly, fast, many, few, often, soon, slow, rapidly}` without a numeric token (digit run, optional unit/percent) within ±1 sentence |
+  | ac-quality | body matches `\bacceptance criteria\b` but no AC pointer of the form `AC-\d+` is present in scope, **or** body specifies a user action without any AC pointer at all |
+  | edge-cases | body specifies an action but contains no edge keyword from `{except, unless, otherwise, edge}` |
+  | negative-cases | body specifies an action but contains no failure keyword from `{invalid, error, fail, missing, declined, rejected, denied}` |
+  | data-rules | body references a sensitive-data keyword from the universal core `{password, secret, token, credential, key}` — **extensible** via `tc-requirements.data-rules.sensitive-keywords` in `<workspace>/config.yaml` for domain terms (e.g. PCI: `PAN`, `primary account number`; HIPAA: `PHI`; PII: `SSN`) — without a constraint keyword from `{length, format, encoding, retention, hashed, encrypted, tokenized}` in the same requirement |
+  | roles-permissions | body uses a permission verb from the universal core `{delete, approve, reject, modify, grant, revoke}` — **extensible** via `tc-requirements.roles-permissions.permission-verbs` for domain verbs (e.g. commerce: `issue`, `refund`; healthcare: `dispense`, `prescribe`) — without a role qualifier from the universal core `{admin, owner, operator}` — **extensible** via `tc-requirements.roles-permissions.role-qualifiers` for domain roles (e.g. commerce: `customer`, `store-manager`; research: `investigator`, `reviewer`) |
+  | nfrs | body uses an NFR adjective from `{available, secure, performant, scalable, reliable}` without a quantitative threshold (e.g. `99.9%`, `< 200 ms`, `≥ N`) in the same requirement |
+  | dependencies | parse `REQ-\d+` references in bodies; report (a) broken references — target REQ-ID does not exist among parsed IDs, **and** (b) cycles — any non-trivial cycle in the reference graph |
+  | ambiguity | body contains an ambiguity adjective from `{reasonable, appropriate, sufficient, robust, seamless}` |
+  | risk | body contains a universal security anti-pattern from the core `{plain text, plaintext, unencrypted, raw password, hardcoded credential, default password}` — **extensible** via `tc-requirements.risk.compliance-keywords` for domain compliance regimes (e.g. PCI: `PAN`, `primary account number`; HIPAA: `PHI`; PII: `SSN`, `social security`). Presence alone is the risk signal; Claude's narrative layer determines whether a compensating control (tokenization, encryption-at-rest, vault storage) exists |
+  | automation-suitability | body uses a subjective verb-phrase from `{feel, look, match the brand, delight, inviting}` while being marked as an automation candidate (e.g. `automation candidate`, `regression check`, `automated`) |
+
+  Word-set membership is case-insensitive. Single-token keywords are matched at word boundaries; multi-token phrases are matched literally. The AC-specific dimensions `ac-missing-edge-cases`, `ac-missing-negative-cases`, `ac-untestable-predicate`, `ac-ambiguous-data-rule`, and `ac-missing-role-context` are owned by 2.4 and are **not** detected here.
+
+  **Configurable extensions — `<workspace>/config.yaml`.** Test Commander ships only universal-core keyword sets because it does not assume a product domain. Consuming projects extend the rows marked **extensible** by adding a `tc-requirements:` block to `<workspace>/config.yaml`:
+
+  ```yaml
+  tc-requirements:
+    data-rules:
+      sensitive-keywords: [PAN, primary account number, PHI, SSN]
+    risk:
+      compliance-keywords: [PAN, primary account number, PHI, social security]
+    roles-permissions:
+      permission-verbs: [issue, refund, dispense, prescribe]
+      role-qualifiers: [customer, store-manager, investigator, reviewer]
+  ```
+
+  Missing keys = no extension; the helper falls back to the universal core only. The helper unions defaults with extensions at runtime — extensions never replace defaults, only add to them. The seeded fixture in `tests/fixtures/seeded-flawed-requirements/` does **not** rely on any extension; every seeded defect triggers via the universal core alone. Projects that need domain coverage write their own requirement fixtures and supply their own extensions.
+
+- **Methodology.** `plugins/test-commander/skills/tc-requirements/methodology/requirements-quality-review.md` — covers all 16 requirement-level rubric dimensions from the partition table. Each dimension's section has: definition, the mechanical check verbatim from the table, one worked example drawn from the seeded fixture (cite the REQ-ID and quote the body), and a "Claude judgment layer" paragraph explaining what the AI must add beyond the mechanical finding (severity ranking, product-context narrative, identification of gaps the keyword check would miss).
+- **Template.** `plugins/test-commander/skills/tc-requirements/templates/requirements-review-template.md` — output structure: executive summary, findings table (REQ-ID × dimension × verbatim trigger), per-requirement detail blocks (each requirement's body verbatim plus every dimension it triggered), open-questions section (reproducing the deduplicated questions from `open-questions.md`), traceability footer (list of parsed IDs, count of findings per dimension).
 - **Command file.** `plugins/test-commander/skills/tc-requirements/commands/review-requirements.md` — Inputs / Outputs / Preconditions / Behavior / Safety / Implementation / Definition of Done / See also.
 - **SKILL.md update.** `tc-requirements/SKILL.md` updated in the same sub-step to describe `/tc:review-requirements`'s shipped behavior and instruct Claude to invoke the bundled helper. Stale deferral wording for this command removed.
-- **Tests first.** `tests/test_review_requirements.py` — at minimum: uninitialized workspace refused, empty `documents/uploaded/` produces a review file noting "no requirements found" (not an error), seeded-fixture input writes the expected three files, every mechanical rubric dimension produces at least one finding traced to the seeded fixture, idempotent re-run does not duplicate findings, open-questions routed to the dedicated file (not embedded in the review), inventory updated with the correct ID list, requirement-ID collisions refused with a clear error.
-- **Definition of done.** Helper passes all test cases; methodology doc covers every rubric dimension (mechanical or judgment) with a worked example; template authored; per-command page complete; `tc-requirements/SKILL.md` no longer carries deferral wording for `/tc:review-requirements`.
-- **Verification.** Pytest green; smoke run against the seeded fixture produces a `requirements-review.md` that names every mechanical defect dimension at least once.
+- **Tests first.** `tests/test_review_requirements.py` — at minimum:
+  - Uninitialized workspace refused with a clear error (no `.test-commander/`).
+  - `<workspace>/documents/uploaded/` exists but contains no `REQ-\d+`-bearing file (only a README placeholder): helper writes a review noting "no requirements found", exits 0, and does not error.
+  - Seeded-fixture input — **only** `tests/fixtures/seeded-flawed-requirements/requirements.md` is copied into `<workspace>/documents/uploaded/`; the user-stories and acceptance-criteria fixture files are 2.3 and 2.4 inputs and must not be placed here for 2.2 tests. Helper writes exactly three files (`requirements-review.md`, `requirements-inventory.md`, `open-questions.md`).
+  - For every one of the 16 dimensions in the partition table, at least one finding appears in `requirements-review.md` whose REQ-ID matches the seeded defect tagged with that dimension in `requirements.md`.
+  - Broken-reference finding for REQ-014 (references the absent REQ-099) appears in `open-questions.md`.
+  - Mutual-exclusion finding for the REQ-004 / REQ-005 pair appears in `open-questions.md`.
+  - Idempotent re-run: `requirements-review.md` and `requirements-inventory.md` are byte-for-byte identical to the first run; `open-questions.md` line count is unchanged.
+  - Inventory file lists every parsed REQ-ID in document order.
+  - Requirement-ID collision across two input files (a synthetic fixture declaring REQ-007 in a second `.md` file) is refused with a clear error naming both files; no artifacts are written.
+- **Definition of done.** Helper passes all test cases; methodology covers all 16 requirement-level rubric dimensions per the partition table with a worked example each and a Claude-judgment-layer paragraph each; template authored; per-command page complete; `tc-requirements/SKILL.md` no longer carries deferral wording for `/tc:review-requirements`.
+- **Verification.** Pytest green. The partition-table coverage assertion is already part of the test suite, so no separate smoke is required — the implementer should still eyeball the generated `requirements-review.md` for tone, ordering, and structure before declaring 2.2 done.
 
 #### 2.3 — `/tc:review-user-stories` (TDD)
 
