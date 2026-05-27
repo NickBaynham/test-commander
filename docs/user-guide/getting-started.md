@@ -37,7 +37,7 @@ See [../install.md](../install.md) for the full prerequisite list and per-platfo
 
 ## What's next
 
-- Phase 1 ships `/tc:init`, which creates a `.test-commander/` workspace inside your consuming project. Until then, the plugin is loaded but its commands are not yet implemented.
+- Phase 1 commands are available: `/tc:init`, `/tc:status`, `/tc:journal`, `/tc:next`. See [workflow.md](workflow.md) for the first end-to-end walkthrough against a consuming project.
 - Watch [../../CHANGELOG.md](../../CHANGELOG.md) for phase progress.
 
 ## If something goes wrong

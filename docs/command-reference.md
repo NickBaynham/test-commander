@@ -1,13 +1,24 @@
 # Command Reference
 
-Every `/tc:*` command Test Commander exposes is summarized here. Per-command pages (inputs, outputs, preconditions, behavior, safety) live next to their skill at `plugins/test-commander/skills/<skill>/commands/<command>.md`.
+This file is the index. Per-command pages — inputs, outputs, preconditions, behavior, safety, definition of done — live next to their skill at `plugins/test-commander/skills/<skill>/commands/<command>.md`. Per the Phase 1 design decision, the per-command page is the single source of truth that Claude reads at runtime and that users read for reference.
+
+## Phase 1 commands (shipped)
+
+| Command | Skill | Per-command page |
+| --- | --- | --- |
+| `/tc:init` | `tc-core` | [init.md](../plugins/test-commander/skills/tc-core/commands/init.md) |
+| `/tc:status` | `tc-core` | [status.md](../plugins/test-commander/skills/tc-core/commands/status.md) |
+| `/tc:journal` | `tc-core` | [journal.md](../plugins/test-commander/skills/tc-core/commands/journal.md) |
+| `/tc:next` | `tc-core` | [next.md](../plugins/test-commander/skills/tc-core/commands/next.md) |
+
+For the methodology behind `/tc:next`'s recommendations, see [next-step-inference.md](../plugins/test-commander/skills/tc-core/methodology/next-step-inference.md).
+
+## Planned commands (not yet implemented)
+
+These will gain per-command pages as their phases ship.
 
 | Command | Skill | Phase |
 | --- | --- | --- |
-| `/tc:init` | `tc-core` | 1 |
-| `/tc:status` | `tc-core` | 1 |
-| `/tc:journal` | `tc-core` | 1 |
-| `/tc:next` | `tc-core` | 1 |
 | `/tc:review-requirements` | `tc-requirements` | 2 |
 | `/tc:review-user-stories` | `tc-requirements` | 2 |
 | `/tc:review-acceptance-criteria` | `tc-requirements` | 2 |
@@ -45,6 +56,4 @@ Every `/tc:*` command Test Commander exposes is summarized here. Per-command pag
 | `/tc:render-visuals` | `tc-visualize` | 9 |
 | `/tc:web-*` | `tc-web` | 10 |
 | `/tc:sandbox-*` | `tc-sandbox` | 12 |
-| `/tc:watch-changes` and continuous-quality | `tc-continuous-quality` | 13 |
-
-> Phase 0 ships no implemented commands. The table above describes the planned command surface. Per-phase columns track the rollout.
+| `/tc:watch-changes`, continuous-quality | `tc-continuous-quality` | 13 |

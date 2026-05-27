@@ -4,7 +4,7 @@ An AI-assisted testing system and quality intelligence center. Test Commander he
 
 It is built as a Claude Code plugin plus a small Python and TypeScript runtime. It is designed to be installed once and grown phase by phase.
 
-> Status: Phase 0 complete (2026-05-26). Phase 1 starts next. See [planning/plan.md](planning/plan.md) for the full roadmap.
+> Status: Phase 1 in progress. Phase 0 complete (2026-05-26); Phase 1 ships `/tc:init`, `/tc:status`, `/tc:journal`, `/tc:next`. See [planning/plan.md](planning/plan.md) for the full roadmap and [docs/user-guide/workflow.md](docs/user-guide/workflow.md) for the first walkthrough.
 
 ## What Test Commander Is
 
@@ -135,6 +135,7 @@ The per-project quality workspace lives at `.test-commander/` in *consuming* pro
 - [Glossary](docs/glossary.md)
 - [Install guide](docs/install.md)
 - [User guide — getting started](docs/user-guide/getting-started.md)
+- [User guide — first workflow walkthrough](docs/user-guide/workflow.md)
 - [Public-skill evaluation pass](docs/skill-evaluation.md)
 - [Controlled agent execution](docs/controlled-agent-execution.md)
 - [Security and permissions](docs/security-and-permissions.md)
