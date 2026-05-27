@@ -31,9 +31,17 @@ Full spec: [commands/review-requirements.md](commands/review-requirements.md). R
 
 ### `/tc:review-user-stories`
 
-Review user stories against the INVEST rubric (Independent, Negotiable, Valuable, Estimable, Small, Testable) and the role-action-benefit shape.
+Review user stories against the INVEST rubric (Independent, Negotiable, Valuable, Estimable, Small, Testable), the role-action-benefit shape (`As a ... I want ... So that ...`), and the acceptance-criteria-pointer check. Writes `<workspace>/requirements/user-story-review.md` with findings, a per-story detail block, and a readiness verdict (`ready` / `needs-refinement` / `blocked`) per story. Idempotent — re-runs against unchanged input produce byte-identical output.
 
-Behavior arrives in Phase 2 Step 2.3. Until then, this command paragraph is a placeholder.
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/review_user_stories.py <project-root>
+```
+
+`<project-root>` defaults to the current working directory. The INVEST checks are universal English / agile vocabulary; no domain extension is required (consuming projects pick their own `@area:`/`@persona:` tag values per D19, but the INVEST mechanics themselves are domain-agnostic).
+
+Full spec: [commands/review-user-stories.md](commands/review-user-stories.md). Rubric and per-dimension checks: [methodology/user-story-readiness.md](methodology/user-story-readiness.md).
 
 ### `/tc:review-acceptance-criteria`
 
@@ -55,9 +63,9 @@ Behavior arrives in Phase 2 Step 2.6. Until then, this command paragraph is a pl
 
 ## What to do when a slash command fires
 
-For shipped commands (currently `/tc:review-requirements`): resolve `<plugin-root>` relative to this SKILL.md, determine `<project-root>` (the user's current working directory unless specified otherwise), run the bundled helper via `Bash`, and report the helper's CLI output. Then add the narrative judgment layer described in the methodology doc — explain *why* each finding matters in product context, rank severity, and identify gaps the keyword check could miss. If the helper exits non-zero, surface its stderr and the relevant per-command page.
+For shipped commands (currently `/tc:review-requirements` and `/tc:review-user-stories`): resolve `<plugin-root>` relative to this SKILL.md, determine `<project-root>` (the user's current working directory unless specified otherwise), run the bundled helper via `Bash`, and report the helper's CLI output. Then add the narrative judgment layer described in the relevant methodology doc — explain *why* each finding matters in product context, rank severity, and identify gaps the keyword check could miss. If the helper exits non-zero, surface its stderr and the relevant per-command page.
 
-For not-yet-shipped commands (`/tc:review-user-stories`, `/tc:review-acceptance-criteria`, `/tc:requirements-coverage`, `/tc:requirements-to-tests`): point the user at the planning entry in `planning/plan.md` (Phase 2 — Requirements and User Story Intelligence) and at the per-command page for the command they invoked, if it exists. Do not improvise behavior — the helpers are the source of truth and they arrive incrementally.
+For not-yet-shipped commands (`/tc:review-acceptance-criteria`, `/tc:requirements-coverage`, `/tc:requirements-to-tests`): point the user at the planning entry in `planning/plan.md` (Phase 2 — Requirements and User Story Intelligence) and at the per-command page for the command they invoked, if it exists. Do not improvise behavior — the helpers are the source of truth and they arrive incrementally.
 
 ## See also
 
