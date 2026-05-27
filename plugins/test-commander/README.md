@@ -8,7 +8,8 @@ This README documents the plugin's contents. For the project overview, architect
 
 | Skill | Status | Purpose |
 | --- | --- | --- |
-| `tc-core` | Skill descriptor only | Owns `/tc:init`, `/tc:status`, `/tc:journal`, and (Phase 1) `/tc:next`. Command behavior arrives in Phase 1. |
+| `tc-core` | Phase 1 shipped | Owns `/tc:init`, `/tc:status`, `/tc:journal`, `/tc:next`. |
+| `tc-requirements` | Phase 2 shipped | Owns `/tc:review-requirements`, `/tc:review-user-stories`, `/tc:review-acceptance-criteria`, `/tc:requirements-coverage`, `/tc:requirements-to-tests`. |
 
 ## What arrives later
 
@@ -16,7 +17,6 @@ Each Test Commander skill is created by the phase that needs it. Until that phas
 
 | Skill | Phase | Owns |
 | --- | --- | --- |
-| `tc-requirements` | 2 | Requirements, user-story, and acceptance-criteria reviews |
 | `tc-knowledge` | 3 | Learning from docs, specs, code, APIs, tests |
 | `tc-explore` | 4 | Charter-based exploratory testing |
 | `tc-bdd`, `tc-traceability` | 5 | BDD generation and traceability maps |

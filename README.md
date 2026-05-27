@@ -4,7 +4,7 @@ An AI-assisted testing system and quality intelligence center. Test Commander he
 
 It is built as a Claude Code plugin plus a small Python and TypeScript runtime. It is designed to be installed once and grown phase by phase.
 
-> Status: Phase 1 complete (2026-05-26); Phase 2 starts next. `tc-core` ships `/tc:init`, `/tc:status`, `/tc:journal`, `/tc:next`. See [planning/plan.md](planning/plan.md) for the full roadmap and [docs/user-guide/workflow.md](docs/user-guide/workflow.md) for the first walkthrough.
+> Status: Phase 2 in progress. `tc-core` ships `/tc:init`, `/tc:status`, `/tc:journal`, `/tc:next`. `tc-requirements` ships `/tc:review-requirements`, `/tc:review-user-stories`, `/tc:review-acceptance-criteria`, `/tc:requirements-coverage`, `/tc:requirements-to-tests`. See [planning/plan.md](planning/plan.md) for the full roadmap, [docs/user-guide/workflow.md](docs/user-guide/workflow.md) for the Phase 1 walkthrough, and [docs/user-guide/reviewing-requirements.md](docs/user-guide/reviewing-requirements.md) for the Phase 2 walkthrough.
 
 ## What Test Commander Is
 
@@ -148,7 +148,8 @@ The per-project quality workspace lives at `.test-commander/` in *consuming* pro
 - [Glossary](docs/glossary.md)
 - [Install guide](docs/install.md)
 - [User guide — getting started](docs/user-guide/getting-started.md)
-- [User guide — first workflow walkthrough](docs/user-guide/workflow.md)
+- [User guide — first workflow walkthrough (Phase 1)](docs/user-guide/workflow.md)
+- [User guide — reviewing requirements (Phase 2)](docs/user-guide/reviewing-requirements.md)
 - [User guide — customizing for your project](docs/user-guide/customizing-for-your-project.md)
 - [Public-skill evaluation pass](docs/skill-evaluation.md)
 - [Controlled agent execution](docs/controlled-agent-execution.md)

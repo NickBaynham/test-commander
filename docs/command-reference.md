@@ -13,17 +13,24 @@ This file is the index. Per-command pages — inputs, outputs, preconditions, be
 
 For the methodology behind `/tc:next`'s recommendations, see [next-step-inference.md](../plugins/test-commander/skills/tc-core/methodology/next-step-inference.md).
 
+## Phase 2 commands (shipped)
+
+| Command | Skill | Per-command page |
+| --- | --- | --- |
+| `/tc:review-requirements` | `tc-requirements` | [review-requirements.md](../plugins/test-commander/skills/tc-requirements/commands/review-requirements.md) |
+| `/tc:review-user-stories` | `tc-requirements` | [review-user-stories.md](../plugins/test-commander/skills/tc-requirements/commands/review-user-stories.md) |
+| `/tc:review-acceptance-criteria` | `tc-requirements` | [review-acceptance-criteria.md](../plugins/test-commander/skills/tc-requirements/commands/review-acceptance-criteria.md) |
+| `/tc:requirements-coverage` | `tc-requirements` | [requirements-coverage.md](../plugins/test-commander/skills/tc-requirements/commands/requirements-coverage.md) |
+| `/tc:requirements-to-tests` | `tc-requirements` | [requirements-to-tests.md](../plugins/test-commander/skills/tc-requirements/commands/requirements-to-tests.md) |
+
+For the rubric methodology, see [requirements-quality-review.md](../plugins/test-commander/skills/tc-requirements/methodology/requirements-quality-review.md), [user-story-readiness.md](../plugins/test-commander/skills/tc-requirements/methodology/user-story-readiness.md), and [acceptance-criteria-quality.md](../plugins/test-commander/skills/tc-requirements/methodology/acceptance-criteria-quality.md). End-to-end walkthrough: [user-guide/reviewing-requirements.md](user-guide/reviewing-requirements.md).
+
 ## Planned commands (not yet implemented)
 
 These will gain per-command pages as their phases ship.
 
 | Command | Skill | Phase |
 | --- | --- | --- |
-| `/tc:review-requirements` | `tc-requirements` | 2 |
-| `/tc:review-user-stories` | `tc-requirements` | 2 |
-| `/tc:review-acceptance-criteria` | `tc-requirements` | 2 |
-| `/tc:requirements-coverage` | `tc-requirements` | 2 |
-| `/tc:requirements-to-tests` | `tc-requirements` | 2 |
 | `/tc:learn-from-docs` | `tc-knowledge` | 3 |
 | `/tc:learn-from-specs` | `tc-knowledge` | 3 |
 | `/tc:learn-from-code` | `tc-knowledge` | 3 |

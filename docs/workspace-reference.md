@@ -16,13 +16,13 @@ The workspace is created by [`/tc:init`](../plugins/test-commander/skills/tc-cor
   documents/
     uploaded/                 # Phase 3 — raw uploaded docs
     index.md                  # Phase 3 — index of uploads
-  requirements/               # Phase 2 — requirements review artifacts
-    requirements-inventory.md
-    requirements-review.md
-    user-story-review.md
-    acceptance-criteria-review.md
-    open-questions.md
-    requirements-coverage.md
+  requirements/               # Phase 2 — requirements review artifacts (populated)
+    requirements-inventory.md   # /tc:review-requirements
+    requirements-review.md      # /tc:review-requirements
+    user-story-review.md        # /tc:review-user-stories
+    acceptance-criteria-review.md  # /tc:review-acceptance-criteria
+    open-questions.md           # /tc:review-requirements (append-only, dedup)
+    requirements-coverage.md    # /tc:requirements-coverage
   product-knowledge/          # Phase 3 — extracted project knowledge
     system-model.md
     business-rules.md
@@ -35,7 +35,7 @@ The workspace is created by [`/tc:init`](../plugins/test-commander/skills/tc-cor
     api-model.md
   charters/                   # Phase 4 — exploration charters
   exploration-notes/          # Phase 4 — session notes
-  test-ideas/                 # Phase 4 — falsifiable test ideas
+  test-ideas/                 # Phase 4 (owner); Phase 2 seeds via /tc:requirements-to-tests
   bdd/                        # Phase 5 — BDD artifacts
     features/                 #   .feature files
     summaries/                #   per-feature Markdown summaries
@@ -93,17 +93,32 @@ The workspace is created by [`/tc:init`](../plugins/test-commander/skills/tc-cor
 
 Source documents uploaded by the user (specs, PRDs, design notes). `uploaded/` holds raw uploads; `index.md` is the searchable index built by `/tc:learn-from-docs`.
 
-### `requirements/` — Phase 2
+### `requirements/` — Phase 2 (shipped)
 
-Outputs of the requirements-review commands: inventory, per-requirement reviews, INVEST story reviews, acceptance-criteria reviews, open questions surfaced for human input, and coverage tracking that ties each requirement to a test idea, BDD scenario, automated test, and result.
+Outputs of the five Phase 2 commands:
+
+| File | Written by | Mode |
+| --- | --- | --- |
+| `requirements-inventory.md` | `/tc:review-requirements` | Overwrite |
+| `requirements-review.md` | `/tc:review-requirements` | Overwrite |
+| `open-questions.md` | `/tc:review-requirements` | Append (deduplicated by `(question-text, requirement-id)`) |
+| `user-story-review.md` | `/tc:review-user-stories` | Overwrite |
+| `acceptance-criteria-review.md` | `/tc:review-acceptance-criteria` | Overwrite |
+| `requirements-coverage.md` | `/tc:requirements-coverage` | Overwrite |
+
+All overwrite-mode files are byte-deterministic — re-running against unchanged input produces identical bytes. `open-questions.md` gains new questions only when new broken references or new mutual-exclusion pairs are detected.
+
+End-to-end walkthrough: [user-guide/reviewing-requirements.md](user-guide/reviewing-requirements.md). For the rubric methodology see [requirements-quality-review.md](../plugins/test-commander/skills/tc-requirements/methodology/requirements-quality-review.md), [user-story-readiness.md](../plugins/test-commander/skills/tc-requirements/methodology/user-story-readiness.md), and [acceptance-criteria-quality.md](../plugins/test-commander/skills/tc-requirements/methodology/acceptance-criteria-quality.md).
 
 ### `product-knowledge/` — Phase 3
 
 Structured knowledge extracted from project artifacts. `system-model.md` is the top-level component / boundary / integration view; `business-rules.md` captures rules and invariants; `user-journeys.md` captures primary paths; `entities.md` lists domain entities; `assumptions.md` is flagged distinctly from confirmed facts. The four `*-derived-model.md` files split knowledge by source (code, formal specs, prose docs, API surface).
 
-### `charters/`, `exploration-notes/`, `test-ideas/`, `sessions/` — Phase 4
+### `charters/`, `exploration-notes/`, `test-ideas/`, `sessions/` — Phase 4 (owner)
 
 Charters scope each exploratory session. Notes capture observations, surprises, bugs, ideas. Test-idea files hold specific, falsifiable claims that could be tested. Session records persist per-session metadata.
+
+**`test-ideas/` is seeded by Phase 2.** `/tc:requirements-to-tests` writes one `test-ideas/<REQ-ID>.md` per reviewed requirement with the Phase-4-compatible `tc-test-idea/v1` schema (one happy + one edge + one negative anchor scenario per REQ). Phase 4 enriches these seeds with charters, exploration sessions, and refined ideas; **Phase 2 never overwrites existing seeds** so Phase 4 enrichments survive re-runs. The `tc-test-idea/v1` schema contract is documented in [`commands/requirements-to-tests.md`](../plugins/test-commander/skills/tc-requirements/commands/requirements-to-tests.md).
 
 ### `bdd/` — Phase 5
 

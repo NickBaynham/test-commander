@@ -29,7 +29,7 @@ The workspace's `config.yaml` is the primary configuration surface. Test Command
 
 ### Phase 2 schema (`tc-requirements`)
 
-When Phase 2 Step 2.2 ships, three rubric dimensions become extensible:
+Phase 2 ships three extensible rubric dimensions under `tc-requirements:` (read by `/tc:review-requirements` for `data-rules` and `risk`, and by `/tc:review-acceptance-criteria` for `roles-permissions`):
 
 ```yaml
 tc-requirements:
