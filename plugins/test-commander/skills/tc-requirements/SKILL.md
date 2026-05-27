@@ -17,9 +17,17 @@ The helpers live at `scripts/<name>.py` relative to this plugin's root (the dire
 
 ### `/tc:review-requirements`
 
-Review uploaded requirements documents against the Test Commander rubric (clarity, testability, completeness, consistency, atomicity, measurability, dependencies, ambiguity, risk, NFRs, roles/permissions, data rules, automation suitability) and write a structured review.
+Review uploaded requirements documents against the Phase 2 rubric (16 dimensions: clarity, testability, completeness, consistency, atomicity, measurability, ac-quality, edge-cases, negative-cases, data-rules, roles-permissions, NFRs, dependencies, ambiguity, risk, automation-suitability). Writes three artifacts under `<workspace>/requirements/`: `requirements-review.md` (full report), `requirements-inventory.md` (parsed REQ-ID list in document order), and `open-questions.md` (auto-generated questions, deduplicated). Idempotent — re-runs against unchanged input produce byte-identical review and inventory; the open-questions file is line-stable.
 
-Behavior arrives in Phase 2 Step 2.2. Until then, this command paragraph is a placeholder.
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/review_requirements.py <project-root>
+```
+
+`<project-root>` defaults to the current working directory. Per D19 the helper ships universal-core keyword sets; consuming projects extend via `<workspace>/config.yaml` under `tc-requirements:` (see [customizing for your project](../../../../docs/user-guide/customizing-for-your-project.md)).
+
+Full spec: [commands/review-requirements.md](commands/review-requirements.md). Rubric and per-dimension checks: [methodology/requirements-quality-review.md](methodology/requirements-quality-review.md).
 
 ### `/tc:review-user-stories`
 
@@ -47,7 +55,9 @@ Behavior arrives in Phase 2 Step 2.6. Until then, this command paragraph is a pl
 
 ## What to do when a slash command fires
 
-Until each command lands in its own Phase 2 sub-step, point the user at the planning entry in `planning/plan.md` (Phase 2 — Requirements and User Story Intelligence) and at the per-command page for the command they invoked, if it exists. Do not improvise behavior — the helpers are the source of truth and they arrive incrementally.
+For shipped commands (currently `/tc:review-requirements`): resolve `<plugin-root>` relative to this SKILL.md, determine `<project-root>` (the user's current working directory unless specified otherwise), run the bundled helper via `Bash`, and report the helper's CLI output. Then add the narrative judgment layer described in the methodology doc — explain *why* each finding matters in product context, rank severity, and identify gaps the keyword check could miss. If the helper exits non-zero, surface its stderr and the relevant per-command page.
+
+For not-yet-shipped commands (`/tc:review-user-stories`, `/tc:review-acceptance-criteria`, `/tc:requirements-coverage`, `/tc:requirements-to-tests`): point the user at the planning entry in `planning/plan.md` (Phase 2 — Requirements and User Story Intelligence) and at the per-command page for the command they invoked, if it exists. Do not improvise behavior — the helpers are the source of truth and they arrive incrementally.
 
 ## See also
 
