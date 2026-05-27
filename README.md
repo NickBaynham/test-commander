@@ -161,6 +161,10 @@ The per-project quality workspace lives at `.test-commander/` in *consuming* pro
 
 Most `docs/` files are stubs in Phase 0 and get filled in by their owning phase.
 
+## For agents (Claude / automated operators)
+
+[AGENTS.md](AGENTS.md) is the entry point an agent reads at the start of every session. It names the source of truth ([planning/plan.md](planning/plan.md)), lists the 19 settled decisions (D1–D19), enumerates the seven Per-Phase Conventions, documents the TDD micro-cycle and verify chain, describes the commit and phase sign-off pattern, and lists what NOT to do. Read it before touching code.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). The short version: pick a phase step, build it small, test it, document it, raise a PR referencing the plan step.
