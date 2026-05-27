@@ -49,9 +49,9 @@ CATALOG: dict[str, float] = {
     "tc-continuous-quality": 13,
 }
 
-# Bumped as phases land. Phase 1 currently — tc-core (init + status +
-# journal + next) is shipped in Phase 1.
-DEFAULT_PHASE_CAP: float = 1
+# Bumped as phases land. Phase 2 currently — tc-core (Phase 1, four commands)
+# and tc-requirements (Phase 2, five commands) are both shipped.
+DEFAULT_PHASE_CAP: float = 2
 
 KEBAB_CASE = re.compile(r"[a-z][a-z0-9-]*")
 FRONTMATTER_BLOCK = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)

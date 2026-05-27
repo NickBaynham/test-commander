@@ -111,10 +111,16 @@ def test_verify_skills_catalog_tc_core_is_phase_1():
     )
 
 
-def test_verify_skills_default_phase_cap_is_1():
+def test_verify_skills_default_phase_cap_at_least_1():
+    # Phase 1 close bumped DEFAULT_PHASE_CAP from 0 to 1. Subsequent phases
+    # bump it further (Phase 2 -> 2, etc.). This assertion guards the
+    # "Phase 1 closed properly" invariant; later phases may raise the cap.
     text = VERIFY_SKILLS.read_text(encoding="utf-8")
-    assert re.search(r"DEFAULT_PHASE_CAP:\s*float\s*=\s*1\b", text), (
-        "expected DEFAULT_PHASE_CAP = 1 in scripts/verify_skills.py"
+    match = re.search(r"DEFAULT_PHASE_CAP:\s*float\s*=\s*([0-9]+(?:\.[0-9]+)?)\b", text)
+    assert match, "DEFAULT_PHASE_CAP assignment not found in scripts/verify_skills.py"
+    cap = float(match.group(1))
+    assert cap >= 1, (
+        f"expected DEFAULT_PHASE_CAP >= 1 in scripts/verify_skills.py, got {cap}"
     )
 
 
