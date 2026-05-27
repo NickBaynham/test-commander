@@ -42,3 +42,8 @@ quote-style = "double"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 pythonpath = ["scripts", "plugins/test-commander/scripts"]
+# fixtures/ holds illustrative consuming-project assets (Markdown, YAML, JSON,
+# example Python source and example test files). They are inputs to Test
+# Commander helpers, not Test Commander's own tests, so pytest must not
+# attempt to collect them.
+norecursedirs = ["fixtures"]

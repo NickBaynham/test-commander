@@ -1,0 +1,54 @@
+[
+  {
+    "method": "POST",
+    "path": "/sessions",
+    "status": 201,
+    "headers": {"content-type": "application/json"},
+    "body": {"id": "sess-1", "account_id": "acc-1", "expires_at": "2099-01-01T00:00:00Z"}
+  },
+  {
+    "method": "DELETE",
+    "path": "/sessions/{id}",
+    "status": 204,
+    "headers": {},
+    "body": null
+  },
+  {
+    "method": "GET",
+    "path": "/accounts/{id}",
+    "status": 200,
+    "headers": {"content-type": "application/json"},
+    "body": {"id": "acc-1", "display_name": "Sample Account", "role": "member"}
+  },
+  {
+    "method": "GET",
+    "path": "/workspaces",
+    "status": 200,
+    "headers": {"content-type": "application/json", "authorization": "Bearer redacted"},
+    "body": [{"id": "ws-1", "name": "Personal", "owner_account_id": "acc-1"}],
+    "_knowledge": "knowledge: auth-required"
+  },
+  {
+    "method": "POST",
+    "path": "/workspaces/{id}/assets",
+    "status": 500,
+    "headers": {"authorization": "Bearer redacted"},
+    "body": {"error": "internal_error"},
+    "_knowledge": "knowledge: mismatched-status"
+  },
+  {
+    "method": "GET",
+    "path": "/workspaces/{id}/assets",
+    "status": 200,
+    "headers": {"content-type": "application/json", "authorization": "Bearer redacted"},
+    "body": [{"id": "asset-1", "workspace_id": "ws-1", "name": "sample.bin", "size_bytes": 12, "content_type": "application/octet-stream"}]
+  },
+  {
+    "method": "GET",
+    "path": "/accounts/me",
+    "status": 200,
+    "headers": {"content-type": "application/json", "authorization": "Bearer redacted"},
+    "body": {"id": "acc-1", "display_name": "Sample Account", "role": "member"},
+    "_knowledge": "knowledge: unspecified-endpoint"
+  }
+]
