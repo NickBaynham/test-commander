@@ -389,6 +389,8 @@ When a Claude Code prompt is provided for a phase, it ends with this standing in
 
 **Per-command page is the single source of truth.** Every `/tc:*` command has a per-command page at `plugins/test-commander/skills/<skill>/commands/<command>.md` with these sections in order: Inputs, Outputs, Preconditions, Behavior, Safety, Implementation, Definition of Done, See also. The same file is what Claude reads at runtime and what users read for reference. `docs/command-reference.md` indexes the per-command pages — it does not duplicate them. Pattern established in Step 1.2 and confirmed across Steps 1.3–1.5.
 
+**SKILL.md surfaces shipped behavior.** The skill's `SKILL.md` is the entry point Claude reads when a user invokes a slash command owned by that skill. Each command sub-step that ships a helper + per-command page must, in the same sub-step, update the owning `SKILL.md` to (a) describe the now-shipped behavior in a brief paragraph and (b) instruct Claude to invoke the bundled helper, with a link to the per-command page for the full spec. Stale "behavior arrives in Phase N+1" wording for a shipped command is a per-step DoD failure — Claude reads the SKILL.md, sees the deferral, and may not route the command to the implementation. The Phase 1 sign-off test asserts no shipped command carries the deferral wording.
+
 ---
 
 ## Phase 0 — Repository Foundation
@@ -923,22 +925,25 @@ Eight sub-steps. TDD throughout: every implementation step lands its tests red b
 #### 1.2 — `/tc:init` (TDD)
 - **Helper.** `plugins/test-commander/scripts/init_workspace.py` (per D18 — ships inside the plugin so consuming-project users can invoke it) — copies the template into a target directory; idempotent; reports created vs skipped.
 - **Command file.** `plugins/test-commander/skills/tc-core/commands/init.md` (also serves as the user-facing reference per the per-command-page decision).
+- **SKILL.md update.** `tc-core/SKILL.md` updated in the same sub-step to describe `/tc:init`'s shipped behavior and instruct Claude to invoke `scripts/init_workspace.py` (per the "SKILL.md surfaces shipped behavior" convention).
 - **Tests first.** `tests/test_init_workspace.py` — fresh init, idempotent re-init on existing workspace, partial-existing case (some files present), refusal on invalid target (e.g. a file path, not a directory).
-- **Definition of done.** Helper passes all four cases; command file follows the per-command structure; nothing executes outside the target directory.
+- **Definition of done.** Helper passes all four cases; command file follows the per-command structure; nothing executes outside the target directory; SKILL.md no longer carries deferral wording for `/tc:init`.
 - **Verification.** Pytest + smoke run against a tmp dir leaves the expected tree.
 
 #### 1.3 — `/tc:status` (TDD)
 - **Helper.** `plugins/test-commander/scripts/workspace_state.py` (per D18) — reads `.test-commander/`, returns a structured snapshot (artifact counts, last-modified, completeness per phase). Shared with `/tc:next` in 1.5.
 - **Command file.** `tc-core/commands/status.md` formats the snapshot for users.
+- **SKILL.md update.** `tc-core/SKILL.md` updated in the same sub-step to describe `/tc:status`'s shipped behavior and instruct Claude to invoke `scripts/workspace_state.py`.
 - **Tests first.** `tests/test_workspace_state.py` — empty workspace, partial workspace, full workspace (fixtures generated from the template + selective additions).
-- **Definition of done.** Helper returns the documented snapshot shape (typed); command file authored; output is grep-friendly.
+- **Definition of done.** Helper returns the documented snapshot shape (typed); command file authored; output is grep-friendly; SKILL.md no longer carries deferral wording for `/tc:status`.
 - **Verification.** Snapshot deterministic per fixture; output passes a structural assertion.
 
 #### 1.4 — `/tc:journal` (TDD)
 - **Helper.** `plugins/test-commander/scripts/journal.py` (per D18) — append (timestamped) and summarize (chronological, by date range).
 - **Command file.** `tc-core/commands/journal.md`.
+- **SKILL.md update.** `tc-core/SKILL.md` updated in the same sub-step to describe `/tc:journal`'s shipped behavior (append + summarize) and instruct Claude to invoke `scripts/journal.py`.
 - **Tests first.** `tests/test_journal.py` — append to empty, append to existing, summarize range, summarize empty, malformed entry refused.
-- **Definition of done.** Helper passes all five cases; command file authored; journal files are valid Markdown.
+- **Definition of done.** Helper passes all five cases; command file authored; journal files are valid Markdown; SKILL.md no longer carries deferral wording for `/tc:journal`.
 - **Verification.** Pytest; resulting journal files render cleanly.
 - **Out of scope.** AI-generated summaries — that lives in Phase 8 (learning loop).
 - **Settled format (Step 1.4 outcome).** One file per day at `.test-commander/journal/YYYY-MM-DD.md`. Each file is an H1 date header (`# YYYY-MM-DD`) followed by zero or more H2 timestamp sections (`## YYYY-MM-DDTHH:MM:SSZ`), each with a verbatim Markdown body. The H1 appears once per file; H2 sections are append-only. Parser splits on H2 timestamp headings; bodies cannot contain a line matching that pattern (rejected at append). This is the stable contract Phase 8's learning loop will parse from.
@@ -947,6 +952,7 @@ Eight sub-steps. TDD throughout: every implementation step lands its tests red b
 - **Methodology.** `plugins/test-commander/skills/tc-core/methodology/next-step-inference.md` — documents the recommendation rules with examples.
 - **Engine.** `plugins/test-commander/scripts/next_step.py` (per D18) — reads `workspace_state`, applies heuristics, returns a ranked recommendation list with explanations.
 - **Command file.** `tc-core/commands/next.md`.
+- **SKILL.md update.** `tc-core/SKILL.md` updated in the same sub-step to describe `/tc:next`'s shipped behavior and instruct Claude to invoke `scripts/next_step.py`. By end of 1.5, `tc-core/SKILL.md` describes all four Phase 1 commands.
 - **Tests first.** `tests/test_next_step.py` with one fixture per heuristic: empty workspace, requirements-unreviewed, BDD-without-automation-plan, automation-without-runs, run-without-report, etc. Every rule documented in `next-step-inference.md` has at least one passing fixture.
 - **Definition of done.** Every documented heuristic has a passing test case; recommendations include an explanation, not just a command name; the top recommendation surfaces as `next:` on its own line.
 - **Verification.** Pytest with per-heuristic fixtures; ranked list output passes a structural assertion.
@@ -957,8 +963,9 @@ Eight sub-steps. TDD throughout: every implementation step lands its tests red b
   - Update `docs/command-reference.md` so the four commands link into their per-command pages inside the plugin.
   - Author `docs/user-guide/workflow.md` — first end-to-end walkthrough: `/tc:init` → `/tc:status` → `/tc:journal` → `/tc:next`.
   - Refresh `README.md`, `docs/install.md`, and `docs/user-guide/getting-started.md` for any Phase 1 mentions ("Phase 1 starts next" → "Phase 1 in progress" / "complete").
-- **Definition of done.** Every doc accurate against the implementation; all cross-links resolve; link checker green.
-- **Verification.** `python3 scripts/check_links.py` clean; manual read-through against the Phase 1 deliverables.
+  - **Final `tc-core/SKILL.md` pass.** Confirm SKILL.md describes every shipped command, links to all four per-command pages, and instructs Claude to invoke the bundled helpers. No "behavior arrives in Phase N+1" wording for any shipped command. The per-sub-step SKILL.md updates from 1.2–1.5 should already cover this; 1.6 is the final check.
+- **Definition of done.** Every doc accurate against the implementation; all cross-links resolve; link checker green; SKILL.md is the consolidated entry point for Phase 1 commands.
+- **Verification.** `python3 scripts/check_links.py` clean; manual read-through against the Phase 1 deliverables; grep for stale deferral wording in `tc-core/SKILL.md` returns no hits.
 
 #### 1.7 — Testing finalization *(dedicated step, separate from per-command TDD)*
 - **Deliverables.**
@@ -989,7 +996,7 @@ Six sub-steps. Mirrors the Phase 0 sign-off pattern (0.9). Test-first: the sign-
   - 1.3: `workspace_state.py` + `status.md` present; six tests pass.
   - 1.4: `journal.py` + `journal.md` present; eight tests pass.
   - 1.5: `next_step.py` + `next.md` + `next-step-inference.md` present; thirteen tests pass.
-  - 1.6: `workspace-reference.md`, `command-reference.md`, `workflow.md`, README + getting-started status lines all current.
+  - 1.6: `workspace-reference.md`, `command-reference.md`, `workflow.md`, README + getting-started status lines all current; `tc-core/SKILL.md` describes every shipped Phase 1 command and contains no stale deferral wording.
   - 1.7: `DEFAULT_PHASE_CAP == 1`, `CATALOG["tc-core"] == 1`, integration smoke passes.
 - **Definition of done.** All seven prior sub-steps audited green. Any unmet item blocks the sign-off.
 
@@ -1013,6 +1020,7 @@ Six sub-steps. Mirrors the Phase 0 sign-off pattern (0.9). Test-first: the sign-
   - `plugins/test-commander/skills/tc-core/methodology/next-step-inference.md` exists.
   - `plugins/test-commander/templates/workspace/` exists (per D18).
   - `scripts/verify_skills.py` `CATALOG["tc-core"]` is `1` and `DEFAULT_PHASE_CAP` is `1`.
+  - `tc-core/SKILL.md` describes all four Phase 1 commands and contains no "behavior arrives in Phase 1" / "Coming in Phase 1" wording.
   - CHANGELOG Phase 1 section marked complete with a date.
   - `plan.md` Completed has a Phase 1 subsection with a date.
   - `plan.md` To Do Phase 1 is the marker line (no unchecked items remain).
@@ -1043,6 +1051,7 @@ Eight automated; five evidence-based.
 | 5 | `plugins/test-commander/templates/workspace/` matches the plan's Workspace Layout (per D18) | auto | template test (`test_workspace_template`) |
 | 6 | `verify_skills.py` has `CATALOG["tc-core"] == 1` and `DEFAULT_PHASE_CAP == 1`; `make verify` prints `tc-core PRESENT (phase 1)` | auto | sign-off test + `make verify` |
 | 7 | Integration smoke `test_phase_1_integration` passes | auto | pytest |
+| 8a | `tc-core/SKILL.md` describes all four shipped Phase 1 commands with no deferral wording | auto | sign-off test |
 | 8 | `make verify` chain clean | auto | full chain |
 | 9 | Cold-user walkthrough of `workflow.md` from clean state succeeds (1.8.1) | evidence | `/tmp/tc-phase1-walkthrough.log` |
 | 10 | Per-step DoD audit clean for 1.1–1.7 (1.8.2) | evidence | audit notes |
@@ -1871,14 +1880,14 @@ Move To Do items here as phases finish, with date and short note.
 
 ### Phase 1 — Workspace and artifact model (2026-05-26)
 
-`tc-core` shipped: `/tc:init`, `/tc:status`, `/tc:journal`, `/tc:next` available end to end. Workspace template bundled inside the plugin (per D18). 84-test suite green; 88-file Markdown link check clean. `verify_skills.py` reports `tc-core PRESENT (phase 1)`. Tagged `phase-1` on origin.
+`tc-core` shipped: `/tc:init`, `/tc:status`, `/tc:journal`, `/tc:next` available end to end, with `SKILL.md` describing each command and routing Claude Code slash-command invocations to the bundled helpers. Workspace template bundled inside the plugin (per D18). 96-test suite green; 88-file Markdown link check clean. `verify_skills.py` reports `tc-core PRESENT (phase 1)`. Tagged `phase-1` on origin.
 
 - [x] Step 1.1: `plugins/test-commander/templates/workspace/` (63 starter files matching the Workspace Layout) + `tests/test_workspace_template.py` (7 tests).
 - [x] Step 1.2: `/tc:init` — `plugins/test-commander/scripts/init_workspace.py` + `tc-core/commands/init.md` + `tests/test_init_workspace.py` (4 tests). New Decision D18 (helpers + templates bundled inside the plugin) added; old `templates/workspace/` moved to the plugin via `git mv`.
 - [x] Step 1.3: `/tc:status` — `workspace_state.py` + `status.md`. `WorkspaceSnapshot` dataclass (exists, initialized, last_modified, counts, populated, phase_status) shared with `/tc:next`. `tests/test_workspace_state.py` (6 tests).
 - [x] Step 1.4: `/tc:journal` — `journal.py` + `journal.md`. Append + summarize modes; one-file-per-day format (H1 date, H2 timestamp sections). `tests/test_journal.py` (8 tests). AI summaries deferred to Phase 8.
 - [x] Step 1.5: `/tc:next` — `next_step.py` + `next.md` + `methodology/next-step-inference.md`. 10 R-rules; ranked list with `next:` line. `tests/test_next_step.py` (13 tests).
-- [x] Step 1.6: documentation pass — `docs/workspace-reference.md` filled in, `docs/command-reference.md` rewritten as an index linking per-command pages, new `docs/user-guide/workflow.md` end-to-end walkthrough, status lines refreshed.
+- [x] Step 1.6: documentation pass — `docs/workspace-reference.md` filled in, `docs/command-reference.md` rewritten as an index linking per-command pages, new `docs/user-guide/workflow.md` end-to-end walkthrough, status lines refreshed, `tc-core/SKILL.md` rewritten to describe all four shipped commands and route Claude to the bundled helpers.
 - [x] Step 1.7: testing finalization — `CATALOG["tc-core"]` and `DEFAULT_PHASE_CAP` bumped to 1; `tests/test_phase_1_integration.py` (1 test, 9 assertion blocks) drives all four helpers in sequence.
 - [x] Step 1.8: Phase 1 sign-off — cold-user walkthrough captured, per-step DoD audit clean, plan + CHANGELOG updated, `tests/test_phase_1_signoff.py` (11 tests) gates the close, annotated `phase-1` tag pushed to origin.
 

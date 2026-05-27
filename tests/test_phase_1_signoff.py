@@ -72,6 +72,36 @@ def test_bundled_template_at_d18_location():
     assert path.is_dir(), f"missing {path.relative_to(REPO)}"
 
 
+def test_tc_core_skill_md_describes_shipped_phase_1_commands():
+    """Per the SKILL.md-surfaces-shipped-behavior convention, tc-core's SKILL.md
+    must describe every shipped Phase 1 command and must not carry deferral
+    wording for them. Otherwise Claude reads the SKILL.md and routes the user
+    away from the implementation."""
+    path = TC_CORE / "SKILL.md"
+    text = path.read_text(encoding="utf-8")
+    for command in ("/tc:init", "/tc:status", "/tc:journal", "/tc:next"):
+        assert command in text, f"tc-core/SKILL.md does not describe {command}"
+    forbidden_phrases = (
+        "Behavior arrives in Phase 1",
+        "Coming in Phase 1",
+        "No commands are implemented yet",
+    )
+    for phrase in forbidden_phrases:
+        assert phrase not in text, (
+            f"tc-core/SKILL.md still carries stale deferral wording: {phrase!r}"
+        )
+    # Must reference at least one of the bundled helpers so Claude knows to
+    # invoke implementation rather than reinvent it.
+    helpers_mentioned = [
+        h for h in ("init_workspace.py", "workspace_state.py", "journal.py", "next_step.py")
+        if h in text
+    ]
+    assert len(helpers_mentioned) == 4, (
+        f"tc-core/SKILL.md should reference all four bundled helpers; "
+        f"found: {helpers_mentioned}"
+    )
+
+
 # --- verify_skills phase-cap bump ---
 
 def test_verify_skills_catalog_tc_core_is_phase_1():
