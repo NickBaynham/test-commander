@@ -1760,13 +1760,8 @@ Phase-by-phase work items. Move to *Completed* as each lands.
 Phase 0 complete (2026-05-26) — see Completed.
 
 ### Phase 1
-- [ ] Extend `tc-core` with `/tc:next` heuristics (or split into `tc-next` if Q7 escalates)
-- [ ] Implement `/tc:init`, `/tc:status`, `/tc:journal` behaviors under `tc-core/commands/`
-- [ ] Build `templates/workspace/` master template
-- [ ] Author `docs/user-guide/workflow.md`
-- [ ] Update `docs/workspace-reference.md` and `docs/command-reference.md`
-- [ ] Add `/tc:next` heuristics test harness
-- [ ] Confirm review and test gates green
+
+Phase 1 complete (2026-05-26) — see Completed.
 
 ### Phase 2
 - [ ] Author `/tc:review-requirements`, `/tc:review-user-stories`, `/tc:review-acceptance-criteria`, `/tc:requirements-coverage`, `/tc:requirements-to-tests`
@@ -1873,6 +1868,19 @@ Phase 0 complete (2026-05-26) — see Completed.
 ## Completed
 
 Move To Do items here as phases finish, with date and short note.
+
+### Phase 1 — Workspace and artifact model (2026-05-26)
+
+`tc-core` shipped: `/tc:init`, `/tc:status`, `/tc:journal`, `/tc:next` available end to end. Workspace template bundled inside the plugin (per D18). 84-test suite green; 88-file Markdown link check clean. `verify_skills.py` reports `tc-core PRESENT (phase 1)`. Tagged `phase-1` on origin.
+
+- [x] Step 1.1: `plugins/test-commander/templates/workspace/` (63 starter files matching the Workspace Layout) + `tests/test_workspace_template.py` (7 tests).
+- [x] Step 1.2: `/tc:init` — `plugins/test-commander/scripts/init_workspace.py` + `tc-core/commands/init.md` + `tests/test_init_workspace.py` (4 tests). New Decision D18 (helpers + templates bundled inside the plugin) added; old `templates/workspace/` moved to the plugin via `git mv`.
+- [x] Step 1.3: `/tc:status` — `workspace_state.py` + `status.md`. `WorkspaceSnapshot` dataclass (exists, initialized, last_modified, counts, populated, phase_status) shared with `/tc:next`. `tests/test_workspace_state.py` (6 tests).
+- [x] Step 1.4: `/tc:journal` — `journal.py` + `journal.md`. Append + summarize modes; one-file-per-day format (H1 date, H2 timestamp sections). `tests/test_journal.py` (8 tests). AI summaries deferred to Phase 8.
+- [x] Step 1.5: `/tc:next` — `next_step.py` + `next.md` + `methodology/next-step-inference.md`. 10 R-rules; ranked list with `next:` line. `tests/test_next_step.py` (13 tests).
+- [x] Step 1.6: documentation pass — `docs/workspace-reference.md` filled in, `docs/command-reference.md` rewritten as an index linking per-command pages, new `docs/user-guide/workflow.md` end-to-end walkthrough, status lines refreshed.
+- [x] Step 1.7: testing finalization — `CATALOG["tc-core"]` and `DEFAULT_PHASE_CAP` bumped to 1; `tests/test_phase_1_integration.py` (1 test, 9 assertion blocks) drives all four helpers in sequence.
+- [x] Step 1.8: Phase 1 sign-off — cold-user walkthrough captured, per-step DoD audit clean, plan + CHANGELOG updated, `tests/test_phase_1_signoff.py` (11 tests) gates the close, annotated `phase-1` tag pushed to origin.
 
 ### Phase 0 — Repository foundation (2026-05-26)
 

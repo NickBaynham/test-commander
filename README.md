@@ -4,7 +4,7 @@ An AI-assisted testing system and quality intelligence center. Test Commander he
 
 It is built as a Claude Code plugin plus a small Python and TypeScript runtime. It is designed to be installed once and grown phase by phase.
 
-> Status: Phase 1 in progress. Phase 0 complete (2026-05-26); Phase 1 ships `/tc:init`, `/tc:status`, `/tc:journal`, `/tc:next`. See [planning/plan.md](planning/plan.md) for the full roadmap and [docs/user-guide/workflow.md](docs/user-guide/workflow.md) for the first walkthrough.
+> Status: Phase 1 complete (2026-05-26); Phase 2 starts next. `tc-core` ships `/tc:init`, `/tc:status`, `/tc:journal`, `/tc:next`. See [planning/plan.md](planning/plan.md) for the full roadmap and [docs/user-guide/workflow.md](docs/user-guide/workflow.md) for the first walkthrough.
 
 ## What Test Commander Is
 
