@@ -4,7 +4,7 @@ An AI-assisted testing system and quality intelligence center. Test Commander he
 
 It is built as a Claude Code plugin plus a small Python and TypeScript runtime. It is designed to be installed once and grown phase by phase.
 
-> Status: Phase 2 in progress. `tc-core` ships `/tc:init`, `/tc:status`, `/tc:journal`, `/tc:next`. `tc-requirements` ships `/tc:review-requirements`, `/tc:review-user-stories`, `/tc:review-acceptance-criteria`, `/tc:requirements-coverage`, `/tc:requirements-to-tests`. See [planning/plan.md](planning/plan.md) for the full roadmap, [docs/user-guide/workflow.md](docs/user-guide/workflow.md) for the Phase 1 walkthrough, and [docs/user-guide/reviewing-requirements.md](docs/user-guide/reviewing-requirements.md) for the Phase 2 walkthrough.
+> Status: Phase 2 complete (2026-05-27); Phase 3 starts next. `tc-core` ships `/tc:init`, `/tc:status`, `/tc:journal`, `/tc:next`. `tc-requirements` ships `/tc:review-requirements`, `/tc:review-user-stories`, `/tc:review-acceptance-criteria`, `/tc:requirements-coverage`, `/tc:requirements-to-tests`. See [planning/plan.md](planning/plan.md) for the full roadmap, [docs/user-guide/workflow.md](docs/user-guide/workflow.md) for the Phase 1 walkthrough, and [docs/user-guide/reviewing-requirements.md](docs/user-guide/reviewing-requirements.md) for the Phase 2 walkthrough.
 
 ## What Test Commander Is
 
