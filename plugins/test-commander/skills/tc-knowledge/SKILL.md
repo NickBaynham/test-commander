@@ -11,10 +11,10 @@ Each command is implemented as a Python helper script bundled inside the plugin 
 
 ## Status
 
-Phase 3 is in progress. The skill scaffold and seeded sample-project fixture (Step 3.1) have shipped. Step 3.2 has shipped `/tc:learn-from-docs` plus the shared `synthesize_system_model.py` helper. Command behavior arrives in subsequent sub-steps:
+Phase 3 is in progress. The skill scaffold and seeded sample-project fixture (Step 3.1) have shipped. Steps 3.2 and 3.3 have shipped `/tc:learn-from-docs` (with the shared `synthesize_system_model.py` helper) and `/tc:learn-from-specs`. Command behavior arrives in subsequent sub-steps:
 
 - `/tc:learn-from-docs` — **shipped (Step 3.2).**
-- `/tc:learn-from-specs` — behavior arrives in Step 3.3.
+- `/tc:learn-from-specs` — **shipped (Step 3.3).**
 - `/tc:learn-from-code` — behavior arrives in Step 3.4.
 - `/tc:learn-from-api` — behavior arrives in Step 3.5.
 - `/tc:learn-from-tests` — behavior arrives in Step 3.6.
@@ -49,7 +49,17 @@ Sources whose per-source model still carries the workspace-template stub marker,
 
 ### `/tc:learn-from-specs`
 
-Behavior arrives in Step 3.3. Will auto-detect OpenAPI 3 or Postman v2.1 collections under `<workspace>/documents/uploaded/`, extract endpoints, schemas, and auth schemes, write `<workspace>/product-knowledge/spec-derived-model.md`, contribute `## From specs` sections, append gap-signal questions for unspecified statuses and untyped schemas, and regenerate `system-model.md`.
+Auto-detects OpenAPI 3 specs (YAML or JSON) and Postman v2.1 collections under `<workspace>/documents/uploaded/` and extracts three positive rubric dimensions (endpoints, schemas, auth-schemes) with `<path>:<line>` provenance per the universal-core extractors in [`methodology/learning-from-specs.md`](methodology/learning-from-specs.md). OpenAPI extractor walks `paths.<path>.<method>`, `components.schemas`, and `components.securitySchemes`; Postman extractor walks `item.request` recursively, captures the URL path and method, derives schemas from `request.body.raw` JSON shapes, and surfaces distinct `request.auth.type` values. Detects two gap signals — `unspecified-status` (endpoint with no `responses` keys or only `default`) and `schema-without-type` (schema entry missing both `type` and `$ref`) — routed to `<workspace>/requirements/open-questions.md` deduplicated by `(source-id, question-text)`. Writes `<workspace>/product-knowledge/spec-derived-model.md` byte-deterministically. Contributes `## From specs` to `entities.md` (endpoints grouped by resource — the first non-templated URL segment becomes the resource name) and `business-rules.md` (auth schemes as rules); does NOT touch `user-journeys.md` or `assumptions.md`. Calls the shared synthesizer at the end.
+
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/extract_knowledge_from_specs.py <project-root>
+```
+
+`<project-root>` defaults to the current working directory. The structural keys in OpenAPI and Postman are themselves a universal vocabulary; no `tc-knowledge.specs:` config extensions are required in v1.
+
+Full spec: [commands/learn-from-specs.md](commands/learn-from-specs.md). Methodology: [methodology/learning-from-specs.md](methodology/learning-from-specs.md).
 
 ### `/tc:learn-from-code`
 
