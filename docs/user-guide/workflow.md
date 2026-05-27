@@ -46,7 +46,7 @@ Re-running is a no-op (`created: 0, skipped: 63`); existing files are never over
 `/tc:init` copies the template verbatim, including placeholder content in `project.md`, `config.yaml`, and `methodology.md`. Open each and replace the placeholders with project-specific values:
 
 - `project.md` — project name, repository URL, owner, Test Commander version.
-- `config.yaml` — feature flags, defaults, policy overrides for this project.
+- `config.yaml` — feature flags, defaults, policy overrides for this project. This is also where domain-specific extensions to the rubric live once Phase 2 ships (see [customizing-for-your-project.md](customizing-for-your-project.md) for the full extension model — PCI/HIPAA vocabulary, your role taxonomy, your risk classes).
 - `methodology.md` — exploration style, BDD conventions, automation suitability rules.
 
 This is the manual step Phase 1 ships with. Later phases will offer a guided `/tc:init` mode that fills these in interactively.
@@ -134,6 +134,7 @@ Everything is plain Markdown and YAML; commit it all to git.
 ## See also
 
 - [Getting started](getting-started.md) — install and verify
+- [Customizing for your project](customizing-for-your-project.md) — extend the universal core with your domain vocabulary
 - [Workspace reference](../workspace-reference.md) — per-directory purpose
 - [Command reference](../command-reference.md) — index of every command
 - [Per-command pages](../../plugins/test-commander/skills/tc-core/commands/) — full behavior for each command

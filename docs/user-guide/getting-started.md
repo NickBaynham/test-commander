@@ -38,6 +38,7 @@ See [../install.md](../install.md) for the full prerequisite list and per-platfo
 ## What's next
 
 - Phase 1 commands are available: `/tc:init`, `/tc:status`, `/tc:journal`, `/tc:next`. See [workflow.md](workflow.md) for the first end-to-end walkthrough against a consuming project.
+- Test Commander is a generic, product-domain-agnostic tool. To extend it for your project's domain (PCI/HIPAA vocabulary, your role taxonomy, your risk classes, etc.), see [customizing-for-your-project.md](customizing-for-your-project.md). The universal core works out of the box; extensions are opt-in per project.
 - Watch [../../CHANGELOG.md](../../CHANGELOG.md) for phase progress.
 
 ## If something goes wrong

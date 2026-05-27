@@ -31,6 +31,10 @@ Each linked document lives under `plugins/test-commander/skills/<skill>/methodol
 
 > This page is filled out across Phases 2 through 9 as each skill ships its methodology.
 
+## Customizing the methodology for your project
+
+Test Commander is product-domain-agnostic. The shipped methodology covers universal disciplines; your project's domain vocabulary (PCI, HIPAA, your roles, your risk taxonomy) is supplied through configuration, not by editing the shipped methodology. See [customizing for your project](user-guide/customizing-for-your-project.md) for the extension model.
+
 ## Related
 
 - [Public-skill evaluation pass](skill-evaluation.md) — Phase 0 evaluation of public-marketplace candidates for `tc-visualize`, `tc-sandbox`, `tc-traceability`, and the a11y / perf scope decisions.

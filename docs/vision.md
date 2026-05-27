@@ -6,6 +6,10 @@ Modern test automation tools assume someone has already decided what to test. Te
 
 The north star: turn requirements, exploration, automation, evidence, reporting, and continuous learning into one visible workflow that a team can trust and steer.
 
+## Universal by design
+
+Test Commander is product-domain-agnostic. It ships with universal English and software-engineering defaults only — no e-commerce, healthcare, finance, research, or other product-domain vocabulary baked into the rubric, tags, fixtures, or examples. Whatever product your team is testing, Test Commander starts from your requirements and your exploration; product-specific knowledge enters only through configuration extensions, the documents you supply, Phase 3 knowledge ingestion, and project-defined tag values. See [customizing for your project](user-guide/customizing-for-your-project.md) for the extension model and worked examples.
+
 ## What we are not building
 
 - A fully autonomous QA agent that ships tests on its own.

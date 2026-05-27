@@ -29,9 +29,9 @@ Maps a user request (chat or button) to a known Test Commander workflow. Unknown
 Examples:
 
 - "Review these requirements" -> `/tc:review-requirements`
-- "Generate BDD for checkout" -> `/tc:generate-bdd --area checkout`
+- "Generate BDD for sign-in" -> `/tc:generate-bdd --area sign-in`
 - "Run smoke tests" -> `/tc:run --suite smoke`
-- "Why did checkout fail?" -> read-only artifact query
+- "Why did sign-in fail?" -> read-only artifact query
 - "Improve coverage" -> proposes `/tc:coverage-gap-analysis`, not raw Claude execution
 
 ### Command planner

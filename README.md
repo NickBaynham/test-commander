@@ -13,6 +13,19 @@ It is built as a Claude Code plugin plus a small Python and TypeScript runtime. 
 - A workspace convention (`.test-commander/`) that keeps every quality artifact in one place, versioned in git, with full traceability.
 - A continuous learning loop that captures lessons from failures, exploration, and human feedback — and applies them only after human review.
 
+## Universal by Design
+
+Test Commander is **product-domain-agnostic**. It ships with universal English and software-engineering defaults only — no e-commerce, healthcare, finance, research, or other product-domain vocabulary in the shipped rubric, tags, methodology, fixtures, or examples. The tool does not assume what product your team is testing.
+
+Consuming projects extend Test Commander for their own domain through four explicit hooks:
+
+1. `<workspace>/config.yaml` extensions to rubric keyword sets (PCI, HIPAA, your role taxonomy, etc.).
+2. Your project's own requirement and exploration documents under `.test-commander/documents/uploaded/`.
+3. Project knowledge ingested in Phase 3 (`/tc:learn-from-docs`, `/tc:learn-from-code`, ...).
+4. Project-defined values inside shipped tag namespaces (`@area:<feature>`, `@risk:<class>`, `@persona:<role>`).
+
+See [docs/user-guide/customizing-for-your-project.md](docs/user-guide/customizing-for-your-project.md) for worked examples and the full extension model, and [Decision D19](planning/plan.md) for the rationale.
+
 ## What Test Commander Is Not
 
 - It is not a replacement for skilled testers.
@@ -136,6 +149,7 @@ The per-project quality workspace lives at `.test-commander/` in *consuming* pro
 - [Install guide](docs/install.md)
 - [User guide — getting started](docs/user-guide/getting-started.md)
 - [User guide — first workflow walkthrough](docs/user-guide/workflow.md)
+- [User guide — customizing for your project](docs/user-guide/customizing-for-your-project.md)
 - [Public-skill evaluation pass](docs/skill-evaluation.md)
 - [Controlled agent execution](docs/controlled-agent-execution.md)
 - [Security and permissions](docs/security-and-permissions.md)

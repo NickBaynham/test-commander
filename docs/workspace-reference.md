@@ -86,7 +86,7 @@ The workspace is created by [`/tc:init`](../plugins/test-commander/skills/tc-cor
 | File | Owning phase | Purpose |
 | --- | --- | --- |
 | `project.md` | 1 | Project identity, initialization timestamp, Test Commander version, project-level overrides. |
-| `config.yaml` | 1 | Project-level configuration: defaults, feature flags, policy overrides. |
+| `config.yaml` | 1 | Project-level configuration: defaults, feature flags, policy overrides, and **domain-specific extensions** to the rubric keyword sets shipped by Test Commander (PCI/HIPAA vocabulary, role taxonomies, risk taxonomies). See [customizing for your project](user-guide/customizing-for-your-project.md). |
 | `methodology.md` | 1 | Per-project methodology selections: exploration style, BDD conventions, automation suitability rules. |
 
 ### `documents/` — Phase 3

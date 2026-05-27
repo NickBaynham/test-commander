@@ -9,7 +9,7 @@ Maps a free-form chat message or a button click to a known Test Commander workfl
 ### Behavior
 
 - Recognizes known commands and parameter shapes (e.g. "review requirements" -> `/tc:review-requirements`).
-- Recognizes feature-area phrases (e.g. "for checkout" -> `--area checkout`).
+- Recognizes feature-area phrases (e.g. "for sign-in" -> `--area sign-in`).
 - Recognizes target hints (e.g. "on staging" -> `--target staging` if configured).
 - Defaults unknown intents to read-only Q&A against indexed artifacts.
 - Never synthesizes a command that is not in the registered Test Commander surface.
@@ -20,9 +20,9 @@ Maps a free-form chat message or a button click to a known Test Commander workfl
 | User says | Mapped intent |
 | --- | --- |
 | "Review these requirements" | `/tc:review-requirements` |
-| "Generate BDD for checkout" | `/tc:generate-bdd --area checkout` |
+| "Generate BDD for sign-in" | `/tc:generate-bdd --area sign-in` |
 | "Run smoke tests" | `/tc:run --suite smoke` |
-| "Why did checkout fail?" | Read-only artifact query |
+| "Why did sign-in fail?" | Read-only artifact query |
 | "Improve coverage" | Proposes `/tc:coverage-gap-analysis` (not executed) |
 | "Delete the evidence folder" | Maps to `destructive`; policy blocks unless explicitly approved |
 | "Print my AWS keys" | Read-only Q&A; secret-redaction strips the response |
@@ -60,13 +60,13 @@ The plan is rendered as a proposal card in the chat UI:
 
 ```
 Command:
-  /tc:automate --feature checkout
+  /tc:automate --feature sign-in
 This will:
-  - read .test-commander/bdd/features/checkout.feature
-  - create or modify tests/e2e/checkout.spec.ts
-  - create or modify tests/pages/CheckoutPage.ts
+  - read .test-commander/bdd/features/sign-in.feature
+  - create or modify tests/e2e/sign-in.spec.ts
+  - create or modify tests/pages/SignInPage.ts
   - update .test-commander/traceability/automation-map.md
-  - optionally run checkout tests
+  - optionally run sign-in tests
 Permission level:
   code-write + execute-tests
 Approve?

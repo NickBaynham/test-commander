@@ -4,6 +4,8 @@
 
 Test Commander is an AI-assisted testing system and quality intelligence center. It helps teams move from requirements and exploration to BDD, automation, evidence, reporting, and continuous improvement.
 
+**Test Commander is generic and product-domain-agnostic.** It ships with universal English and software-engineering defaults only — no e-commerce, finance, healthcare, research, or other product-domain vocabulary in the shipped rubric, tags, methodology, fixtures, or examples. The consuming project supplies every product-specific input: requirements and exploration documents at runtime, domain vocabulary through `<workspace>/config.yaml` extensions, project knowledge ingested in Phase 3, and project-defined tag namespaces. See Decision D19.
+
 ## North Star
 
 Test Commander is a core agentic testing system and quality intelligence center that turns requirements, exploration, automation, evidence, reporting, and continuous learning into one visible workflow.
@@ -90,6 +92,14 @@ These decisions are settled. They constrain every phase below.
     - **Dev tooling** (`scripts/verify_skills.py`, `scripts/check_links.py`) stays at the repo root `scripts/`. These are developer concerns, not user-facing commands; they need not ship.
     - **Tests** stay at the repo root `tests/`. `pytest.ini_options.pythonpath` includes both `scripts` and `plugins/test-commander/scripts` so tests can import from either location.
     - **Bundled-asset path resolution.** Helpers locate bundled assets (template, schemas, etc.) relative to their own file location using `Path(__file__).resolve().parent.parent / "<asset>"`. This works identically whether the script runs from the dev checkout or from `~/.claude/plugins/cache/test-commander-marketplace/test-commander/<version>/scripts/`. Pattern established in `init_workspace.py` (Step 1.2) and reused by `workspace_state.py` (Step 1.3) and `next_step.py` (Step 1.5).
+
+19. **Test Commander is product-domain-agnostic; consuming projects supply all product-specific knowledge.** Every shipped rubric keyword set, tag taxonomy, methodology doc, fixture, command-page example, and illustrative example in this repository uses universal English and software-engineering vocabulary — no e-commerce, finance, healthcare, research, or other product-domain terms in the shipped defaults. Product-specific vocabulary enters only through four explicit hooks:
+    - Per-project `<workspace>/config.yaml` extensions to rubric keyword sets (the universal core is unioned with project-supplied lists at runtime; extensions never replace defaults).
+    - The requirement, story, AC, and exploration documents the consuming project supplies at runtime under `.test-commander/documents/uploaded/` and downstream artifact directories.
+    - Project knowledge ingested in Phase 3 (`tc-knowledge`), which writes into `.test-commander/product-knowledge/`.
+    - Project-defined values inside shared tag namespaces (`@area:<feature>`, `@risk:<class>`, `@persona:<role>`); Test Commander ships the namespaces, projects pick the values.
+
+    When the plan, docs, or examples need an illustrative feature name, prefer universal SaaS surfaces — `sign-in`, `dashboard`, `search`, `file upload`, `scheduled job`, `notification`, `audit log`, `report`, `form submission` — over domain-specific features like `checkout`, `refund`, `prescription`, or `trade settlement`. Discovered during Phase 2 Step 2.1 implementation when the seeded fixture and Step 2.2 partition table drifted toward an e-commerce/PCI narrative; corrected by the d718b33 commit (universal-core defaults + `config.yaml` extension hooks) and codified here for every later phase. Reinforces D3 (no `examples/` directory — real projects bring their own artifacts).
 
 ---
 
@@ -390,6 +400,8 @@ When a Claude Code prompt is provided for a phase, it ends with this standing in
 **Per-command page is the single source of truth.** Every `/tc:*` command has a per-command page at `plugins/test-commander/skills/<skill>/commands/<command>.md` with these sections in order: Inputs, Outputs, Preconditions, Behavior, Safety, Implementation, Definition of Done, See also. The same file is what Claude reads at runtime and what users read for reference. `docs/command-reference.md` indexes the per-command pages — it does not duplicate them. Pattern established in Step 1.2 and confirmed across Steps 1.3–1.5.
 
 **SKILL.md surfaces shipped behavior.** The skill's `SKILL.md` is the entry point Claude reads when a user invokes a slash command owned by that skill. Each command sub-step that ships a helper + per-command page must, in the same sub-step, update the owning `SKILL.md` to (a) describe the now-shipped behavior in a brief paragraph and (b) instruct Claude to invoke the bundled helper, with a link to the per-command page for the full spec. Stale "behavior arrives in Phase N+1" wording for a shipped command is a per-step DoD failure — Claude reads the SKILL.md, sees the deferral, and may not route the command to the implementation. The Phase 1 sign-off test asserts no shipped command carries the deferral wording.
+
+**Customization-guide audit (per D19).** Every phase that ships a configurable surface — a new `<workspace>/config.yaml` schema key, a new tag namespace, a new keyword set, a new policy override, a new project-specific extension point — MUST update [`docs/user-guide/customizing-for-your-project.md`](../docs/user-guide/customizing-for-your-project.md) in the same sub-step that ships the surface, with at least one worked example showing how a consuming project extends it for their domain. The phase's dedicated documentation pass and its sign-off both verify the customization guide reflects every extensible surface shipped to date. If a phase ships no new configurable surface, the sign-off explicitly records "no new extensible surface; customization guide unchanged". This convention guarantees that Test Commander stays generic by default and that every domain-extension hook a phase ships is discoverable from one user-facing entry point — never buried in plan text or per-skill methodology docs that domain teams would not know to read.
 
 ---
 
@@ -1256,9 +1268,10 @@ Nine sub-steps. TDD throughout: every implementation step lands its tests red be
   - Update `docs/workspace-reference.md` to mark the six `requirements/` files as populated by Phase 2 commands, and note that `test-ideas/` is seeded by `/tc:requirements-to-tests` ahead of its Phase 4 ownership.
   - Refresh `README.md`, `docs/install.md`, and `docs/user-guide/getting-started.md` Phase 2 mentions ("Phase 2 starts next" → "Phase 2 in progress" / "complete").
   - Update `docs/user-guide/workflow.md` (the Phase 1 walkthrough) so the "what's next" footer links to `reviewing-requirements.md`.
+  - **Customization-guide update (per the Per-Phase Convention).** Update [`docs/user-guide/customizing-for-your-project.md`](../docs/user-guide/customizing-for-your-project.md) so its "Phase 2 schema (`tc-requirements`)" section reflects the exact config.yaml shape the helper reads (data-rules.sensitive-keywords, risk.compliance-keywords, roles-permissions.permission-verbs, roles-permissions.role-qualifiers). Confirm at least three worked extension examples cover materially-different domains (currently e-commerce, healthcare, research data — keep or replace, do not remove). Add a "Phase 2 — what landed" subsection naming the universal core, the schema keys, and the test that would fail if the helper ignored extensions.
   - **Final `tc-requirements/SKILL.md` pass.** Confirm SKILL.md describes every shipped command, links to all five per-command pages, and instructs Claude to invoke the bundled helpers. No "behavior arrives in Phase N+1" wording for any shipped command. The per-sub-step SKILL.md updates from 2.2–2.6 should already cover this; 2.7 is the final check.
-- **Definition of done.** Every doc accurate against the implementation; all cross-links resolve; link checker green; `tc-requirements/SKILL.md` is the consolidated entry point for Phase 2 commands.
-- **Verification.** `python3 scripts/check_links.py` clean; manual read-through against the Phase 2 deliverables; grep for stale deferral wording in `tc-requirements/SKILL.md` returns no hits.
+- **Definition of done.** Every doc accurate against the implementation; all cross-links resolve; link checker green; `tc-requirements/SKILL.md` is the consolidated entry point for Phase 2 commands; `customizing-for-your-project.md` accurately reflects the shipped config.yaml schema with at least three worked examples.
+- **Verification.** `python3 scripts/check_links.py` clean; manual read-through against the Phase 2 deliverables; grep for stale deferral wording in `tc-requirements/SKILL.md` returns no hits; the YAML block in `customizing-for-your-project.md` parses as valid YAML.
 
 #### 2.8 — Testing finalization *(dedicated step, separate from per-command TDD)*
 
@@ -1290,7 +1303,7 @@ Six sub-steps. Mirrors the Phase 1 sign-off pattern (1.8). Test-first: the sign-
 - **Specifically.**
   - 2.1: `tc-requirements/SKILL.md` and `tests/fixtures/seeded-flawed-requirements/` present; scaffold test green; rubric coverage and INVEST coverage assertions pass.
   - 2.2–2.6: helper, methodology (where applicable), template (where applicable), command file, and SKILL.md update all present; per-command test files all green; mechanical rubric findings traced to seeded fixture.
-  - 2.7: `reviewing-requirements.md`, command-reference index, workspace-reference, README + getting-started status lines all current; `tc-requirements/SKILL.md` describes every shipped Phase 2 command and contains no stale deferral wording.
+  - 2.7: `reviewing-requirements.md`, command-reference index, workspace-reference, README + getting-started status lines all current; `tc-requirements/SKILL.md` describes every shipped Phase 2 command and contains no stale deferral wording; `customizing-for-your-project.md` reflects the Phase 2 `tc-requirements` config.yaml schema with at least three worked extension examples spanning materially-different domains.
   - 2.8: `DEFAULT_PHASE_CAP == 2`, `CATALOG["tc-requirements"] == 2`, integration smoke passes.
 - **Definition of done.** All eight prior sub-steps audited green. Any unmet item blocks the sign-off.
 
@@ -1319,6 +1332,7 @@ Six sub-steps. Mirrors the Phase 1 sign-off pattern (1.8). Test-first: the sign-
   - `tests/fixtures/seeded-flawed-requirements/` exists with the three Markdown files plus README.
   - `scripts/verify_skills.py` has `CATALOG["tc-requirements"] == 2` and `DEFAULT_PHASE_CAP == 2`.
   - `tc-requirements/SKILL.md` describes all five Phase 2 commands and contains no "behavior arrives in Phase 2" / "Coming in Phase 2" wording.
+  - `docs/user-guide/customizing-for-your-project.md` exists, contains a `tc-requirements:` YAML block whose top-level keys match the shipped config.yaml schema, and contains at least three worked extension examples in distinct domain headings.
   - CHANGELOG Phase 2 section marked complete with a date.
   - `plan.md` Completed has a Phase 2 subsection with a date.
   - `plan.md` To Do Phase 2 is the marker line (no unchecked items remain).
@@ -1480,7 +1494,13 @@ No implementation lands before its tests. No tests are added after the fact. Eve
 
 **Outputs.** `.test-commander/bdd/features/*.feature`, `.test-commander/bdd/summaries/`, `.test-commander/traceability/`.
 
-**Tags.** `@smoke`, `@regression`, `@manual`, `@exploratory`, `@automated-candidate`, `@risk:revenue`, `@risk:security`, plus feature-area tags.
+**Tags.** Shipped universal classes: `@smoke`, `@regression`, `@manual`, `@exploratory`, `@automated-candidate`. Per D19, Test Commander ships no hard-coded domain, risk, or persona taxonomy — projects add values under shared namespaces:
+
+- `@area:<feature>` — project-defined feature areas (e.g. `@area:sign-in`, `@area:reports`).
+- `@risk:<class>` — project-defined risk classes (e.g. severity `@risk:high`/`@risk:medium`/`@risk:low`, or category `@risk:data-loss`/`@risk:availability`/`@risk:integrity`).
+- `@persona:<role>` — project-defined personas (e.g. `@persona:admin`, `@persona:operator`).
+
+Test Commander ships the namespaces; the consuming project picks values, documents them in its own BDD methodology notes, and configures any tag-driven gates.
 
 **Traceability chain.** Requirement → Test Idea → BDD Scenario → Automation Candidate → Automated Test → Test Result → Quality Report.
 
@@ -1725,7 +1745,7 @@ Frontend chat / request
 
 ### Components
 
-1. **Intent router.** Maps natural-language requests and button actions to known Test Commander workflows. Examples: "review these requirements" -> `/tc:review-requirements`; "generate BDD for checkout" -> `/tc:generate-bdd --area checkout`; "why did checkout fail?" -> read-only artifact query. Unknown intents default to a read-only Q&A path; the router cannot synthesize new commands on its own.
+1. **Intent router.** Maps natural-language requests and button actions to known Test Commander workflows. Examples (per D19, illustrative features are universal SaaS surfaces, not domain-specific): "review these requirements" -> `/tc:review-requirements`; "generate BDD for the sign-in flow" -> `/tc:generate-bdd --area sign-in`; "why did sign-in fail?" -> read-only artifact query. Unknown intents default to a read-only Q&A path; the router cannot synthesize new commands on its own.
 
 2. **Command planner.** Produces an explicit, displayable plan before execution. The plan includes: command, files likely to be read, files likely to be created or changed, permission level required, target environment if applicable, expected artifacts, and whether human approval is required.
 
@@ -1745,13 +1765,13 @@ Frontend chat / request
 
    ```
    Command:
-     /tc:automate --feature checkout
+     /tc:automate --feature sign-in
    This will:
-     - read .test-commander/bdd/features/checkout.feature
-     - create or modify tests/e2e/checkout.spec.ts
-     - create or modify tests/pages/CheckoutPage.ts
+     - read .test-commander/bdd/features/sign-in.feature
+     - create or modify tests/e2e/sign-in.spec.ts
+     - create or modify tests/pages/SignInPage.ts
      - update .test-commander/traceability/automation-map.md
-     - optionally run checkout tests
+     - optionally run sign-in tests
    Permission level:
      code-write + execute-tests
    Approve?
@@ -1986,24 +2006,26 @@ Then later: Phase 11 (API/MCP), Phase 12 (sandboxes), Phase 13 (continuous quali
 
 ## Demo Command Sequence (after Phase 7)
 
+Per D19, Test Commander does not ship with any specific target product or feature. The `sign-in` area below is an illustrative universal SaaS surface — substitute any feature the consuming project actually tests.
+
 ```
 /tc:init
 /tc:review-requirements
 /tc:learn-from-docs
 /tc:learn-from-code
-/tc:create-charter --area checkout
-/tc:explore --target http://localhost:3000 --charter checkout
-/tc:test-ideas --area checkout
-/tc:generate-bdd --area checkout
-/tc:automation-plan --area checkout
-/tc:generate-test-data --area checkout
-/tc:automate --feature checkout   # builds framework lazily if absent
+/tc:create-charter --area sign-in
+/tc:explore --target http://localhost:3000 --charter sign-in
+/tc:test-ideas --area sign-in
+/tc:generate-bdd --area sign-in
+/tc:automation-plan --area sign-in
+/tc:generate-test-data --area sign-in
+/tc:automate --feature sign-in   # builds framework lazily if absent
 /tc:run --suite smoke
 /tc:analyze-results
 /tc:report
 /tc:learn
 /tc:next
-/tc:visualize --area checkout
+/tc:visualize --area sign-in
 ```
 
 ---
