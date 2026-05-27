@@ -89,6 +89,7 @@ These decisions are settled. They constrain every phase below.
     - **The workspace template** lives at `plugins/test-commander/templates/workspace/`. It ships with the plugin.
     - **Dev tooling** (`scripts/verify_skills.py`, `scripts/check_links.py`) stays at the repo root `scripts/`. These are developer concerns, not user-facing commands; they need not ship.
     - **Tests** stay at the repo root `tests/`. `pytest.ini_options.pythonpath` includes both `scripts` and `plugins/test-commander/scripts` so tests can import from either location.
+    - **Bundled-asset path resolution.** Helpers locate bundled assets (template, schemas, etc.) relative to their own file location using `Path(__file__).resolve().parent.parent / "<asset>"`. This works identically whether the script runs from the dev checkout or from `~/.claude/plugins/cache/test-commander-marketplace/test-commander/<version>/scripts/`. Pattern established in `init_workspace.py` (Step 1.2) and reused by `workspace_state.py` (Step 1.3) and `next_step.py` (Step 1.5).
 
 ---
 
@@ -112,6 +113,7 @@ Unresolved decisions. Each should be answered before its dependent phase begins.
 | Q12 | Should we evaluate a public Mermaid/diagram skill before authoring `tc-visualize`, or build it ourselves from the start? | Phase 9 | Author `tc-visualize` ourselves; Mermaid is simple enough that a wrapper is not worth the dependency. Evaluate public options only if scope grows. |
 | Q13 | Default policy for `safe-write` actions: always approve, always prompt, or configurable per deployment? | Phase 10.5 | Configurable per deployment, default to "always prompt" so single-user installs do not surprise the operator. |
 | Q14 | Role assignment in a single-user local install vs multi-user deployment? | Phase 10.5 | Single-user local default: caller is `Admin`. Multi-user: requires explicit identity provider integration; not in v1. |
+| Q15 | Should `/tc:init` evolve from a verbatim template-copy into an interactive bootstrap that prompts for project name / repo URL / methodology choices and writes them into `project.md`, `config.yaml`, and `methodology.md`? | Phase 1 (revisit at Phase 8) | Defer for v1. Manual edit is fine; `/tc:next`'s R2 surfaces the step explicitly. Revisit at Phase 8 when the learning loop could feed back-defaults. Surfaced during Step 1.5 — R2 is the one heuristic that recommends a manual action instead of a `/tc:*` command. |
 
 ---
 
@@ -382,6 +384,10 @@ When a Claude Code prompt is provided for a phase, it ends with this standing in
 > Do not implement future phases yet. Create clean extension points, but only complete the current phase. Write documentation as you go. Add review and test steps. Update the To Do and Completed lists in `planning/plan.md`.
 
 **Tooling rule (Decision D17).** Any phase step that touches plugins, marketplaces, or installed skills uses the `claude plugin ...` CLI, never `/plugin` slash commands. The CLI is available in every Claude Code environment; slash commands are not. Validate manifests with `claude plugin validate` before any install or marketplace registration — schema problems are far cheaper to fix before install state is created.
+
+**Retire prior-phase guards.** When a phase adds artifacts that a previous phase's guard test forbade ("commands/ must be empty until Phase 1," "no executable runtime until Phase 6," etc.), retire the guard in the same commit that lands the new artifact. Leave a one-line comment in the test file explaining what it used to enforce and which step replaced it with per-artifact coverage. Discovered during Step 1.2 when Phase 0's `test_no_command_behavior_yet` had to be removed so `init.md` could land.
+
+**Per-command page is the single source of truth.** Every `/tc:*` command has a per-command page at `plugins/test-commander/skills/<skill>/commands/<command>.md` with these sections in order: Inputs, Outputs, Preconditions, Behavior, Safety, Implementation, Definition of Done, See also. The same file is what Claude reads at runtime and what users read for reference. `docs/command-reference.md` indexes the per-command pages — it does not duplicate them. Pattern established in Step 1.2 and confirmed across Steps 1.3–1.5.
 
 ---
 
@@ -935,6 +941,7 @@ Eight sub-steps. TDD throughout: every implementation step lands its tests red b
 - **Definition of done.** Helper passes all five cases; command file authored; journal files are valid Markdown.
 - **Verification.** Pytest; resulting journal files render cleanly.
 - **Out of scope.** AI-generated summaries — that lives in Phase 8 (learning loop).
+- **Settled format (Step 1.4 outcome).** One file per day at `.test-commander/journal/YYYY-MM-DD.md`. Each file is an H1 date header (`# YYYY-MM-DD`) followed by zero or more H2 timestamp sections (`## YYYY-MM-DDTHH:MM:SSZ`), each with a verbatim Markdown body. The H1 appears once per file; H2 sections are append-only. Parser splits on H2 timestamp headings; bodies cannot contain a line matching that pattern (rejected at append). This is the stable contract Phase 8's learning loop will parse from.
 
 #### 1.5 — `/tc:next` heuristics engine (TDD)
 - **Methodology.** `plugins/test-commander/skills/tc-core/methodology/next-step-inference.md` — documents the recommendation rules with examples.
@@ -1016,6 +1023,7 @@ No implementation lands before its tests. No tests are added after the fact.
 - Per-command page in the plugin is too prose-heavy for Claude to follow. **Mitigation:** structure each command file with explicit sections (`Inputs`, `Outputs`, `Preconditions`, `Behavior`, `Safety`, `Definition of Done`); reviewable.
 - `/tc:next` recommends something the user already did. **Mitigation:** the helper reads timestamps and journal entries; recently-completed work is excluded from recommendations.
 - Workspace template drifts from the plan's Workspace Layout. **Mitigation:** `test_workspace_template.py` parses the plan's layout block and asserts equivalence (or compares against a frozen list documented inline).
+- `WorkspaceSnapshot.populated` (Step 1.3) is bytes-vs-template equality, so a roundtrip edit that ends byte-equal to the template is mis-classified as `not_started`. **Mitigation:** documented as a known limitation in `status.md`. If false negatives become common in practice, add a `.test-commander/.populated-marker` allowlist or switch to a content-hash sidecar; defer until evidence warrants.
 
 ---
 
