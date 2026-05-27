@@ -9,9 +9,10 @@
   {
     "method": "DELETE",
     "path": "/sessions/{id}",
-    "status": 204,
-    "headers": {},
-    "body": null
+    "status": 500,
+    "headers": {"authorization": "Bearer redacted"},
+    "body": {"error": "internal_error"},
+    "_knowledge": "knowledge: mismatched-status"
   },
   {
     "method": "GET",
@@ -31,10 +32,9 @@
   {
     "method": "POST",
     "path": "/workspaces/{id}/assets",
-    "status": 500,
+    "status": 201,
     "headers": {"authorization": "Bearer redacted"},
-    "body": {"error": "internal_error"},
-    "_knowledge": "knowledge: mismatched-status"
+    "body": {"id": "asset-1", "workspace_id": "ws-1", "name": "sample.bin", "size_bytes": 12}
   },
   {
     "method": "GET",

@@ -76,6 +76,10 @@ class Endpoint:
     summary: str
     source_file: str
     line: int
+    # Status codes declared in the OpenAPI ``responses`` map (empty tuple when
+    # absent or for Postman). Not rendered into spec-derived-model.md in v1;
+    # consumed by Step 3.5's mismatched-status cross-check.
+    statuses: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -239,6 +243,11 @@ def extract_openapi(path: Path, rel_path: str) -> SpecFindings:
                 operation_id = op_id_raw if isinstance(op_id_raw, str) else None
                 summary = op.get("summary") if isinstance(op.get("summary"), str) else ""
                 line = _line_of_yaml_path_block(text, str(spec_path), method)
+                responses_raw = op.get("responses")
+                if isinstance(responses_raw, dict):
+                    statuses = tuple(str(code) for code in responses_raw)
+                else:
+                    statuses = ()
                 findings.endpoints.append(
                     Endpoint(
                         method=method.upper(),
@@ -247,6 +256,7 @@ def extract_openapi(path: Path, rel_path: str) -> SpecFindings:
                         summary=summary,
                         source_file=rel_path,
                         line=line,
+                        statuses=statuses,
                     )
                 )
 
