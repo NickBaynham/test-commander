@@ -967,15 +967,68 @@ Eight sub-steps. TDD throughout: every implementation step lands its tests red b
 - **Definition of done.** Integration smoke passes; phase cap bump reflected; full `make verify` chain green.
 - **Verification.** Captured `make verify` output; `verify_skills.py` reports `tc-core PRESENT (phase 1)`.
 
-#### 1.8 — Sign-off *(matches the Phase 0 sign-off pattern)*
+#### 1.8 — Sign-off
+
+Six sub-steps. Mirrors the Phase 0 sign-off pattern (0.9). Test-first: the sign-off test in 1.8.5 lands red before the plan/CHANGELOG edits in 1.8.3 turn it green. The final sub-step (1.8.6) captures evidence and pushes the `phase-1` annotated tag.
+
+##### 1.8.1 — Cold-user walkthrough of `workflow.md`
+- **Deliverables.** Captured log of an end-to-end walkthrough of `docs/user-guide/workflow.md` from a freshly-installed plugin against a fresh tmp consuming project.
+- **Steps to execute verbatim.**
+  1. `make uninstall` → `make install` to reach a known-clean plugin state.
+  2. Create a tmp consuming-project dir (`mktemp -d`).
+  3. Invoke the four Phase 1 helpers in workflow order: `init_workspace.py <tmp>`, edit `project.md`, `workspace_state.py <tmp>`, `journal.py --target <tmp> append "..."`, `next_step.py <tmp>`.
+  4. Confirm each helper prints the output documented in `workflow.md` (no fabricated examples).
+- **Definition of done.** All commands succeed end to end. Output captured to `/tmp/tc-phase1-walkthrough.log`. If any step fails, fix the cause and re-run before continuing to 1.8.2.
+
+##### 1.8.2 — Per-step DoD audit
+- **Deliverables.** A line-by-line audit of Steps 1.1 through 1.7 against their DoD lists.
+- **What to check per step.** Every DoD bullet green; every pytest file passes; every deliverable present on disk; every cross-link in the per-command pages resolves; every Failure Mode mitigation in place.
+- **Specifically.**
+  - 1.1: `plugins/test-commander/templates/workspace/` matches the Workspace Layout (test_workspace_template green).
+  - 1.2: `init_workspace.py` + `init.md` present; four test cases pass.
+  - 1.3: `workspace_state.py` + `status.md` present; six tests pass.
+  - 1.4: `journal.py` + `journal.md` present; eight tests pass.
+  - 1.5: `next_step.py` + `next.md` + `next-step-inference.md` present; thirteen tests pass.
+  - 1.6: `workspace-reference.md`, `command-reference.md`, `workflow.md`, README + getting-started status lines all current.
+  - 1.7: `DEFAULT_PHASE_CAP == 1`, `CATALOG["tc-core"] == 1`, integration smoke passes.
+- **Definition of done.** All seven prior sub-steps audited green. Any unmet item blocks the sign-off.
+
+##### 1.8.3 — Plan and CHANGELOG updates
 - **Deliverables.**
-  - Cold-user walkthrough following `docs/user-guide/workflow.md` from a fresh tmp consuming project; output to `/tmp/tc-phase1-walkthrough.log`.
-  - Per-step DoD audit across 1.1–1.7.
-  - `planning/plan.md` — move Phase 1 To Do items to Completed with the date.
-  - `CHANGELOG.md` — mark Phase 1 complete; add the closing summary.
-  - `tests/test_phase_1_signoff.py` (test-first; mirrors `test_phase_0_signoff.py`).
-- **Final DoD evaluation.** `make verify` → smoke replay → commit → push → annotated `phase-1` tag → tag push. Capture to `/tmp/tc-phase1-signoff.log`.
-- **Definition of done.** 13-check table (8 automated + 5 evidence-based) all green; tag visible on origin.
+  - `planning/plan.md` — collapse the `### Phase 1` To Do sub-section to a single line: `Phase 1 complete (YYYY-MM-DD) — see Completed`. Add a `### Phase 1 — Workspace and artifact model (YYYY-MM-DD)` section to `## Completed` with the per-step summary lines marked `[x]`.
+  - `CHANGELOG.md` — change the heading `Phase 1 — Workspace and artifact model (in progress)` to `(complete YYYY-MM-DD)` and add a one-line closing summary at the top of the Phase 1 section.
+- **Definition of done.** To Do Phase 1 reduced to the marker line; Completed has the Phase 1 section with date and seven sub-step bullets; CHANGELOG reflects the closing.
+
+##### 1.8.4 — Documentation final pass
+- **Deliverables.** Edits wherever Phase 1 wording has drifted during the seven sub-steps.
+- **What to read.** README status line, `docs/user-guide/getting-started.md` "what's next", `docs/install.md` verifying-install paragraph, `docs/user-guide/workflow.md` introductory paragraph, `plugins/test-commander/README.md` skill table.
+- **Definition of done.** Every Phase 1 fact matches the implementation. "Phase 1 in progress" wording becomes "Phase 1 complete (YYYY-MM-DD); Phase 2 starts next" where applicable. All cross-links resolve.
+
+##### 1.8.5 — Pre-flight tests for sign-off
+- **Deliverables.** `tests/test_phase_1_signoff.py`.
+- **Coverage.**
+  - All seven Phase 1 pytest files exist (`test_workspace_template`, `test_init_workspace`, `test_workspace_state`, `test_journal`, `test_next_step`, `test_phase_1_integration`, `test_phase_1_signoff`).
+  - All four Phase 1 helpers exist under `plugins/test-commander/scripts/`.
+  - All four Phase 1 command files exist under `plugins/test-commander/skills/tc-core/commands/`.
+  - `plugins/test-commander/skills/tc-core/methodology/next-step-inference.md` exists.
+  - `plugins/test-commander/templates/workspace/` exists (per D18).
+  - `scripts/verify_skills.py` `CATALOG["tc-core"]` is `1` and `DEFAULT_PHASE_CAP` is `1`.
+  - CHANGELOG Phase 1 section marked complete with a date.
+  - `plan.md` Completed has a Phase 1 subsection with a date.
+  - `plan.md` To Do Phase 1 is the marker line (no unchecked items remain).
+  - Total pytest count meets minimum (≥ 84).
+- **Definition of done.** Test-first: the suite lands red before 1.8.3's plan/CHANGELOG edits, green after.
+
+##### 1.8.6 — Final DoD evaluation (close Phase 1)
+- **Procedure.**
+  1. Run `make verify` — every test green, link checker clean, `verify_skills.py` reports `tc-core PRESENT (phase 1)`.
+  2. Replay the 1.8.1 walkthrough end to end to confirm reproducibility.
+  3. Capture all output to `/tmp/tc-phase1-signoff.log`.
+  4. Commit the plan/CHANGELOG/docs updates and the sign-off test in one final commit.
+  5. Push to origin.
+  6. Create annotated tag: `git tag -a phase-1 -m "Phase 1 — Workspace and artifact model complete."`.
+  7. Push tag: `git push origin phase-1`.
+- **Definition of done.** All seven numbered steps complete. Tag visible on origin (`git ls-remote origin phase-1` resolves). Evidence log captured. Phase 1 is closed.
 
 #### Definition of done — consolidated 13 checks
 
@@ -987,15 +1040,15 @@ Eight automated; five evidence-based.
 | 2 | All four helpers exist (`init_workspace.py`, `workspace_state.py`, `journal.py`, `next_step.py`) | auto | sign-off test |
 | 3 | All four command files exist (`init.md`, `status.md`, `journal.md`, `next.md` under `tc-core/commands/`) | auto | sign-off test |
 | 4 | `tc-core/methodology/next-step-inference.md` exists | auto | sign-off test |
-| 5 | `templates/workspace/` matches the plan's Workspace Layout | auto | template test |
-| 6 | `verify_skills.py` cap bumped to 1; reports `tc-core PRESENT (phase 1)` | auto | `make verify` |
-| 7 | Integration smoke (`test_phase_1_integration`) passes | auto | pytest |
+| 5 | `plugins/test-commander/templates/workspace/` matches the plan's Workspace Layout (per D18) | auto | template test (`test_workspace_template`) |
+| 6 | `verify_skills.py` has `CATALOG["tc-core"] == 1` and `DEFAULT_PHASE_CAP == 1`; `make verify` prints `tc-core PRESENT (phase 1)` | auto | sign-off test + `make verify` |
+| 7 | Integration smoke `test_phase_1_integration` passes | auto | pytest |
 | 8 | `make verify` chain clean | auto | full chain |
-| 9 | Cold-user walkthrough of `workflow.md` succeeds | evidence | `/tmp/tc-phase1-walkthrough.log` |
-| 10 | Per-step DoD audit clean (1.1–1.7) | evidence | audit notes |
-| 11 | Plan: To Do Phase 1 collapsed to marker; Completed has Phase 1 entries | evidence | grep + sign-off test |
-| 12 | CHANGELOG Phase 1 section marked complete with date | evidence | sign-off test |
-| 13 | `phase-1` annotated tag created and pushed | evidence | `git tag -l phase-1` + `git ls-remote origin phase-1` |
+| 9 | Cold-user walkthrough of `workflow.md` from clean state succeeds (1.8.1) | evidence | `/tmp/tc-phase1-walkthrough.log` |
+| 10 | Per-step DoD audit clean for 1.1–1.7 (1.8.2) | evidence | audit notes |
+| 11 | `plan.md` To Do Phase 1 collapsed to marker; Completed has Phase 1 subsection with date (1.8.3) | evidence | sign-off test + grep |
+| 12 | CHANGELOG Phase 1 section marked complete with date (1.8.3) | evidence | sign-off test |
+| 13 | `phase-1` annotated tag created and pushed (1.8.6) | evidence | `git tag -l phase-1` + `git ls-remote origin phase-1` |
 
 #### TDD pattern used in 1.2–1.5
 
@@ -1013,8 +1066,14 @@ No implementation lands before its tests. No tests are added after the fact.
 1. Author 1.1 (template) with its test. Confirm pytest red → green.
 2. For each of 1.2, 1.3, 1.4, 1.5 in order: write tests, implement helper, author command file, run pytest.
 3. 1.6 documentation pass. Run `make verify`.
-4. 1.7 testing finalization: bump cap, integration smoke. Run `make verify`.
-5. 1.8 sign-off: cold-user walkthrough, audit, plan/CHANGELOG updates, sign-off test, commit, push, tag.
+4. 1.7 testing finalization: bump `CATALOG` + `DEFAULT_PHASE_CAP` to 1, integration smoke. Run `make verify`.
+5. 1.8 sign-off, in order:
+   5a. Run the cold-user walkthrough from `workflow.md` (1.8.1). Capture log. Fix anything that fails before proceeding.
+   5b. Audit each prior sub-step's DoD (1.8.2). Block on any unmet item.
+   5c. Write `tests/test_phase_1_signoff.py` (1.8.5). Run `make test` — expect failures for any not-yet-applied plan/CHANGELOG edits.
+   5d. Update `plan.md` and `CHANGELOG.md` (1.8.3). Re-run sign-off test — expect green.
+   5e. Doc final read-through (1.8.4). Edit any drift; re-run `make verify`.
+   5f. Final DoD evaluation (1.8.6): commit, push, annotated tag, tag push.
 
 #### Failure modes
 
@@ -1024,6 +1083,10 @@ No implementation lands before its tests. No tests are added after the fact.
 - `/tc:next` recommends something the user already did. **Mitigation:** the helper reads timestamps and journal entries; recently-completed work is excluded from recommendations.
 - Workspace template drifts from the plan's Workspace Layout. **Mitigation:** `test_workspace_template.py` parses the plan's layout block and asserts equivalence (or compares against a frozen list documented inline).
 - `WorkspaceSnapshot.populated` (Step 1.3) is bytes-vs-template equality, so a roundtrip edit that ends byte-equal to the template is mis-classified as `not_started`. **Mitigation:** documented as a known limitation in `status.md`. If false negatives become common in practice, add a `.test-commander/.populated-marker` allowlist or switch to a content-hash sidecar; defer until evidence warrants.
+- A prior sub-step's DoD turns out not to be green during 1.8.2. **Mitigation:** the failing sub-step reopens. 1.8 cannot close while any earlier DoD is unmet. Fix, re-verify the sub-step, then return to 1.8.2.
+- The cold-user walkthrough in 1.8.1 surfaces a `workflow.md` gap (a step that doesn't actually work as documented). **Mitigation:** update `workflow.md` to match reality and re-run the walkthrough. Treat as a Phase 1 doc bug, not a Phase 2 issue.
+- `phase-1` tag already exists locally (replay of 1.8). **Mitigation:** the annotated tag is intentional. If the prior tag was wrong, delete it (`git tag -d phase-1` then `git push origin :refs/tags/phase-1`) and recreate. Never force-overwrite an existing tag on origin without explicit user confirmation.
+- `CHANGELOG` Phase 1 closing entry diverges from To Do/Completed movement. **Mitigation:** the sign-off test (1.8.5) checks all three sources. They must agree before the test passes.
 
 ---
 
