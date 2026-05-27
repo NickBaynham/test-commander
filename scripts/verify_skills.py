@@ -27,7 +27,7 @@ DEFAULT_SKILLS_ROOT = REPO_ROOT / "plugins" / "test-commander" / "skills"
 # Mirror of the TC-Owned Skill Catalog in planning/plan.md. Kept in sync by
 # code review; we deliberately do not parse the plan to avoid brittleness.
 CATALOG: dict[str, float] = {
-    "tc-core": 0,
+    "tc-core": 1,
     "tc-requirements": 2,
     "tc-knowledge": 3,
     "tc-explore": 4,
@@ -49,8 +49,9 @@ CATALOG: dict[str, float] = {
     "tc-continuous-quality": 13,
 }
 
-# Bumped as phases land. Phase 0 currently.
-DEFAULT_PHASE_CAP: float = 0
+# Bumped as phases land. Phase 1 currently — tc-core (init + status +
+# journal + next) is shipped in Phase 1.
+DEFAULT_PHASE_CAP: float = 1
 
 KEBAB_CASE = re.compile(r"[a-z][a-z0-9-]*")
 FRONTMATTER_BLOCK = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
