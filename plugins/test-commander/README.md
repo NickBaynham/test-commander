@@ -10,7 +10,7 @@ This README documents the plugin's contents. For the project overview, architect
 | --- | --- | --- |
 | `tc-core` | Phase 1 shipped | Owns `/tc:init`, `/tc:status`, `/tc:journal`, `/tc:next`. |
 | `tc-requirements` | Phase 2 shipped | Owns `/tc:review-requirements`, `/tc:review-user-stories`, `/tc:review-acceptance-criteria`, `/tc:requirements-coverage`, `/tc:requirements-to-tests`. |
-| `tc-knowledge` | Phase 3 helper sweep shipped (docs / specs / code / api / tests) | Owns `/tc:learn-from-docs`, `/tc:learn-from-specs`, `/tc:learn-from-code`, `/tc:learn-from-api`, `/tc:learn-from-tests` plus the shared `synthesize_system_model.py`. |
+| `tc-knowledge` | Phase 3 shipped | Owns `/tc:learn-from-docs`, `/tc:learn-from-specs`, `/tc:learn-from-code`, `/tc:learn-from-api`, `/tc:learn-from-tests` plus the shared `synthesize_system_model.py`. |
 
 ## What arrives later
 
