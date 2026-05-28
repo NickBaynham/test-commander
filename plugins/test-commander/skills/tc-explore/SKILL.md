@@ -11,9 +11,9 @@ Each command is implemented as a Python helper script bundled inside the plugin 
 
 ## Status
 
-Phase 4 is in progress. The skill scaffold and seeded-exploration-session fixture (Step 4.1) have shipped. Command behavior arrives in subsequent sub-steps:
+Phase 4 is in progress. The skill scaffold and seeded-exploration-session fixture (Step 4.1) plus `/tc:create-charter` (Step 4.2) have shipped. Remaining command behavior arrives in subsequent sub-steps:
 
-- `/tc:create-charter` — behavior arrives in Step 4.2.
+- `/tc:create-charter` — **shipped (Step 4.2).**
 - `/tc:explore` — behavior arrives in Step 4.3. Auto-runs the internal exploration-review sub-mode at end of every session (suppressible with `--no-review`).
 - `/tc:session-summary` — behavior arrives in Step 4.4.
 - `/tc:test-ideas` — behavior arrives in Step 4.5. Enriches the Phase-2 `tc-test-idea/v1` seeds; preserves every Phase-2 frontmatter key byte-for-byte; bumps `status: seed` → `status: enriched`.
@@ -24,7 +24,17 @@ Each sub-step ships the helper, methodology, template(s), and per-command page i
 
 ### `/tc:create-charter`
 
-Behavior arrives in Step 4.2. Will read `<workspace>/product-knowledge/` (system-model, entities, journeys) plus `<workspace>/requirements/open-questions.md` and `<workspace>/risk-register/risk-register.md` to suggest a charter target, or accept an explicit `--target <area>` / `--mission <text>`. Writes a charter file under `<workspace>/charters/<CH-NNN>.md` with YAML frontmatter (`id`, `mission`, `target`, `time-box`, `risk-areas`, `acceptance-criteria`, `created_at`, `phase_3_sources`).
+Reads Phase-3 product-knowledge (`system-model.md`, `entities.md`, `user-journeys.md`) plus Phase-2 `requirements/open-questions.md` and the project's `risk-register/risk-register.md` to either accept an explicit `--target <area>` / `--mission <text>` charter scope OR auto-suggest one from the entity with the highest mention count (ties broken alphabetically for deterministic output). Writes a charter file under `<workspace>/charters/<CH-NNN>.md` with YAML frontmatter (`id`, `mission`, `target`, `time-box: 60min`, `risk-areas`, `acceptance-criteria`, `created_at`, `phase_3_sources`) and a structured body (Mission / Target Area / Time-Box / Risk Areas / Acceptance Criteria / Out of Scope / Phase 3 Sources). Idempotent: re-running with the same `--target` skips the existing charter byte-identically (`created: 0, skipped: 1`); `--new-id` forces a fresh `CH-NNN` allocation; user edits to charter bodies are preserved across re-runs.
+
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/create_charter.py <project-root> [--target TEXT | --mission TEXT] [--new-id]
+```
+
+`<project-root>` defaults to the current working directory. Refuses uninitialized workspaces and empty Phase-3 product-knowledge with exit 2; the precondition error directs the user at `/tc:learn-from-docs` (Phase 3). Configurable via `tc-explore.charters.{risk-keywords, area-keywords}` in `<workspace>/config.yaml` — both extensions union with the universal core additively per D19.
+
+Full spec: [commands/create-charter.md](commands/create-charter.md). Methodology: [methodology/charter-based-exploration.md](methodology/charter-based-exploration.md). Umbrella: [methodology/exploratory-testing.md](methodology/exploratory-testing.md).
 
 ### `/tc:explore`
 
