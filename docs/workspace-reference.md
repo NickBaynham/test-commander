@@ -33,6 +33,7 @@ The workspace is created by [`/tc:init`](../plugins/test-commander/skills/tc-cor
     spec-derived-model.md
     documentation-model.md
     api-model.md
+    tests-coverage.md
   charters/                   # Phase 4 — exploration charters
   exploration-notes/          # Phase 4 — session notes
   test-ideas/                 # Phase 4 (owner); Phase 2 seeds via /tc:requirements-to-tests

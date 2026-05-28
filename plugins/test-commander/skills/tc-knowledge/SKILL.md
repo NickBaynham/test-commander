@@ -11,13 +11,15 @@ Each command is implemented as a Python helper script bundled inside the plugin 
 
 ## Status
 
-Phase 3 is in progress. The skill scaffold and seeded sample-project fixture (Step 3.1) have shipped. Steps 3.2-3.5 have shipped `/tc:learn-from-docs` (with the shared `synthesize_system_model.py` helper), `/tc:learn-from-specs`, `/tc:learn-from-code`, and `/tc:learn-from-api`. Command behavior arrives in subsequent sub-steps:
+Phase 3 helper sweep complete. All five `/tc:learn-from-*` commands plus the shared `synthesize_system_model.py` are shipped:
 
 - `/tc:learn-from-docs` — **shipped (Step 3.2).**
 - `/tc:learn-from-specs` — **shipped (Step 3.3).**
 - `/tc:learn-from-code` — **shipped (Step 3.4).**
 - `/tc:learn-from-api` — **shipped (Step 3.5).**
-- `/tc:learn-from-tests` — behavior arrives in Step 3.6.
+- `/tc:learn-from-tests` — **shipped (Step 3.6).**
+
+Remaining Phase 3 sub-steps (3.7 documentation pass, 3.8 testing finalization, 3.9 sign-off) do not change command behavior; they aggregate the user-facing documentation, bump the verifier's `DEFAULT_PHASE_CAP` to 3, and ship the `phase-3` annotated tag.
 
 Each sub-step ships the helper, methodology, template(s), and per-command page in a single commit, then updates this SKILL.md to describe the now-shipped behavior and remove the deferral wording for that command.
 
@@ -91,24 +93,33 @@ Full spec: [commands/learn-from-api.md](commands/learn-from-api.md). Methodology
 
 ### `/tc:learn-from-tests`
 
-Behavior arrives in Step 3.6. Will walk pytest-style Python tests and Playwright spec files under the configured tests root, count test files and functions, cross-reference covered symbols against `code-derived-model.md`, write `<workspace>/product-knowledge/tests-coverage.md`, append `untested-function` gaps, contribute `## From tests` sections, and regenerate `system-model.md`.
+Walks the configured tests root (default `<workspace>/documents/uploaded/tests/`, configurable via `tc-knowledge.tests.source-root`) for pytest-style Python (`test_*.py`, `*_test.py`) and Playwright spec files (`*.spec.ts`). Pytest files are parsed with stdlib `ast`: every test function (`def test_<name>`) is captured with `<path>:<line>` provenance and the set of `ast.Name`/`ast.Attribute` identifier references inside its body. Playwright files are detected by extension and counted by a regex pass against `test('...')` / `test("...")` calls — TypeScript parsing is deferred to a future phase. Three positive dimensions: test-files, test-functions, covered-symbols. Two gap signals: `unsupported-test-runner` (every `*.spec.ts`; always emitted) and `untested-function` (cross-check against `code-derived-model.md` when generated — imports `extract_knowledge_from_code` and walks its parsed functions; public functions whose plain name does not appear in the covered-symbols aggregate emit the gap). Both gaps route to `<workspace>/requirements/open-questions.md` with the `[<kind>]` prefix. Writes `<workspace>/product-knowledge/tests-coverage.md` byte-deterministically. Contributes `## From tests` to `entities.md` (each class from `code-derived-model.md` annotated `covered` or `uncovered` based on whether the class name appears in the covered-symbols aggregate). Does NOT touch `user-journeys.md`, `assumptions.md`, or `business-rules.md`. Calls the shared synthesizer at the end.
+
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/extract_knowledge_from_tests.py <project-root>
+```
+
+`<project-root>` defaults to the current working directory. Configurable via `tc-knowledge.tests.{source-root,ignored-paths}`. v1 parses pytest only; `.spec.ts` files are detected and counted but not parsed.
+
+Full spec: [commands/learn-from-tests.md](commands/learn-from-tests.md). Methodology: [methodology/learning-from-tests.md](methodology/learning-from-tests.md).
 
 ## Finding the helpers
 
-The helpers will live at `scripts/<name>.py` relative to this plugin's root (the directory containing this SKILL.md is `<plugin-root>/skills/tc-knowledge/`). In a development checkout that is `<repo>/plugins/test-commander/scripts/`. In the installed plugin cache it is `~/.claude/plugins/cache/test-commander-marketplace/test-commander/<version>/scripts/`. Either way, resolve the helper path relative to this SKILL.md's own location.
+The helpers live at `scripts/<name>.py` relative to this plugin's root (the directory containing this SKILL.md is `<plugin-root>/skills/tc-knowledge/`). In a development checkout that is `<repo>/plugins/test-commander/scripts/`. In the installed plugin cache it is `~/.claude/plugins/cache/test-commander-marketplace/test-commander/<version>/scripts/`. Either way, resolve the helper path relative to this SKILL.md's own location.
 
 ## What to do when a slash command fires
 
-For each shipped command (currently `/tc:learn-from-docs`): resolve `<plugin-root>` relative to this SKILL.md, determine `<project-root>` (the user's current working directory unless specified otherwise), run the bundled helper via `Bash`, and report the helper's CLI output. Then add the narrative judgment layer described in [`methodology/learning-from-documents.md`](methodology/learning-from-documents.md):
+All five Phase 3 commands are shipped. For any `/tc:learn-from-*` invocation: resolve `<plugin-root>` relative to this SKILL.md, determine `<project-root>` (the user's current working directory unless specified otherwise), run the bundled helper via `Bash`, and report the helper's CLI output. Then add the narrative judgment layer per the command's methodology doc.
 
-- Decide whether each extracted entity is a domain entity or an attribute of an existing one.
-- Identify synonyms across sources (the document's `Account` is the spec's `account_id`).
-- Translate business rules into testable predicates where possible.
-- Rank journeys by surface coverage; flag missing journeys for critical surfaces.
-- Surface useful assumptions (those that constrain design) and elevate them to either requirements or confirmed facts when supporting evidence appears.
-- Explain *why* each gap signal matters in product context before the user resolves the corresponding open question.
+Per-command judgment-layer focus:
 
-For commands that have not yet shipped (`/tc:learn-from-specs` etc.), produce a clear notice that the behavior arrives in the named sub-step and point the user at the phased plan.
+- `/tc:learn-from-docs` — decide entity vs attribute; identify cross-source synonyms (the document's `Account` is the spec's `account_id`); translate business rules into testable predicates; rank journeys by surface coverage; surface useful assumptions; explain why each gap matters.
+- `/tc:learn-from-specs` — rank endpoints by criticality; identify spec schemas that correspond to domain entities vs parameter sets; explain auth requirements for testers; flag schemas referenced but never defined.
+- `/tc:learn-from-code` — distinguish domain entities from implementation classes; identify public-API entry points vs internal helpers; surface functions whose signatures imply unspecified failure modes; correlate with spec endpoints by operationId.
+- `/tc:learn-from-api` — correlate observed shapes with spec schemas; flag shapes that include sensitive fields; identify endpoints that should require auth but don't (no recording carries Authorization); explain auth flows in plain language.
+- `/tc:learn-from-tests` — distinguish "symbol appears in test body" from "symbol is actually exercised"; flag suspicious imports for review; surface high-risk uncovered classes; identify Playwright surfaces unreachable in v1.
 
 If a helper exits non-zero, surface its stderr and the relevant per-command page.
 

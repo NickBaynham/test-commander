@@ -32,7 +32,10 @@ def test_snapshot_after_fresh_init_has_zero_populated(tmp_path):
     snap = workspace_state.snapshot(tmp_path)
     assert snap.exists
     assert snap.initialized
-    assert sum(snap.counts.values()) == 63
+    # Per the Phase-2 Step-2.8 lesson: assert >= for monotonically
+    # non-decreasing values. Phase 1 shipped 63 starter files; Phase 3
+    # Step 3.6 adds tests-coverage.md (64); future phases may add more.
+    assert sum(snap.counts.values()) >= 63
     assert sum(snap.populated.values()) == 0
     assert all(s == "not_started" for s in snap.phase_status.values())
     assert snap.last_modified is not None

@@ -23,19 +23,23 @@ def test_full_phase_1_workflow(tmp_path):
     workspace = project / ".test-commander"
     assert init_result.workspace == workspace
     assert workspace.is_dir()
-    assert len(init_result.created) == 63
+    # Per the Phase-2 Step-2.8 lesson: assert >= for monotonically
+    # non-decreasing counts. Phase 1 shipped 63 starter files; Phase 3
+    # Step 3.6 added tests-coverage.md (64); future phases may add more.
+    initial_count = len(init_result.created)
+    assert initial_count >= 63
     assert len(init_result.skipped) == 0
 
     # Re-init is a clean no-op (idempotency)
     rerun = init_workspace.init_workspace(project)
     assert len(rerun.created) == 0
-    assert len(rerun.skipped) == 63
+    assert len(rerun.skipped) == initial_count
 
     # --- 2. /tc:status on fresh workspace ---
     snap = workspace_state.snapshot(project)
     assert snap.exists
     assert snap.initialized
-    assert sum(snap.counts.values()) == 63
+    assert sum(snap.counts.values()) == initial_count
     assert sum(snap.populated.values()) == 0
     assert all(s == "not_started" for s in snap.phase_status.values())
 
