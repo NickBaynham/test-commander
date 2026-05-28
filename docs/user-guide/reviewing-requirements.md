@@ -218,7 +218,7 @@ INVEST checks, AC rubric checks, ambiguity adjectives, and security anti-pattern
 
 ## Beyond Phase 2
 
-After Phase 2 ships, `/tc:next` typically recommends a Phase 3 command (`/tc:learn-from-docs`, `/tc:learn-from-code`, etc.) to ingest project knowledge. Phase 3 enriches the requirements review by feeding domain knowledge into downstream skills. See [the phased plan](../../planning/plan.md) for the full roadmap.
+`/tc:next` typically recommends a Phase 3 command (`/tc:learn-from-docs`, `/tc:learn-from-specs`, `/tc:learn-from-code`, `/tc:learn-from-api`, `/tc:learn-from-tests`) to ingest project knowledge. All five Phase 3 commands are shipped — follow [building-project-knowledge.md](building-project-knowledge.md) for the Phase 3 walkthrough. Phase 3 enriches the requirements review by feeding domain knowledge into downstream skills. See [the phased plan](../../planning/plan.md) for the full roadmap.
 
 ## See also
 

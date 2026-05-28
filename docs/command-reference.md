@@ -25,17 +25,26 @@ For the methodology behind `/tc:next`'s recommendations, see [next-step-inferenc
 
 For the rubric methodology, see [requirements-quality-review.md](../plugins/test-commander/skills/tc-requirements/methodology/requirements-quality-review.md), [user-story-readiness.md](../plugins/test-commander/skills/tc-requirements/methodology/user-story-readiness.md), and [acceptance-criteria-quality.md](../plugins/test-commander/skills/tc-requirements/methodology/acceptance-criteria-quality.md). End-to-end walkthrough: [user-guide/reviewing-requirements.md](user-guide/reviewing-requirements.md).
 
+## Phase 3 commands (shipped)
+
+| Command | Skill | Per-command page |
+| --- | --- | --- |
+| `/tc:learn-from-docs` | `tc-knowledge` | [learn-from-docs.md](../plugins/test-commander/skills/tc-knowledge/commands/learn-from-docs.md) |
+| `/tc:learn-from-specs` | `tc-knowledge` | [learn-from-specs.md](../plugins/test-commander/skills/tc-knowledge/commands/learn-from-specs.md) |
+| `/tc:learn-from-code` | `tc-knowledge` | [learn-from-code.md](../plugins/test-commander/skills/tc-knowledge/commands/learn-from-code.md) |
+| `/tc:learn-from-api` | `tc-knowledge` | [learn-from-api.md](../plugins/test-commander/skills/tc-knowledge/commands/learn-from-api.md) |
+| `/tc:learn-from-tests` | `tc-knowledge` | [learn-from-tests.md](../plugins/test-commander/skills/tc-knowledge/commands/learn-from-tests.md) |
+
+All five commands write per-source models under `<workspace>/product-knowledge/`, contribute scoped `## From <source>` sections to the cross-cutting artifacts (`entities.md`, `user-journeys.md`, `business-rules.md`, `assumptions.md`), and call the shared `synthesize_system_model.py` to regenerate `system-model.md`. Gap signals route to `<workspace>/requirements/open-questions.md` with a `[<kind>]` prefix.
+
+For the methodology behind each helper, see [project-knowledge.md](../plugins/test-commander/skills/tc-knowledge/methodology/project-knowledge.md) (umbrella) plus [learning-from-documents.md](../plugins/test-commander/skills/tc-knowledge/methodology/learning-from-documents.md), [learning-from-specs.md](../plugins/test-commander/skills/tc-knowledge/methodology/learning-from-specs.md), [learning-from-code.md](../plugins/test-commander/skills/tc-knowledge/methodology/learning-from-code.md), [learning-from-api.md](../plugins/test-commander/skills/tc-knowledge/methodology/learning-from-api.md), and [learning-from-tests.md](../plugins/test-commander/skills/tc-knowledge/methodology/learning-from-tests.md). End-to-end walkthrough: [user-guide/building-project-knowledge.md](user-guide/building-project-knowledge.md).
+
 ## Planned commands (not yet implemented)
 
 These will gain per-command pages as their phases ship.
 
 | Command | Skill | Phase |
 | --- | --- | --- |
-| `/tc:learn-from-docs` | `tc-knowledge` | 3 |
-| `/tc:learn-from-specs` | `tc-knowledge` | 3 |
-| `/tc:learn-from-code` | `tc-knowledge` | 3 |
-| `/tc:learn-from-api` | `tc-knowledge` | 3 |
-| `/tc:learn-from-tests` | `tc-knowledge` | 3 |
 | `/tc:create-charter` | `tc-explore` | 4 |
 | `/tc:explore` | `tc-explore` | 4 |
 | `/tc:test-ideas` | `tc-explore` | 4 |

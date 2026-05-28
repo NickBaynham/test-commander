@@ -129,7 +129,7 @@ Everything is plain Markdown and YAML; commit it all to git.
 
 ## Beyond Phase 1
 
-`/tc:next` will recommend `/tc:review-requirements` when Phase 1 metadata is filled in. The five Phase 2 commands (review-requirements, review-user-stories, review-acceptance-criteria, requirements-coverage, requirements-to-tests) are shipped — follow [reviewing-requirements.md](reviewing-requirements.md) for the Phase 2 walkthrough. For the full phased roadmap, see [../../planning/plan.md](../../planning/plan.md).
+`/tc:next` will recommend `/tc:review-requirements` when Phase 1 metadata is filled in. The five Phase 2 commands (review-requirements, review-user-stories, review-acceptance-criteria, requirements-coverage, requirements-to-tests) are shipped — follow [reviewing-requirements.md](reviewing-requirements.md) for the Phase 2 walkthrough. The five Phase 3 commands (learn-from-docs, learn-from-specs, learn-from-code, learn-from-api, learn-from-tests) are also shipped — follow [building-project-knowledge.md](building-project-knowledge.md) for the Phase 3 walkthrough. For the full phased roadmap, see [../../planning/plan.md](../../planning/plan.md).
 
 ## See also
 

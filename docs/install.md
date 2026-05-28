@@ -57,7 +57,7 @@ make uninstall
 
 ## Verifying the install
 
-After `make install`, open Claude Code. Both the `test-commander:tc-core` and `test-commander:tc-requirements` skills should appear in available skills. Run `/tc:init` (Phase 1) to bootstrap the workspace in your consuming project, then follow [user-guide/workflow.md](user-guide/workflow.md) for the Phase 1 walkthrough and [user-guide/reviewing-requirements.md](user-guide/reviewing-requirements.md) for the Phase 2 walkthrough.
+After `make install`, open Claude Code. The `test-commander:tc-core`, `test-commander:tc-requirements`, and `test-commander:tc-knowledge` skills should appear in available skills. Run `/tc:init` (Phase 1) to bootstrap the workspace in your consuming project, then follow [user-guide/workflow.md](user-guide/workflow.md) for the Phase 1 walkthrough, [user-guide/reviewing-requirements.md](user-guide/reviewing-requirements.md) for the Phase 2 walkthrough, and [user-guide/building-project-knowledge.md](user-guide/building-project-knowledge.md) for the Phase 3 walkthrough.
 
 ## Platform notes
 
