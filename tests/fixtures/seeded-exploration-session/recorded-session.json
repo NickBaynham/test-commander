@@ -1,0 +1,470 @@
+[
+  {
+    "timestamp": "2026-05-28T10:00:00.000Z",
+    "event_type": "page_load",
+    "page_url": "/sign-in",
+    "result": "ok",
+    "load_time_ms": 412
+  },
+  {
+    "timestamp": "2026-05-28T10:00:01.250Z",
+    "event_type": "screenshot",
+    "page_url": "/sign-in",
+    "screenshot_id": "S-001",
+    "caption": "Sign-in page rendered with account_id and code fields visible."
+  },
+  {
+    "timestamp": "2026-05-28T10:00:03.100Z",
+    "event_type": "fill",
+    "page_url": "/sign-in",
+    "selector": "input[name=account_id]",
+    "value_redacted": "acc-***"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:04.820Z",
+    "event_type": "fill",
+    "page_url": "/sign-in",
+    "selector": "input[name=code]",
+    "value_redacted": "***"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:06.500Z",
+    "event_type": "click",
+    "page_url": "/sign-in",
+    "selector": "button[type=submit]",
+    "action": "submit sign-in form"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:06.812Z",
+    "event_type": "network_request",
+    "page_url": "/sign-in",
+    "method": "POST",
+    "path": "/sessions",
+    "status": 201,
+    "duration_ms": 312,
+    "request_headers": {"content-type": "application/json"},
+    "response_keys": ["id", "account_id", "expires_at"]
+  },
+  {
+    "timestamp": "2026-05-28T10:00:07.350Z",
+    "event_type": "page_load",
+    "page_url": "/dashboard",
+    "result": "ok",
+    "load_time_ms": 538
+  },
+  {
+    "timestamp": "2026-05-28T10:00:08.220Z",
+    "event_type": "screenshot",
+    "page_url": "/dashboard",
+    "screenshot_id": "S-002",
+    "caption": "Dashboard loaded with workspace list."
+  },
+  {
+    "timestamp": "2026-05-28T10:00:09.000Z",
+    "event_type": "network_request",
+    "page_url": "/dashboard",
+    "method": "GET",
+    "path": "/workspaces",
+    "status": 200,
+    "duration_ms": 3812,
+    "request_headers": {"authorization": "Bearer redacted"},
+    "response_keys": ["id", "name", "owner_account_id"]
+  },
+  {
+    "timestamp": "2026-05-28T10:00:12.815Z",
+    "event_type": "anomaly",
+    "page_url": "/dashboard",
+    "anomaly": {
+      "category": "slow-response",
+      "severity": "medium",
+      "page_url": "/dashboard",
+      "reproduction": "GET /workspaces returned in 3812ms; acceptable threshold for dashboard load is 1000ms.",
+      "screenshot_id": "S-002"
+    },
+    "_knowledge": "knowledge: slow-response"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:15.220Z",
+    "event_type": "click",
+    "page_url": "/dashboard",
+    "selector": "a[data-workspace-id=ws-1]",
+    "action": "open workspace ws-1"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:15.480Z",
+    "event_type": "page_load",
+    "page_url": "/workspaces/ws-1",
+    "result": "ok",
+    "load_time_ms": 622
+  },
+  {
+    "timestamp": "2026-05-28T10:00:16.300Z",
+    "event_type": "network_request",
+    "page_url": "/workspaces/ws-1",
+    "method": "GET",
+    "path": "/workspaces/{id}/assets",
+    "status": 200,
+    "duration_ms": 412,
+    "request_headers": {"authorization": "Bearer redacted"},
+    "response_keys": ["id", "workspace_id", "name", "size_bytes", "content_type"]
+  },
+  {
+    "timestamp": "2026-05-28T10:00:17.100Z",
+    "event_type": "screenshot",
+    "page_url": "/workspaces/ws-1",
+    "screenshot_id": "S-003",
+    "caption": "Workspace detail with asset list."
+  },
+  {
+    "timestamp": "2026-05-28T10:00:18.450Z",
+    "event_type": "console_message",
+    "page_url": "/workspaces/ws-1",
+    "level": "error",
+    "message": "Uncaught TypeError: Cannot read properties of undefined (reading 'size_bytes')"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:18.612Z",
+    "event_type": "anomaly",
+    "page_url": "/workspaces/ws-1",
+    "anomaly": {
+      "category": "console-error",
+      "severity": "high",
+      "page_url": "/workspaces/ws-1",
+      "reproduction": "Workspace detail page logged 'Uncaught TypeError: Cannot read properties of undefined' immediately after asset list render.",
+      "screenshot_id": "S-003"
+    },
+    "_knowledge": "knowledge: console-error"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:20.250Z",
+    "event_type": "click",
+    "page_url": "/workspaces/ws-1",
+    "selector": "a[href='/account/profile']",
+    "action": "open account profile link"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:20.890Z",
+    "event_type": "page_load",
+    "page_url": "/account/profile",
+    "result": "error_404",
+    "load_time_ms": 312
+  },
+  {
+    "timestamp": "2026-05-28T10:00:21.100Z",
+    "event_type": "screenshot",
+    "page_url": "/account/profile",
+    "screenshot_id": "S-004",
+    "caption": "404 Not Found rendered for /account/profile."
+  },
+  {
+    "timestamp": "2026-05-28T10:00:21.350Z",
+    "event_type": "anomaly",
+    "page_url": "/account/profile",
+    "anomaly": {
+      "category": "broken-link",
+      "severity": "high",
+      "page_url": "/account/profile",
+      "reproduction": "Workspace-detail page links to /account/profile but that route returns 404. Source link rendered from target-app.md page index.",
+      "screenshot_id": "S-004"
+    },
+    "_knowledge": "knowledge: broken-link"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:22.500Z",
+    "event_type": "click",
+    "page_url": "/account/profile",
+    "selector": "a[href='/dashboard']",
+    "action": "navigate back to dashboard"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:22.940Z",
+    "event_type": "page_load",
+    "page_url": "/dashboard",
+    "result": "ok",
+    "load_time_ms": 218
+  },
+  {
+    "timestamp": "2026-05-28T10:00:24.100Z",
+    "event_type": "click",
+    "page_url": "/dashboard",
+    "selector": "a[data-workspace-id=ws-1]",
+    "action": "re-open workspace ws-1"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:24.520Z",
+    "event_type": "page_load",
+    "page_url": "/workspaces/ws-1",
+    "result": "ok",
+    "load_time_ms": 380
+  },
+  {
+    "timestamp": "2026-05-28T10:00:26.200Z",
+    "event_type": "click",
+    "page_url": "/workspaces/ws-1",
+    "selector": "button[data-action=upload-asset]",
+    "action": "open asset upload dialog"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:27.100Z",
+    "event_type": "fill",
+    "page_url": "/workspaces/ws-1",
+    "selector": "input[type=file]",
+    "value_redacted": "sample.bin (12 bytes)"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:28.450Z",
+    "event_type": "click",
+    "page_url": "/workspaces/ws-1",
+    "selector": "button[data-action=submit-upload]",
+    "action": "submit asset upload"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:28.612Z",
+    "event_type": "network_request",
+    "page_url": "/workspaces/ws-1",
+    "method": "POST",
+    "path": "/workspaces/{id}/assets",
+    "status": 201,
+    "duration_ms": 412,
+    "request_headers": {"authorization": "Bearer redacted", "content-type": "multipart/form-data"},
+    "response_keys": ["id", "workspace_id", "name", "size_bytes"]
+  },
+  {
+    "timestamp": "2026-05-28T10:00:29.300Z",
+    "event_type": "screenshot",
+    "page_url": "/workspaces/ws-1",
+    "screenshot_id": "S-005",
+    "caption": "Asset upload success — asset list refreshed with new entry."
+  },
+  {
+    "timestamp": "2026-05-28T10:00:31.100Z",
+    "event_type": "click",
+    "page_url": "/workspaces/ws-1",
+    "selector": "button[data-action=upload-asset]",
+    "action": "open asset upload dialog (large-file attempt)"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:31.880Z",
+    "event_type": "fill",
+    "page_url": "/workspaces/ws-1",
+    "selector": "input[type=file]",
+    "value_redacted": "large-report.bin (12582912 bytes)"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:32.412Z",
+    "event_type": "click",
+    "page_url": "/workspaces/ws-1",
+    "selector": "button[data-action=submit-upload]",
+    "action": "submit large asset upload (expect rejection per 10 MB rule)"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:32.620Z",
+    "event_type": "network_request",
+    "page_url": "/workspaces/ws-1",
+    "method": "POST",
+    "path": "/workspaces/{id}/assets",
+    "status": 413,
+    "duration_ms": 122,
+    "request_headers": {"authorization": "Bearer redacted", "content-type": "multipart/form-data"},
+    "response_keys": ["error"]
+  },
+  {
+    "timestamp": "2026-05-28T10:00:33.180Z",
+    "event_type": "screenshot",
+    "page_url": "/workspaces/ws-1",
+    "screenshot_id": "S-006",
+    "caption": "Asset upload rejection — 413 Payload Too Large rendered with error message."
+  },
+  {
+    "timestamp": "2026-05-28T10:00:35.250Z",
+    "event_type": "network_request",
+    "page_url": "/workspaces/ws-1",
+    "method": "GET",
+    "path": "/workspaces/{id}/assets",
+    "status": 401,
+    "duration_ms": 88,
+    "request_headers": {},
+    "response_keys": ["error"]
+  },
+  {
+    "timestamp": "2026-05-28T10:00:35.460Z",
+    "event_type": "anomaly",
+    "page_url": "/workspaces/ws-1",
+    "anomaly": {
+      "category": "auth-mismatch",
+      "severity": "high",
+      "page_url": "/workspaces/ws-1",
+      "reproduction": "GET /workspaces/{id}/assets returned 401 because the Authorization header was missing from the retry attempt. Same endpoint succeeded with status 200 earlier in this session when the header was present.",
+      "screenshot_id": "S-006"
+    },
+    "_knowledge": "knowledge: auth-mismatch"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:38.100Z",
+    "event_type": "page_load",
+    "page_url": "/accounts/me",
+    "result": "ok",
+    "load_time_ms": 422
+  },
+  {
+    "timestamp": "2026-05-28T10:00:39.220Z",
+    "event_type": "network_request",
+    "page_url": "/accounts/me",
+    "method": "GET",
+    "path": "/accounts/me",
+    "status": 200,
+    "duration_ms": 188,
+    "request_headers": {"authorization": "Bearer redacted"},
+    "response_keys": ["id", "display_name", "role"]
+  },
+  {
+    "timestamp": "2026-05-28T10:00:48.100Z",
+    "event_type": "anomaly",
+    "page_url": "/accounts/me",
+    "anomaly": {
+      "category": "missing-evidence",
+      "severity": "medium",
+      "page_url": "/accounts/me",
+      "reproduction": "Observed an undocumented `last_login_at` field in the response body, but no screenshot captured within ±3 seconds of this anomaly. The field is not declared in components.schemas.Account from the OpenAPI spec.",
+      "screenshot_id": null
+    },
+    "_knowledge": "knowledge: missing-evidence"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:50.220Z",
+    "event_type": "click",
+    "page_url": "/accounts/me",
+    "selector": "button[data-action=sign-out]",
+    "action": "sign out"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:50.480Z",
+    "event_type": "network_request",
+    "page_url": "/accounts/me",
+    "method": "DELETE",
+    "path": "/sessions/{id}",
+    "status": 500,
+    "duration_ms": 922,
+    "request_headers": {"authorization": "Bearer redacted"},
+    "response_keys": ["error"]
+  },
+  {
+    "timestamp": "2026-05-28T10:00:51.300Z",
+    "event_type": "page_load",
+    "page_url": "/sign-in",
+    "result": "ok",
+    "load_time_ms": 282
+  },
+  {
+    "timestamp": "2026-05-28T10:00:52.100Z",
+    "event_type": "screenshot",
+    "page_url": "/sign-in",
+    "screenshot_id": "S-007",
+    "caption": "Sign-in page after sign-out attempt. Workspace card visible in the corner despite the sign-out request."
+  },
+  {
+    "timestamp": "2026-05-28T10:00:52.460Z",
+    "event_type": "anomaly",
+    "page_url": "/sign-in",
+    "anomaly": {
+      "category": "unexpected-state",
+      "severity": "high",
+      "page_url": "/sign-in",
+      "reproduction": "After sign-out (DELETE /sessions/{id} returned 500), the sign-in page still renders a residual 'Recently Viewed Workspace' card in the sidebar. Indicates client-side state was not cleared on sign-out failure.",
+      "screenshot_id": "S-007"
+    },
+    "_knowledge": "knowledge: unexpected-state"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:55.200Z",
+    "event_type": "console_message",
+    "page_url": "/sign-in",
+    "level": "warning",
+    "message": "Failed to clear session storage: token sess-acc-***-redacted remained in localStorage after sign-out."
+  },
+  {
+    "timestamp": "2026-05-28T10:00:56.880Z",
+    "event_type": "click",
+    "page_url": "/sign-in",
+    "selector": "input[name=account_id]",
+    "action": "focus account_id field for re-authentication"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:57.412Z",
+    "event_type": "fill",
+    "page_url": "/sign-in",
+    "selector": "input[name=account_id]",
+    "value_redacted": "acc-***"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:58.000Z",
+    "event_type": "fill",
+    "page_url": "/sign-in",
+    "selector": "input[name=code]",
+    "value_redacted": "***"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:58.620Z",
+    "event_type": "click",
+    "page_url": "/sign-in",
+    "selector": "button[type=submit]",
+    "action": "submit re-authentication"
+  },
+  {
+    "timestamp": "2026-05-28T10:00:58.880Z",
+    "event_type": "network_request",
+    "page_url": "/sign-in",
+    "method": "POST",
+    "path": "/sessions",
+    "status": 201,
+    "duration_ms": 244,
+    "request_headers": {"content-type": "application/json"},
+    "response_keys": ["id", "account_id", "expires_at"]
+  },
+  {
+    "timestamp": "2026-05-28T10:00:59.220Z",
+    "event_type": "page_load",
+    "page_url": "/dashboard",
+    "result": "ok",
+    "load_time_ms": 388
+  },
+  {
+    "timestamp": "2026-05-28T10:00:59.880Z",
+    "event_type": "screenshot",
+    "page_url": "/dashboard",
+    "screenshot_id": "S-008",
+    "caption": "Dashboard after re-authentication; residual workspace card from previous session no longer visible."
+  },
+  {
+    "timestamp": "2026-05-28T10:01:01.200Z",
+    "event_type": "click",
+    "page_url": "/dashboard",
+    "selector": "button[data-action=sign-out]",
+    "action": "sign out cleanly"
+  },
+  {
+    "timestamp": "2026-05-28T10:01:01.420Z",
+    "event_type": "network_request",
+    "page_url": "/dashboard",
+    "method": "DELETE",
+    "path": "/sessions/{id}",
+    "status": 204,
+    "duration_ms": 168,
+    "request_headers": {"authorization": "Bearer redacted"},
+    "response_keys": []
+  },
+  {
+    "timestamp": "2026-05-28T10:01:01.880Z",
+    "event_type": "page_load",
+    "page_url": "/sign-in",
+    "result": "ok",
+    "load_time_ms": 212
+  },
+  {
+    "timestamp": "2026-05-28T10:01:02.500Z",
+    "event_type": "screenshot",
+    "page_url": "/sign-in",
+    "screenshot_id": "S-009",
+    "caption": "Final sign-in page; session cleanly terminated."
+  }
+]
