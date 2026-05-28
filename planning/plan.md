@@ -1946,34 +1946,271 @@ Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Conventio
 
 ## Phase 4 — Exploratory Testing and Test Idea Generation
 
-**Goal.** Charter-based exploration that captures observations, risks, ideas, and evidence.
+**Goal.** Charter-based exploration that captures observations, risks, ideas, and evidence. Ship the `tc-explore` skill with four commands plus an internal review sub-mode that drive Playwright MCP against a target web application (or replay a recorded session in tests), produce structured charter / exploration-note / session-summary artifacts, enrich the Phase-2-seeded test-idea files with refined candidate scenarios drawn from real exploration, and surface anomalies as gap signals routed to `<workspace>/requirements/open-questions.md`.
 
-**Implementation.**
+**Architecture.** Each `/tc:explore-*`-family command is a Python helper plus a Markdown command file inside `plugins/test-commander/skills/tc-explore/`. Helpers do the deterministic work (load charters, parse recorded session events, classify observations, render artifacts, enrich Phase-2 test-idea seeds); Claude executes the judgment-heavy parts (ranking anomaly severity, deciding which observations belong as candidate scenarios versus noise, mapping exploration findings back to charter goals) by reading the per-command page and the methodology docs. Live mode integrates with Playwright MCP at runtime; pytest never reaches a real browser — recorded session replay is mandatory under the test harness, refused via the `PYTEST_CURRENT_TEST` env-var check established in Phase 3 Step 3.5.
 
-- `/tc:create-charter`, `/tc:explore`, `/tc:test-ideas`, `/tc:session-summary`
-- Methodology: `exploratory-testing.md`, `test-idea-model.md`, `session-based-test-management.md`
-- Templates: charter, exploration note, test idea, session summary
+**Phase-4 design decisions (folded in).**
 
-**Skills authored.** `tc-explore` with four sub-commands. Drives Playwright MCP directly. Includes methodology for charter-based exploration, the test-idea model, and session-based test management.
+- **Recorded session replay is the test contract; live Playwright MCP is opt-in.** The default `recorded` mode reads a captured session file from `<workspace>/documents/uploaded/recorded-sessions/<charter-id>.json` (or the configured path). The opt-in `live` mode (`tc-explore.mode: live`) drives Playwright MCP via the `tc-explore.mcp.endpoint:` configuration against a real target URL. Pytest never enters live mode — the helper detects `PYTEST_CURRENT_TEST` and exits 2 with a clear error before any MCP connection is attempted. Mirrors the Phase 3 Step 3.5 pattern verbatim.
+- **Charters use stable `CH-NNN` IDs; sessions use `SESS-YYYYMMDD-NNN` IDs.** Every artifact carries its ID in a YAML frontmatter block plus inline `# {id}` markers so cross-references (session → charter, test-idea enrichment → session, anomaly → charter + session) resolve mechanically. Mirrors the Phase 2 `REQ-NNN`/`US-NNN`/`AC-NNN` convention.
+- **Phase 4 reads product-knowledge but writes only to its own directories.** Inputs: `<workspace>/product-knowledge/` (system-model.md, entities.md, user-journeys.md for charter suggestions and exploration scope), `<workspace>/requirements/` (open-questions.md for candidate exploration targets, requirements-inventory.md for traceability), `<workspace>/risk-register/risk-register.md` (charter risk-area suggestions), `<workspace>/learning/accepted-lessons.md` (Phase-8 feedback loop, may be empty in v1). Writes: `<workspace>/charters/`, `<workspace>/exploration-notes/`, `<workspace>/sessions/`, `<workspace>/test-ideas/` (enrichment only, never overwrite seeds), `<workspace>/evidence/screenshots/` (referenced from notes). Does NOT write to `<workspace>/traceability/` (Phase 5 owns) or `<workspace>/product-knowledge/` (Phase 3 owns). The integration smoke in 4.7 asserts the boundary directly, per the Phase 3 Step 3.8 lesson that codified the discipline.
+- **Test-idea enrichment preserves the `tc-test-idea/v1` schema.** Phase 2 Step 2.6's idempotency contract is "existing test-idea files are NEVER overwritten" because Phase 4 enriches them. Phase 4 honors that contract: the helper reads each existing `<REQ-ID>.md` seed, preserves the YAML frontmatter unchanged (`schema`, `requirement_id`, `requirement_title`, `source`, `status`, `phase_2_findings`, `candidates`), and appends a new `## Phase 4 enrichment` body section with refined candidate scenarios drawn from exploration sessions plus a `phase_4_sessions: [SESS-IDs]` frontmatter field added once (and updated, never duplicated, on re-runs). The Phase 4 schema bump is `status: seed` → `status: enriched`. The test for this contract asserts byte-identical preservation of every frontmatter key the seed shipped with.
+- **Internal review sub-mode auto-runs at the end of every exploration session.** Designed after `mcp-exploratory-testing:review-exploration`. Runs a deterministic rubric over the freshly-written session artifact: charter-ID present and resolvable, every observation cites a `<file>:<line>` provenance or `evidence/screenshots/<id>.png` reference, anomalies categorized into known severity buckets, every `## From product-knowledge` link resolves. Failures route to `requirements/open-questions.md` as `[exploration-review]` gap signals. The review sub-mode is internal — it does NOT ship as a fifth `/tc:` command in v1, matching the plan's original "four sub-commands" framing; instead, it runs at the end of `/tc:explore` (the `--no-review` flag suppresses it for advanced users who want to chain commands manually).
+- **Universal cores; project-specific tuning via `tc-explore:` config extensions per D19.** Three extensible sub-blocks ship in v1: `tc-explore.charters.{risk-keywords, area-keywords}` for charter suggestion heuristics, `tc-explore.exploration.{mode, recorded-path, mcp-endpoint, target-url, charter-id}`, `tc-explore.review.{rubric-extensions}`. Universal cores carry only generic English / software-engineering vocabulary; project-specific domain extensions go through `<workspace>/config.yaml`. The seeded fixture exercises only the universal cores; the customization guide (updated in Step 4.6) carries worked examples for three different consuming-project shapes (a typical web-app + Playwright project, a mobile app where Playwright is replaced by a different MCP, an API-only project where exploration falls back to spec-derived journeys).
+- **Helper-mirroring is the design.** Per the Phase-3 Step-3.5 result (five datapoints in across two phases: helper-mirroring concentrates the unique implementation effort into the per-source extraction logic; everything else is fungible), Steps 4.3–4.5 copy Step 4.2's helper skeleton and adapt only the per-command behavior. The integration smoke in 4.7 is budgeted as verification, not debugging, per the Phase 3 Step 3.8 lesson.
+- **Phase 4 fixture bundles a recorded MCP exploration session.** The new `tests/fixtures/seeded-exploration-session/` directory carries: a `charter.md` (CH-001 worked example), a `recorded-session.json` (50–80 timestamped events: page loads, clicks, anomalies, screenshots taken), a `target-app.md` describing the seeded target (a universal SaaS dashboard — sign-in / accounts / workspaces / assets, mirroring the Phase 3 sample-project's narrative for cross-phase consistency), and a `README.md` describing the recording convention and the per-dimension defect catalog (one seeded anomaly per anomaly category: `slow-response`, `console-error`, `broken-link`, `missing-evidence`, `auth-mismatch`).
 
-**Design references.** `mcp-exploratory-testing:explore-app` (app reconnaissance shape), `mcp-exploratory-testing:explore-workflow` (bounded workflow exploration), `mcp-exploratory-testing:review-exploration` (review rubric for exploration artifacts).
+**Skills authored.** `tc-explore` — `SKILL.md` plus four command files (one per `/tc:` command), four methodology files (`exploratory-testing.md` umbrella plus `charter-based-exploration.md`, `test-idea-model.md`, `session-based-test-management.md`), and seven templates (`charter-template.md`, `exploration-note-template.md`, `session-summary-template.md`, `test-idea-enrichment-template.md`, `exploration-review-template.md`, `target-app-template.md`, `anomaly-record-template.md`).
 
-**Inputs read.** `.test-commander/product-knowledge/`, `requirements/`, `risk-register/`, `learning/accepted-lessons.md`.
+**Design references.** `mcp-exploratory-testing:explore-app` (app reconnaissance shape), `mcp-exploratory-testing:explore-workflow` (bounded workflow exploration), `mcp-exploratory-testing:review-exploration` (review rubric for exploration artifacts). Per Decision D1 (vendor-and-own), `tc-explore` is authored in-repo; these MCP skills are design references only, never runtime dependencies. Playwright MCP itself is a runtime dependency for live mode (and recorded mode treats the captured session JSON as its sole input — no MCP connection needed in recorded mode).
 
-**Documentation.** `docs/user-guide/exploring-an-app.md` — how to write a charter, drive Playwright MCP, capture findings.
+**Inputs read.** `<workspace>/product-knowledge/`, `<workspace>/requirements/`, `<workspace>/risk-register/`, `<workspace>/learning/accepted-lessons.md`.
 
-**Review step.**
+**Exploration rubric.** charter (mission + target + time-box + risk areas + acceptance criteria), observation (page state + action + result + timestamp), evidence (screenshot ID + caption + page URL), anomaly (category + severity + reproduction steps), journey (ordered sequence of observations satisfying a charter goal), session (charter ID + start/end time + observation count + anomaly count + review verdict), test-idea-enrichment (charter ID + session ID + new candidate scenario titles). Universal anomaly categories: `slow-response`, `console-error`, `broken-link`, `missing-evidence`, `auth-mismatch`, `unexpected-state`. The seeded fixture carries one defect per category marked with the universal `knowledge: <category>` token in the file's native comment syntax (mirroring the Phase 3 Step 3.1 marker uniformity lesson).
 
-- `tc-explore`'s internal review sub-mode (designed after `mcp-exploratory-testing:review-exploration`) runs against new session reports as part of the review gate.
-- Findings link back to charter ID and product knowledge.
+### Phase 4 — Execution outline
 
-**Test step.**
+Eight sub-steps. TDD throughout: every implementation step lands its tests red before turning them green. Sub-step 4.1 scaffolds the skill and the shared seeded-exploration-session fixture; 4.2–4.5 implement the four commands; 4.6 is the dedicated documentation pass; 4.7 is the dedicated testing finalization (cap bump + integration smoke); 4.8 is the sign-off with a `phase-4` tag.
 
-- Replay a recorded exploration on a known sample app; confirm artifact counts and shape.
+#### 4.1 — Skill scaffold and seeded-exploration-session fixture
 
-**Definition of done.**
+- **Deliverables.**
+  - `plugins/test-commander/skills/tc-explore/SKILL.md` — YAML frontmatter (`name: tc-explore`, single-line trigger-style `description`). Body lists the four commands plus the internal review sub-mode; carries deferral wording until each sub-step turns the wording into shipped-behavior description (per the "SKILL.md surfaces shipped behavior" convention). Mirrors the Phase 2 / Phase 3 scaffold shape.
+  - `tests/fixtures/seeded-exploration-session/` containing:
+    - `charter.md` — a `CH-001` worked example with mission, target area, time-box (`60min`), risk areas, acceptance criteria, and an explicit "this is a test asset, not a claim about scope" note (per the D19 fixture-discipline lesson).
+    - `recorded-session.json` — a JSON list of 50–80 timestamped events: `page_load`, `click`, `fill`, `screenshot`, `console_message`, `network_request`, `anomaly`. Each anomaly entry carries an inline `"_knowledge": "knowledge: <category>"` field so the scaffold test can verify rubric coverage with the uniform regex from Step 3.1.
+    - `target-app.md` — describes the seeded target (a generic SaaS dashboard — sign-in / accounts / workspaces / assets; mirrors the Phase 3 sample-project narrative for cross-phase consistency).
+    - `README.md` — documents the recording convention, the universal anomaly-category catalog, the inline marker convention, and the "deliberately generic; not a claim about scope" framing (per the D19 audit).
+  - `plugins/test-commander/skills/tc-explore/commands/.gitkeep`, `plugins/test-commander/skills/tc-explore/methodology/.gitkeep`, `plugins/test-commander/skills/tc-explore/templates/.gitkeep` — empty directories that 4.2–4.5 fill in. Each `.gitkeep` is removed by the first sub-step that lands real content in that directory.
+  - Workspace template updates: `templates/workspace/charters/`, `templates/workspace/exploration-notes/`, `templates/workspace/sessions/` already exist as Phase-1 stubs; no new product-knowledge artifacts needed (Phase 4 writes only to its own directories).
+- **Tests first.** `tests/test_tc_explore_scaffold.py` — asserts: skill directory and `SKILL.md` present with valid frontmatter (`name == "tc-explore"`, non-empty description, body references all four commands plus the review sub-mode); `commands/`, `methodology/`, `templates/` directories present; fixture directory exists with `charter.md`, `recorded-session.json`, `target-app.md`, `README.md`; `recorded-session.json` parses as JSON list with at least 50 entries each carrying `timestamp`, `event_type`, and (for anomalies) `_knowledge` markers; every universal anomaly category (`slow-response`, `console-error`, `broken-link`, `missing-evidence`, `auth-mismatch`, `unexpected-state`) appears in at least one `knowledge:` marker; charter has YAML frontmatter with `id: CH-001` and required fields (mission, target, time-box, risk-areas, acceptance-criteria). Test-first: lands red before any deliverable is written.
+- **Definition of done.** Skill scaffolded; fixture covers every anomaly category and every required charter field; scaffold test green; `scripts/verify_skills.py` reports `tc-core PRESENT (phase 1)`, `tc-requirements PRESENT (phase 2)`, `tc-knowledge PRESENT (phase 3)`, `tc-explore UNEXPECTED (phase 4) - ahead of schedule` under `DEFAULT_PHASE_CAP=3` (the cap bumps to 4 in Step 4.7, not here — same convention as every prior phase scaffold step).
+- **Review.** Manual read of the fixture against the exploration rubric — confirm every anomaly category has at least one seeded entry, the charter is realistic but deliberately-generic, and the recorded-session JSON shape is forward-compatible with the per-command extractors 4.2–4.5 will author.
 
-- Exploration produces charters, notes, ideas, risks, and evidence in the right folders; `tc-explore`'s review sub-mode passes the artifacts; user guide is complete.
+#### 4.2 — `/tc:create-charter` (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/create_charter.py` — reads `<workspace>/product-knowledge/system-model.md`, `entities.md`, `user-journeys.md`, `<workspace>/requirements/open-questions.md`, and `<workspace>/risk-register/risk-register.md` to suggest a charter target (highest-risk untested entity, journey with most open questions, etc.). When invoked with `--target <area>` or `--mission <text>`, uses the supplied scope directly. Writes a charter file to `<workspace>/charters/<CH-ID>.md` with YAML frontmatter (`id`, `mission`, `target_area`, `time_box`, `risk_areas`, `acceptance_criteria`, `created_at`, `phase_3_sources`) and a structured body (Mission, Target Area, Time-Box, Risk Areas, Acceptance Criteria, Out-of-Scope, Phase 3 sources). Allocates the next `CH-NNN` ID by scanning existing charters. **Idempotency contract**: re-running with the same `--target`/`--mission` is a no-op (`created: 0, skipped: 1`); explicit re-allocation requires `--new-id`. User edits to existing charters are preserved.
+- **Methodology.** `methodology/charter-based-exploration.md` — covers the charter rubric (mission specificity, target scope, time-box discipline, risk-area enumeration, acceptance-criteria testability), with one worked example per dimension drawn from the seeded fixture's `CH-001` and a Claude-judgment-layer paragraph (deciding which Phase-3 entity is worth a charter, ranking risk areas, identifying out-of-scope items the keyword check could not flag).
+- **Umbrella methodology.** `methodology/exploratory-testing.md` — the umbrella that 4.3–4.5 reference. Documents the charter → explore → session-summary → test-idea-enrichment workflow, the session-based test management discipline (Bach + Bolton), the boundary that Phase 4 does not write to `traceability/` or `product-knowledge/`, and the test-idea enrichment contract (preserve Phase-2 `tc-test-idea/v1` frontmatter; append `## Phase 4 enrichment` body section; update `phase_4_sessions:` frontmatter once).
+- **Templates.** `templates/charter-template.md`, `templates/target-app-template.md`.
+- **Command file.** `plugins/test-commander/skills/tc-explore/commands/create-charter.md` — Inputs / Outputs / Preconditions / Behavior / Safety / Implementation / Definition of Done / See also.
+- **SKILL.md update.** `tc-explore/SKILL.md` updated to describe `/tc:create-charter`'s shipped behavior and instruct Claude to invoke the bundled helper. Stale deferral wording for this command removed.
+- **Tests first.** `tests/test_create_charter.py` — at minimum: uninitialized workspace refused with a clear error; `<workspace>/product-knowledge/` empty (no Phase 3 ingestion yet) refused with a precondition error directing the user at `/tc:learn-from-docs`; `--target` argument generates a `CH-001.md` charter with valid frontmatter; auto-suggestion (no `--target`) chooses the highest-risk entity from the seeded fixture's product-knowledge state; idempotent re-run with same `--target` produces `created: 0, skipped: 1`; explicit `--new-id` flag re-allocates as `CH-002`; user-edited charter body preserved on re-run; charter file passes the internal `_charter_is_well_formed` shape check (every required frontmatter key present + non-empty body sections); `tc-explore.charters.{risk-keywords, area-keywords}` config extensions union with the universal core.
+- **Definition of done.** Helper passes all test cases; methodology covers the charter rubric with worked examples per dimension; umbrella `exploratory-testing.md` describes the cross-command workflow; templates authored; per-command page complete; `tc-explore/SKILL.md` no longer carries deferral wording for `/tc:create-charter`.
+- **Verification.** Pytest green. Eyeball the generated `<CH-ID>.md` charter for tone, structure, and the YAML frontmatter shape before declaring 4.2 done.
+
+#### 4.3 — `/tc:explore` (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/explore.py` — reads `<workspace>/charters/<CH-ID>.md` (required), drives Playwright MCP in `live` mode OR replays a recorded session from the configured path in `recorded` mode (default). Each MCP event becomes a structured `Observation(timestamp, event_type, page_url, action, result, screenshot_id)` record. Anomalies are classified into the universal categories at extraction time. Writes `<workspace>/exploration-notes/<SESS-ID>.md` (overwrite; pure generated report — re-running the same charter against the same recording is byte-deterministic) with per-event detail table, anomaly summary, evidence index, charter-coverage matrix. Updates `<workspace>/evidence/screenshots/<screenshot-id>.png` references (the seeded recording bundles minimal placeholder PNGs to keep the test deterministic; real screenshots populate at runtime in live mode). Calls the internal review sub-mode (Step 4.6 wires the auto-run; 4.3 ships the sub-mode itself).
+
+  **Live-mode refusal under pytest** mirrors Step 3.5: `os.environ.get("PYTEST_CURRENT_TEST")` returns truthy → raise `LiveModeRefusedError` before any MCP connection is attempted, exit 2 with a clear error.
+
+  **Partition table — mechanical extraction per observation dimension.**
+
+  | Dimension | Universal-core extraction rule |
+  | --- | --- |
+  | observations | Every event in the recorded session JSON (`event_type ∈ {page_load, click, fill, screenshot, console_message, network_request}`) |
+  | evidence | Every `screenshot` event captures a `screenshot_id` and a `page_url`; the helper renders an Evidence index in the note |
+  | journeys | Detect sequences of events spanning a single page-load through the next page-load as journey segments (mirrors Phase 3 user-journey detection); name each by the first user action's target |
+  | anomalies | Every event carrying `anomaly: {category, severity}` becomes an anomaly entry; severity universal core: `{low, medium, high, critical}` |
+  | charter-coverage | Cross-reference observed `page_url` substrings against the charter's `target_area` and `acceptance_criteria`; mark each acceptance criterion `observed`, `partial`, or `unobserved` |
+  | gap: missing-evidence | Anomaly entry without an adjacent `screenshot` event captured within ±3 seconds of the anomaly timestamp |
+  | gap: charter-coverage-shortfall | One or more acceptance criteria marked `unobserved` after the full session |
+
+- **Internal review sub-mode.** A `_review_session()` function in `explore.py` (not a separate command). Auto-runs after the session note is written (suppressible with `--no-review` flag). Runs a deterministic rubric: charter-ID resolvable to an existing charter; every observation cites either a `evidence/screenshots/<id>.png` reference (for visual observations) or a `recorded-session.json:<index>` provenance citation; every anomaly has a `category` from the universal core; every acceptance criterion has a coverage verdict. Failures route to `<workspace>/requirements/open-questions.md` as `[exploration-review]` gap signals with the `(source-id, question-text)` dedup contract from Phase 2.
+- **Methodology.** `methodology/session-based-test-management.md` — covers the Bach + Bolton session-based discipline (charter time-box, debrief, deliverables), the observation / evidence / anomaly model, the universal anomaly categories, the charter-coverage rubric, and a Claude-judgment-layer paragraph (ranking anomaly severity beyond the mechanical category, identifying observations worth elevating to candidate scenarios, deciding which `partial`-coverage criteria warrant a follow-up charter).
+- **Templates.** `templates/exploration-note-template.md`, `templates/anomaly-record-template.md`, `templates/exploration-review-template.md`.
+- **Command file.** `plugins/test-commander/skills/tc-explore/commands/explore.md`.
+- **SKILL.md update.** Updated to describe `/tc:explore`'s shipped behavior and the auto-running review sub-mode.
+- **Tests first.** `tests/test_explore.py` — at minimum: uninitialized workspace refused; missing charter file refused with a clear error directing the user at `/tc:create-charter`; seeded charter + seeded recording → `<SESS-ID>.md` written with every observation captured (`recorded-session.json:<index>` provenance) and every seeded anomaly category surfaced; `[exploration-review]` gap signals route to open-questions when the seeded recording omits screenshots for one anomaly (the `missing-evidence` seed); charter-coverage matrix accurately marks `partial` for the seeded coverage shortfall; idempotent re-run produces byte-identical exploration note; `--no-review` flag suppresses the review sub-mode (no `[exploration-review]` gap signals appended); `mode: live` refused under pytest with the same `LiveModeRefusedError` shape as Step 3.5.
+- **Definition of done.** Helper passes all test cases; the partition-table coverage assertion is part of the test suite; methodology covers the session-based discipline + the partition table + the Claude judgment layer; review sub-mode emits the expected gap signals; SKILL.md updated.
+- **Verification.** Pytest green; smoke run against the seeded fixture produces an exploration note that flags every seeded anomaly.
+
+#### 4.4 — `/tc:session-summary` (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/session_summary.py` — reads `<workspace>/exploration-notes/<SESS-ID>.md` (required), synthesizes a per-session summary at `<workspace>/sessions/<SESS-ID>.md` with: charter ID (resolved), session duration, observation count by event type, anomaly count by category and severity, charter-coverage verdict (`covered` / `partial` / `uncovered` summary), evidence index, candidate scenarios extracted from the session (which observations look like good test seeds — mirrors the Phase 2 candidate-scenarios shape so 4.5 can enrich the test-idea seeds with these), and an executive narrative section that Claude completes with the judgment layer. Pure generated report — overwrite mode; byte-deterministic. Updates a `<workspace>/sessions/index.md` (overwrite; lists every session by ID with one-line summaries).
+- **Methodology.** Reuses `methodology/session-based-test-management.md` from Step 4.3; no new methodology file. Adds a "session summary" subsection to that doc.
+- **Templates.** `templates/session-summary-template.md`.
+- **Command file.** `plugins/test-commander/skills/tc-explore/commands/session-summary.md`.
+- **SKILL.md update.** Updated.
+- **Tests first.** `tests/test_session_summary.py` — uninitialized workspace refused; missing exploration note refused with a clear error directing the user at `/tc:explore`; seeded exploration note (generated by Step 4.3's helper against the seeded recording) → `<SESS-ID>.md` summary written with every required section; charter-coverage verdict resolved correctly against the seeded charter; candidate-scenarios section extracted with a stable shape (forward-compatible with Step 4.5's enrichment); idempotent re-run byte-identical; `<workspace>/sessions/index.md` lists the session with a one-line summary; index updated idempotently across multiple session writes.
+- **Definition of done.** Helper passes all test cases; candidate-scenarios shape compatible with Step 4.5's enrichment input; SKILL.md updated.
+- **Verification.** Pytest green; smoke run produces a session summary that resolves the seeded charter and lists the candidate scenarios.
+
+#### 4.5 — `/tc:test-ideas` (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/enrich_test_ideas.py` (per D18; command name `/tc:test-ideas` is shortened from the action `enrich_test_ideas` for CLI ergonomics, matching the Phase-2 `/tc:requirements-to-tests` → `requirements_to_tests.py` pattern). Reads `<workspace>/sessions/` (one or more session summaries via `--session <SESS-ID>` or all sessions if no flag), reads `<workspace>/test-ideas/<REQ-ID>.md` files (the Phase-2 seeds), and **enriches each seed** as follows: preserves the YAML frontmatter unchanged for every Phase-2-shipped key, bumps `status: seed` → `status: enriched`, adds a `phase_4_sessions: [SESS-ID, ...]` list (deduplicated, never overwriting a sibling session's contribution), appends a `## Phase 4 enrichment` body section listing each session's candidate scenarios mapped to this REQ-ID via charter-coverage cross-reference, preserves every existing body section (the Phase-2-generated content, user edits, prior Phase-4 enrichments). **Idempotency contract**: existing enrichments are skipped (`created: 0, enriched: N, skipped: M`); the helper never duplicates a session's contribution to the same REQ-ID. Refuses to overwrite the Phase-2 seed frontmatter (asserted by a structural test).
+- **Methodology.** `methodology/test-idea-model.md` — covers the Phase-2 `tc-test-idea/v1` schema contract, the Phase-4 enrichment additions (`status: enriched`, `phase_4_sessions:`, `## Phase 4 enrichment` section), the charter-coverage → REQ-ID cross-reference logic, and a Claude-judgment-layer paragraph (deciding which candidate scenarios are worth elevating, ranking by risk + coverage, identifying scenarios that span multiple REQs).
+- **Templates.** `templates/test-idea-enrichment-template.md` — documents the `## Phase 4 enrichment` section structure.
+- **Command file.** `plugins/test-commander/skills/tc-explore/commands/test-ideas.md`. By end of 4.5, `tc-explore/SKILL.md` describes all four commands plus the review sub-mode with no deferral wording.
+- **Tests first.** `tests/test_enrich_test_ideas.py` — uninitialized workspace refused; missing session summaries refused with a clear error directing the user at `/tc:session-summary`; missing test-idea seeds refused with a clear error directing the user at `/tc:requirements-to-tests` (Phase 2); seeded session summary (generated by Step 4.4 against the seeded charter + recording) → every test-idea seed whose REQ-ID is covered by the session gets a `## Phase 4 enrichment` section; Phase-2 frontmatter preserved byte-for-byte (every key the seed shipped with is still present with its original value); `status: seed` flipped to `status: enriched` only on enriched files; `phase_4_sessions:` populated with the contributing SESS-IDs (sorted, deduplicated); idempotent re-run produces zero duplicate enrichment sections; user-edited body sections preserved; explicit assertion that no Phase-2 frontmatter key is missing or changed after enrichment.
+- **Definition of done.** Helper passes all test cases; emitted test-idea files preserve the Phase-2 contract; `## Phase 4 enrichment` shape forward-compatible with Phase 5's BDD generation (the BDD helper reads enriched test-ideas as charter-grounded scenario seeds); SKILL.md describes all four commands.
+- **Verification.** Pytest green; smoke run enriches at least three Phase-2-seeded test-ideas with session-derived candidate scenarios.
+
+#### 4.6 — Documentation pass *(dedicated step)*
+
+- **Deliverables.**
+  - Author `docs/user-guide/exploring-an-app.md` — end-to-end walkthrough: upload a charter target (or use auto-suggestion) → `/tc:create-charter` → `/tc:explore` (replay the seeded recording for the docs example) → `/tc:session-summary` → `/tc:test-ideas`. Sample input and output drawn from the seeded fixture so every example is reproducible. Each section shows the partial state of `<workspace>/charters/`, `exploration-notes/`, `sessions/`, and `test-ideas/` after that command runs. Mirrors the `docs/user-guide/building-project-knowledge.md` (Phase 3) structure section-for-section.
+  - Update `docs/command-reference.md` to add the four Phase 4 commands as links into their per-command pages inside the plugin (move from "Planned commands" to a new "Phase 4 commands (shipped)" section).
+  - Update `docs/workspace-reference.md` per-file ownership tables for `charters/`, `exploration-notes/`, `sessions/`, and the enrichment behavior of `test-ideas/` (Phase 4 enriches; Phase 2 seeds; Phase 6 reads). Cross-cutting contribution map: Phase 4 writes only to its own directories.
+  - Refresh status lines across the same six locations as Phase 3: `README.md` status header + doc index, `docs/install.md` "Verifying the install", `docs/user-guide/getting-started.md` "what's next" (add Phase 4 row), `docs/user-guide/workflow.md` "Beyond Phase 1" (Phase 4 link), `docs/user-guide/building-project-knowledge.md` "Beyond Phase 3" footer (Phase 4 link), `plugins/test-commander/README.md` skill-status table.
+  - **Customization-guide update (per the Per-Phase Customization-guide Convention).** Add a "Phase 4 schema (`tc-explore`)" section to `docs/user-guide/customizing-for-your-project.md` covering all three extensible sub-blocks (`charters`, `exploration`, `review`). At least three worked extension examples spanning materially-different consuming-project shapes (per the Phase 3 Step 3.7 lesson about varying examples by project shape AND domain): a typical web-app + Playwright project, a mobile app where Playwright is replaced by a different MCP, an API-only project where exploration falls back to spec-derived journeys. Add a "Phase 4 — what landed" subsection naming the universal cores, the schema keys, and the tests that would fail if the helpers ignored extensions.
+  - **Final `tc-explore/SKILL.md` pass.** Confirm SKILL.md describes every shipped command plus the review sub-mode, links to all four per-command pages, and instructs Claude to invoke the bundled helpers. No deferral wording. Grep `behavior arrives in|coming in phase|when phase 4 ships` across BOTH the SKILL.md AND all of `docs/` per the Phase-3 Step-3.7 lesson.
+- **Definition of done.** Every doc accurate against the implementation; all cross-links resolve; link checker green; `tc-explore/SKILL.md` is the consolidated entry point for Phase 4 commands; `customizing-for-your-project.md` accurately reflects the shipped config.yaml schema with at least three worked examples spanning project shapes.
+- **Verification.** `python3 scripts/check_links.py` clean; manual read-through against the Phase 4 deliverables; grep for stale deferral wording in `tc-explore/SKILL.md` AND `docs/` returns no hits; the YAML block in `customizing-for-your-project.md` parses as valid YAML.
+
+#### 4.7 — Testing finalization *(dedicated step, separate from per-command TDD)*
+
+- **Deliverables.**
+  - Bump `DEFAULT_PHASE_CAP` in `scripts/verify_skills.py` from `3` to `4` and add `CATALOG["tc-explore"] = 4` so the verifier expects four shipped skills.
+  - `tests/test_phase_4_integration.py` — integration smoke that creates a fresh tmp consuming project, runs `init_workspace.py`, seeds the workspace with the Phase-3 sample-project fixture AND runs the five Phase-3 helpers (so the product-knowledge artifacts exist as Phase 4's inputs), then drives the four Phase 4 helpers in workflow order (`create-charter` → `explore` → `session-summary` → `test-ideas`). In-process imports (per the Phase 3 Step 3.8 lesson that in-process beat subprocess for integration speed by 10x). Assertions at every transition: charter file written with valid frontmatter; exploration note written with all seeded anomalies captured; session summary written with charter resolved and candidate scenarios listed; test-idea enrichment preserves every Phase-2 frontmatter key + bumps `status: enriched`; full union state correct (all four Phase 4 artifacts present; all 10 Phase 3 product-knowledge artifacts unchanged after Phase 4 runs); `<workspace>/traceability/` carries no `tc-explore` content (the Phase 4 design-decision discipline asserted directly, mirroring the Phase 3 Step 3.8 traceability assertion); `<workspace>/product-knowledge/` byte-identical before and after Phase 4 (Phase 4 reads but does not write product-knowledge per design decision); `/tc:next` advances past `/tc:create-charter` (the "advanced past" invariant from Phase 2 Step 2.9 + Phase 3 Step 3.8 — assert `command != /tc:create-charter`, not pinning a specific next command).
+  - Byte-stable re-run integration test (mirrors Phase 3 Step 3.8): full Phase-4 helper sweep twice in sequence; assert byte-identical artifacts and line-stable open-questions.
+  - Negative integration test: `tc-explore.mode: live` config triggers `LiveModeRefusedError` under pytest (no MCP connection attempted; no network calls leak).
+- **Definition of done.** Integration smoke passes; phase cap bump reflected; full `make verify` chain green; `verify_skills.py` reports all four shipped skills `PRESENT` with `UNEXPECTED=0`.
+- **Verification.** Captured `make verify` output. Per the Phase 3 Step 3.8 lesson, the integration smoke is budgeted as verification not debugging — if it lands red, surface the discovery as a sub-step lesson and consider whether the unit-test coverage in 4.2–4.5 needs strengthening.
+
+#### 4.8 — Sign-off
+
+Six sub-steps. Mirrors the Phase 3 sign-off pattern (3.9) exactly. Test-first: the sign-off test in 4.8.5 lands red before the plan/CHANGELOG edits in 4.8.3 turn it green. The final sub-step (4.8.6) captures evidence and pushes the `phase-4` annotated tag.
+
+##### 4.8.1 — Cold-user walkthrough of `exploring-an-app.md`
+
+- **Deliverables.** Captured log of an end-to-end walkthrough of `docs/user-guide/exploring-an-app.md` from a freshly-installed plugin against a fresh tmp consuming project (with Phase-3 product-knowledge state pre-populated by running the Phase-3 helpers first).
+- **Steps to execute verbatim.**
+  1. `make uninstall` → `make install` to reach a known-clean plugin state.
+  2. Create a tmp consuming-project dir (`mktemp -d`).
+  3. `init_workspace.py <tmp>`. Copy `tests/fixtures/seeded-sample-project/*` into `<tmp>/.test-commander/documents/uploaded/` and run the five Phase 3 helpers in workflow order to populate `product-knowledge/`. Then copy the seeded `charter.md` + `recorded-session.json` into `<tmp>/.test-commander/documents/uploaded/recorded-sessions/`.
+  4. Invoke the four Phase 4 helpers in workflow order: `create_charter.py`, `explore.py`, `session_summary.py`, `enrich_test_ideas.py`.
+  5. Confirm each helper prints the output documented in `exploring-an-app.md` (no fabricated examples).
+- **Definition of done.** All commands succeed end to end. Output captured to `/tmp/tc-phase4-walkthrough.log`. If any step fails, fix the cause and re-run before continuing to 4.8.2.
+
+##### 4.8.2 — Per-step DoD audit
+
+- **Deliverables.** A line-by-line audit of Steps 4.1 through 4.7 against their DoD lists.
+- **What to check per step.** Every DoD bullet green; every pytest file passes; every deliverable present on disk; every cross-link in the per-command pages resolves; every Failure Mode mitigation in place.
+- **Specifically.**
+  - 4.1: `tc-explore/SKILL.md` and `tests/fixtures/seeded-exploration-session/` present; scaffold test green; anomaly-category coverage assertion passes.
+  - 4.2–4.5: helper, methodology (where applicable), template (where applicable), command file, and SKILL.md update all present; per-command test files all green; mechanical extraction findings traced to seeded fixture; provenance citations resolve; Phase-2 `tc-test-idea/v1` schema preservation asserted by 4.5's test.
+  - 4.6: `exploring-an-app.md`, command-reference index, workspace-reference (charters/, exploration-notes/, sessions/ ownership rows), README + getting-started status lines all current; `tc-explore/SKILL.md` describes every shipped Phase 4 command plus the review sub-mode and contains no stale deferral wording; `customizing-for-your-project.md` reflects the Phase 4 `tc-explore` config.yaml schema with at least three worked extension examples spanning materially-different consuming-project shapes.
+  - 4.7: `DEFAULT_PHASE_CAP >= 4`, `CATALOG["tc-explore"] == 4`, integration smoke passes, live-mode refusal under test harness asserted.
+  - **Lesson-capture audit (per the "Sub-step lesson capture" Per-Phase Convention):** every Phase 4 sub-step (4.1–4.7) has a corresponding entry in the `Phase 4 — Lessons learned (running)` subsection. Sub-steps that closed cleanly with no bugs explicitly record "no lessons".
+- **Definition of done.** All seven prior sub-steps audited green. Any unmet item blocks the sign-off.
+
+##### 4.8.3 — Plan and CHANGELOG updates
+
+- **Deliverables.**
+  - `planning/plan.md` — collapse the `### Phase 4` To Do sub-section to a single line: `Phase 4 complete (YYYY-MM-DD) — see Completed`. Add a `### Phase 4 — Exploratory testing and test idea generation (YYYY-MM-DD)` section to `## Completed` with the per-step summary lines marked `[x]`, mirroring the Phase 3 closing format.
+  - `CHANGELOG.md` — add a new `### Phase 4 — Exploratory testing and test idea generation (complete YYYY-MM-DD)` section above Phase 3 with a one-line closing summary plus per-sub-step Added bullets, mirroring the Phase 3 closing format.
+- **Definition of done.** To Do Phase 4 reduced to the marker line; Completed has the Phase 4 section with date and eight sub-step bullets; CHANGELOG reflects the closing.
+
+##### 4.8.4 — Documentation final pass
+
+- **Deliverables.** Edits wherever Phase 4 wording has drifted during the seven sub-steps.
+- **What to read.** README status line, `docs/user-guide/getting-started.md` "what's next", `docs/install.md` verifying-install paragraph, `docs/user-guide/exploring-an-app.md` introductory paragraph, `docs/user-guide/building-project-knowledge.md` footer "Beyond Phase 3" block, `docs/user-guide/workflow.md` (if it references Phase 4), `plugins/test-commander/README.md` skill table, `docs/user-guide/customizing-for-your-project.md` tense.
+- **Definition of done.** Every Phase 4 fact matches the implementation. "Phase 4 in progress" wording becomes "Phase 4 complete (YYYY-MM-DD); Phase 5 starts next" where applicable. All cross-links resolve.
+
+##### 4.8.5 — Pre-flight tests for sign-off
+
+- **Deliverables.** `tests/test_phase_4_signoff.py`.
+- **Coverage.**
+  - All seven Phase 4 pytest files exist (`test_tc_explore_scaffold`, `test_create_charter`, `test_explore`, `test_session_summary`, `test_enrich_test_ideas`, `test_phase_4_integration`, `test_phase_4_signoff`).
+  - All four Phase 4 helpers exist under `plugins/test-commander/scripts/` (`create_charter.py`, `explore.py`, `session_summary.py`, `enrich_test_ideas.py`).
+  - All four Phase 4 command files exist under `plugins/test-commander/skills/tc-explore/commands/`.
+  - All four methodology files exist under `plugins/test-commander/skills/tc-explore/methodology/` (`exploratory-testing.md` umbrella plus three per-command).
+  - All seven templates exist under `plugins/test-commander/skills/tc-explore/templates/`.
+  - `tests/fixtures/seeded-exploration-session/` exists with all four files (`charter.md`, `recorded-session.json`, `target-app.md`, `README.md`).
+  - `scripts/verify_skills.py` has `CATALOG["tc-explore"] == 4` and `DEFAULT_PHASE_CAP >= 4` (per the Phase-2 Step-2.8 lesson — never assert `==` on the cap).
+  - `tc-explore/SKILL.md` describes all four Phase 4 commands plus the review sub-mode and contains no deferral wording.
+  - `docs/user-guide/customizing-for-your-project.md` contains a `tc-explore:` YAML block whose top-level keys match the shipped config.yaml schema, and contains at least three worked extension examples in distinct project-shape headings.
+  - `Phase 4 — Lessons learned (running)` subsection in `planning/plan.md` contains an entry for every Phase 4 sub-step that has landed (`Step 4.1` through `Step 4.7`); each entry either describes a lesson + mitigation or explicitly records "no lessons".
+  - CHANGELOG Phase 4 section marked complete with a date.
+  - `plan.md` Completed has a Phase 4 subsection with a date.
+  - `plan.md` To Do Phase 4 is the marker line (no unchecked items remain).
+  - Total pytest count meets minimum (`>= 350` — Phase 3 finished at 314; Phase 4 adds the scaffold test, four per-command suites, integration, and sign-off).
+- **Definition of done.** Test-first: the suite lands red before 4.8.3's plan/CHANGELOG edits, green after.
+
+##### 4.8.6 — Final DoD evaluation (close Phase 4)
+
+- **Procedure.**
+  1. Run `make verify` — every test green, link checker clean, `verify_skills.py` reports all four shipped skills `PRESENT`.
+  2. Replay the 4.8.1 walkthrough end to end to confirm reproducibility.
+  3. Capture all output to `/tmp/tc-phase4-signoff.log`.
+  4. Commit the plan/CHANGELOG/docs updates and the sign-off test in one final commit.
+  5. Push to origin.
+  6. Create annotated tag: `git tag -a phase-4 -m "Phase 4 — Exploratory testing and test idea generation complete."`.
+  7. Push tag: `git push origin phase-4`.
+- **Definition of done.** All seven numbered steps complete. Tag visible on origin (`git ls-remote origin phase-4` resolves). Evidence log captured. Phase 4 is closed.
+
+#### Definition of done — consolidated 15 checks
+
+Eleven automated; four evidence-based.
+
+| # | Check | Type | How |
+| --- | --- | --- | --- |
+| 1 | All seven Phase 4 test files exist | auto | sign-off test |
+| 2 | All four helpers exist (`create_charter.py`, `explore.py`, `session_summary.py`, `enrich_test_ideas.py`) | auto | sign-off test |
+| 3 | All four command files exist under `tc-explore/commands/` | auto | sign-off test |
+| 4 | All four methodology files exist under `tc-explore/methodology/` | auto | sign-off test |
+| 5 | All seven templates exist under `tc-explore/templates/` | auto | sign-off test |
+| 6 | Seeded-exploration-session fixture exists and covers every universal anomaly category | auto | scaffold test |
+| 7 | `verify_skills.py` has `CATALOG["tc-explore"] == 4` and `DEFAULT_PHASE_CAP >= 4`; `make verify` prints all four skills PRESENT with `UNEXPECTED=0` | auto | sign-off test + `make verify` |
+| 8 | Integration smoke `test_phase_4_integration` passes; live-mode refusal under test harness asserted; `traceability/` + `product-knowledge/` untouched assertions hold | auto | pytest |
+| 9 | `tc-explore/SKILL.md` describes all four shipped Phase 4 commands plus the review sub-mode with no deferral wording | auto | sign-off test |
+| 10 | Phase-2 `tc-test-idea/v1` schema preservation: every Phase-4-enriched test-idea retains every Phase-2 frontmatter key with its original value | auto | enrich-test-ideas test |
+| 11 | `make verify` chain clean (link checker covers the new docs) | auto | full chain |
+| 12 | Cold-user walkthrough of `exploring-an-app.md` from clean state succeeds (4.8.1) | evidence | `/tmp/tc-phase4-walkthrough.log` |
+| 13 | Per-step DoD audit clean for 4.1–4.7 (4.8.2) | evidence | audit notes |
+| 14 | `plan.md` To Do Phase 4 collapsed to marker; Completed has Phase 4 subsection with date (4.8.3); CHANGELOG Phase 4 section marked complete | evidence | sign-off test + grep |
+| 15 | `phase-4` annotated tag created and pushed (4.8.6) | evidence | `git tag -l phase-4` + `git ls-remote origin phase-4` |
+
+#### TDD pattern used in 4.2–4.5
+
+```
+write tests (red)             # define expected behavior per dimension from the seeded fixture, including provenance + Phase-2 schema preservation
+  → implement helper (green)  # minimum code to pass; mechanical extraction only
+    → author methodology + template (each command owns one of each; umbrella exploratory-testing.md lands in 4.2)
+      → author per-command page
+        → update SKILL.md to surface shipped behavior
+          → wire into the internal review sub-mode where applicable (4.3 ships it; 4.4 and 4.5 do not invoke it)
+            → verify (pytest + make verify)
+```
+
+No implementation lands before its tests. No tests are added after the fact. Every command's test suite drives the helper from the same seeded fixture so the rubric is the contract.
+
+#### Validation sequence
+
+1. Author 4.1 (skill scaffold + fixture) with its scaffold test. Confirm pytest red → green.
+2. Author 4.2 (`/tc:create-charter` + the umbrella `exploratory-testing.md` methodology): write tests, implement helper, author methodology, templates, command file, update SKILL.md, run pytest.
+3. For each of 4.3, 4.4, 4.5 in order: mirror 4.2's skeleton, adapt per-command behavior, write tests, implement helper, author the command-specific methodology and templates, author command file, update SKILL.md, run pytest.
+4. 4.6 documentation pass. Run `make verify`.
+5. 4.7 testing finalization: bump `CATALOG["tc-explore"]` to 4 and `DEFAULT_PHASE_CAP` to 4, integration smoke. Run `make verify`.
+6. 4.8 sign-off, in order:
+   6a. Run the cold-user walkthrough from `exploring-an-app.md` (4.8.1). Capture log. Fix anything that fails before proceeding.
+   6b. Audit each prior sub-step's DoD (4.8.2). Block on any unmet item.
+   6c. Write `tests/test_phase_4_signoff.py` (4.8.5). Run `make test` — expect failures for any not-yet-applied plan/CHANGELOG edits.
+   6d. Update `plan.md` and `CHANGELOG.md` (4.8.3). Re-run sign-off test — expect green.
+   6e. Doc final read-through (4.8.4). Edit any drift; re-run `make verify`.
+   6f. Final DoD evaluation (4.8.6): commit, push, annotated tag, tag push.
+
+#### Failure modes
+
+- A Playwright MCP session shape changes between recordings. **Mitigation:** the seeded fixture's `recorded-session.json` is the contract for v1; the helper's parser asserts the entries match the expected schema and refuses unrecognized event types with a clear error. Future MCP versions are addressed by extending the parser, not by relaxing the schema check.
+- Live-mode integration with Playwright MCP fails during a real exploration. **Mitigation:** the live-mode entry point catches MCP connection errors and writes a structured exploration-note stub explaining the failure plus the configured MCP endpoint. The recorded-mode contract guarantees the test suite stays green regardless of live-mode availability.
+- Test-idea enrichment accidentally overwrites a Phase-2 frontmatter key. **Mitigation:** 4.5's test suite explicitly asserts byte-identical preservation of every key the Phase-2 seed shipped with (`schema`, `requirement_id`, `requirement_title`, `source`, `phase_2_findings`, `candidates`, `generated_by`). The Phase-2 Step-2.6 contract is the canonical reference; any change to the contract requires a Phase 4 schema bump that Phase 5 must consume.
+- Charter ID allocation conflict during parallel `/tc:create-charter` invocations. **Mitigation:** the helper scans existing `charters/CH-*.md` files at allocation time and uses a file-system-level lock (`fcntl.flock`) so two simultaneous invocations cannot allocate the same ID. The seeded fixture exercises the single-invocation path; a synthetic concurrency test exercises the lock.
+- Session ID collision (two sessions with the same timestamp prefix). **Mitigation:** session IDs follow `SESS-YYYYMMDD-NNN` where `NNN` is the next available index for the day; the helper scans existing sessions/ entries before allocating. Mirrors the charter-ID logic.
+- The `[exploration-review]` gap signals duplicate across re-runs. **Mitigation:** the `(source-id, question-text)` dedup contract from Phase 2 (extended in Phase 3 with the `[<kind>]` prefix) applies here too; the helper uses `source-id: tc-explore/explore-review-<SESS-ID>` so re-running the same exploration is idempotent.
+- Phase 4 writes into `traceability/` or `product-knowledge/` accidentally. **Mitigation:** the design decision forbids it; the integration smoke in 4.7 walks both directories after the full helper sweep and asserts the absence of `tc-explore` content (mirrors the Phase 3 Step 3.8 assertion against `tc-knowledge` in `traceability/`).
+- Recorded-session replay produces different output on re-run because timestamps drift. **Mitigation:** all generated artifacts use the recorded session's own timestamps (not the helper's clock); re-running against unchanged input produces byte-identical exploration notes and session summaries. The integration smoke in 4.7 asserts this directly.
+- Documentation walkthrough in 4.8.1 surfaces a gap (a step that doesn't work as documented). **Mitigation:** update `exploring-an-app.md` to match reality and re-run the walkthrough. Treat as a Phase 4 doc bug, not a Phase 5 issue.
+- A prior sub-step's DoD turns out not to be green during 4.8.2. **Mitigation:** the failing sub-step reopens. 4.8 cannot close while any earlier DoD is unmet.
+- `phase-4` tag already exists locally. **Mitigation:** delete (`git tag -d phase-4` then `git push origin :refs/tags/phase-4`) and recreate. Never force-overwrite an existing tag on origin without explicit user confirmation.
+- CHANGELOG Phase 4 closing entry diverges from To Do/Completed movement. **Mitigation:** the sign-off test (4.8.5) checks all three sources. They must agree before the test passes.
+
+#### Phase 4 — Lessons learned (running)
+
+Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. Each entry is preventative care for future implementers of similar work. Populated during execution; empty at the time this plan section was authored.
 
 ---
 
@@ -2572,11 +2809,14 @@ Phase 2 complete (2026-05-27) — see Completed.
 Phase 3 complete (2026-05-27) — see Completed.
 
 ### Phase 4
-- [ ] Author `/tc:create-charter`, `/tc:explore`, `/tc:test-ideas`, `/tc:session-summary`
-- [ ] Author methodology and templates
-- [ ] Author `docs/user-guide/exploring-an-app.md`
-- [ ] Author `tc-explore`'s internal review sub-mode (designed after `mcp-exploratory-testing:review-exploration`) and wire it into the review gate
-- [ ] Confirm review and test gates green
+- [ ] **4.1** — Scaffold `tc-explore` skill and seeded-exploration-session fixture (recorded MCP session JSON; charter + target-app + README; deliberately-generic SaaS-dashboard narrative; one anomaly per universal category)
+- [ ] **4.2** — `/tc:create-charter` (TDD) + umbrella `exploratory-testing.md` methodology + `charter-based-exploration.md` + charter & target-app templates
+- [ ] **4.3** — `/tc:explore` (TDD) — recorded-session replay in tests; live Playwright MCP opt-in via config + refused under pytest; internal review sub-mode emitting `[exploration-review]` gap signals
+- [ ] **4.4** — `/tc:session-summary` (TDD) — synthesizes the session from the exploration note; emits `sessions/index.md`
+- [ ] **4.5** — `/tc:test-ideas` (TDD) — enriches Phase-2 `tc-test-idea/v1` seeds; preserves every Phase-2 frontmatter key byte-for-byte; bumps `status: seed` → `enriched`
+- [ ] **4.6** — Documentation pass: author `docs/user-guide/exploring-an-app.md`; update command-reference, workspace-reference, customizing-for-your-project (Phase 4 `tc-explore` schema + three worked extension examples), status lines
+- [ ] **4.7** — Testing finalization: bump `DEFAULT_PHASE_CAP` to 4 and `CATALOG["tc-explore"] = 4`; author `test_phase_4_integration.py` (in-process imports); assert `traceability/` + `product-knowledge/` untouched; live-mode refusal under test harness
+- [ ] **4.8** — Sign-off (six sub-sub-steps): cold-user walkthrough, per-step DoD audit, plan + CHANGELOG closing, doc final pass, test-first sign-off test, final DoD eval + `phase-4` annotated tag
 
 ### Phase 5
 - [ ] Author `/tc:generate-bdd`, `/tc:review-bdd`, `/tc:traceability-map`
