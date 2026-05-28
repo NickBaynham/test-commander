@@ -11,12 +11,12 @@ Each command is implemented as a Python helper script bundled inside the plugin 
 
 ## Status
 
-Phase 4 is in progress. The skill scaffold and seeded-exploration-session fixture (Step 4.1) plus `/tc:create-charter` (Step 4.2) plus `/tc:explore` (Step 4.3) plus `/tc:session-summary` (Step 4.4) have shipped. Remaining command behavior arrives in subsequent sub-steps:
+Phase 4 is in progress. The skill scaffold and seeded-exploration-session fixture (Step 4.1) plus `/tc:create-charter` (Step 4.2) plus `/tc:explore` (Step 4.3) plus `/tc:session-summary` (Step 4.4) plus `/tc:test-ideas` (Step 4.5) have shipped. All four Phase 4 commands are now end-to-end runnable:
 
 - `/tc:create-charter` — **shipped (Step 4.2).**
 - `/tc:explore` — **shipped (Step 4.3).** Auto-runs the internal exploration-review sub-mode at end of every session (suppressible with `--no-review`).
 - `/tc:session-summary` — **shipped (Step 4.4).**
-- `/tc:test-ideas` — behavior arrives in Step 4.5. Enriches the Phase-2 `tc-test-idea/v1` seeds; preserves every Phase-2 frontmatter key byte-for-byte; bumps `status: seed` → `status: enriched`.
+- `/tc:test-ideas` — **shipped (Step 4.5).**
 
 Each sub-step ships the helper, methodology, template(s), and per-command page in a single commit, then updates this SKILL.md to describe the now-shipped behavior and remove the deferral wording for that command.
 
@@ -66,15 +66,36 @@ Full spec: [commands/session-summary.md](commands/session-summary.md). Methodolo
 
 ### `/tc:test-ideas`
 
-Behavior arrives in Step 4.5. Will enrich the Phase-2-seeded `<workspace>/test-ideas/<REQ-ID>.md` files with refined candidate scenarios drawn from exploration sessions. **Preserves every Phase-2 `tc-test-idea/v1` frontmatter key byte-for-byte**, bumps `status: seed` → `status: enriched`, adds `phase_4_sessions: [SESS-ID, ...]` to frontmatter (sorted, deduplicated; updated never duplicated on re-runs), and appends a `## Phase 4 enrichment` body section listing each contributing session's candidate scenarios mapped to this REQ-ID via charter-coverage cross-reference. User edits + prior Phase-4 enrichments are preserved.
+Reads `<workspace>/sessions/<SESS-ID>.md` (one session via `--session`, or all sessions when omitted) and the Phase-2-seeded `<workspace>/test-ideas/<REQ-ID>.md` files. **Enriches** each seed whose REQ-ID is covered by a session via charter-coverage cross-reference. The match is keyword-stem-based: a session covers a requirement when their five-character stem sets share at least one element across the union of (charter mission + charter target + each acceptance criterion + each candidate's title/source/linked_anomaly) and the verbatim requirement body. Refused with precondition errors pointing at `/tc:session-summary` (no sessions found) or `/tc:requirements-to-tests` (no test-idea seeds found). For each matched (session, seed) pair, the helper **preserves every Phase-2 `tc-test-idea/v1` frontmatter key byte-for-byte**, bumps `status: seed` → `status: enriched`, merges `phase_4_sessions: [SESS-ID, ...]` (sorted, deduplicated; pre-scans for an existing entry so re-runs never duplicate the key), and appends a `## Phase 4 enrichment` body section with one `### <SESS-ID>` sub-block per contributing session — each sub-block lists the session's candidate scenarios with `id`, `type`, `title`, `source`, and optional `linked_anomaly`. User edits + prior Phase-4 enrichments are preserved (the helper only appends under the `## Phase 4 enrichment` header). Idempotent: re-running produces byte-identical files and zero duplicate enrichment sections.
+
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/enrich_test_ideas.py <project-root> [--session SESS-YYYYMMDD-NNN]
+```
+
+`<project-root>` defaults to the current working directory. When `--session` is omitted, every session under `<workspace>/sessions/SESS-*.md` is processed in sorted order. The CLI surfaces the enriched count plus every touched path.
+
+Full spec: [commands/test-ideas.md](commands/test-ideas.md). Methodology: [methodology/test-idea-model.md](methodology/test-idea-model.md). Template: [templates/test-idea-enrichment-template.md](templates/test-idea-enrichment-template.md).
 
 ## Finding the helpers
 
-The helpers will live at `scripts/<name>.py` relative to this plugin's root (the directory containing this SKILL.md is `<plugin-root>/skills/tc-explore/`). In a development checkout that is `<repo>/plugins/test-commander/scripts/`. In the installed plugin cache it is `~/.claude/plugins/cache/test-commander-marketplace/test-commander/<version>/scripts/`. Either way, resolve the helper path relative to this SKILL.md's own location.
+The helpers live at `scripts/<name>.py` relative to this plugin's root (the directory containing this SKILL.md is `<plugin-root>/skills/tc-explore/`). In a development checkout that is `<repo>/plugins/test-commander/scripts/`. In the installed plugin cache it is `~/.claude/plugins/cache/test-commander-marketplace/test-commander/<version>/scripts/`. Either way, resolve the helper path relative to this SKILL.md's own location.
 
 ## What to do when a slash command fires
 
-Until the per-command sub-steps land, invoking any `/tc:create-charter`, `/tc:explore`, `/tc:session-summary`, or `/tc:test-ideas` command should produce a clear notice that the behavior arrives in the named sub-step and point the user at the phased plan. From Step 4.2 onward, this section will be replaced with per-command invocation guidance mirroring `tc-requirements/SKILL.md` and `tc-knowledge/SKILL.md`: resolve the helper path, run via `Bash` against the project root, report the helper's output, and layer the relevant methodology's judgment narrative on top.
+1. Identify which of the four commands the user wants.
+2. Resolve `<plugin-root>` relative to this SKILL.md.
+3. Determine `<project-root>` — current working directory unless the user specified otherwise.
+4. Run the appropriate helper via `Bash`:
+   - `/tc:create-charter` → `python3 <plugin-root>/scripts/create_charter.py <project-root> [--target ... | --mission ...] [--new-id]`.
+   - `/tc:explore` → `python3 <plugin-root>/scripts/explore.py <project-root> --charter CH-NNN [--no-review]`.
+   - `/tc:session-summary` → `python3 <plugin-root>/scripts/session_summary.py <project-root> --session SESS-YYYYMMDD-NNN`.
+   - `/tc:test-ideas` → `python3 <plugin-root>/scripts/enrich_test_ideas.py <project-root> [--session SESS-YYYYMMDD-NNN]`.
+5. Pipe the helper's stdout back to the user. If the helper exits non-zero, surface its stderr verbatim plus a pointer to the relevant per-command page.
+6. Layer the relevant methodology's judgment narrative on top of the helper's mechanical output (see [`methodology/session-based-test-management.md`](methodology/session-based-test-management.md) for `/tc:explore` and `/tc:session-summary`; [`methodology/test-idea-model.md`](methodology/test-idea-model.md) for `/tc:test-ideas`; [`methodology/charter-based-exploration.md`](methodology/charter-based-exploration.md) for `/tc:create-charter`).
+
+The helpers are deterministic and bounded to the workspace. They never write outside `<workspace>/.test-commander/`. Live mode for `/tc:explore` is refused under pytest before any MCP connection is attempted.
 
 ## See also
 
