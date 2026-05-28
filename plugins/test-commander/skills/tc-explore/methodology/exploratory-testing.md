@@ -1,6 +1,6 @@
 # Exploratory testing (umbrella methodology)
 
-The umbrella methodology for `tc-explore`. Read this once at the start of any Phase 4 exploration; the per-command methodologies ([`charter-based-exploration.md`](charter-based-exploration.md), `session-based-test-management.md` (Step 4.3), `test-idea-model.md` (Step 4.5)) sit underneath it and reference back here for the cross-command workflow and the cross-phase write boundaries.
+The umbrella methodology for `tc-explore`. Read this once at the start of any Phase 4 exploration; the per-command methodologies ([`charter-based-exploration.md`](charter-based-exploration.md), [`session-based-test-management.md`](session-based-test-management.md), [`test-idea-model.md`](test-idea-model.md)) sit underneath it and reference back here for the cross-command workflow and the cross-phase write boundaries.
 
 ## The four-step workflow
 
@@ -8,15 +8,15 @@ The umbrella methodology for `tc-explore`. Read this once at the start of any Ph
 /tc:create-charter       (Step 4.2; shipped)
         |
         v
-/tc:explore              (Step 4.3; behavior arrives in 4.3)
+/tc:explore              (Step 4.3; shipped)
         |
         +------>  internal exploration-review sub-mode auto-runs at end of session
         |
         v
-/tc:session-summary      (Step 4.4; behavior arrives in 4.4)
+/tc:session-summary      (Step 4.4; shipped)
         |
         v
-/tc:test-ideas           (Step 4.5; behavior arrives in 4.5)
+/tc:test-ideas           (Step 4.5; shipped)
 ```
 
 Each step writes to its own directory under `<workspace>/`. Re-running any step is idempotent — re-running with the same `--target` or against the same recorded session produces byte-identical artifacts (the same discipline Phase 2 and Phase 3 helpers honor).

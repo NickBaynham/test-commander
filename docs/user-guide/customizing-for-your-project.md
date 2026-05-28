@@ -241,6 +241,104 @@ The consuming project drops `their-api.postman_collection.json` under `documents
 - **Schema keys** (per the YAML block above): `tc-knowledge.documents.{entity-keywords, journey-headings}`, `tc-knowledge.code.{source-root, enabled-languages, ignored-paths, endpoint-decorator-patterns}`, `tc-knowledge.api.{mode, recorded-path, base-url, auth-header}`, `tc-knowledge.tests.{source-root, ignored-paths}`.
 - **Tests that would fail if helpers ignored extensions.** `tests/test_learn_from_docs.py::test_entity_keywords_extension_applied` and `::test_journey_headings_extension_applied` assert that `tc-knowledge.documents.{entity-keywords, journey-headings}` extend the universal cores additively. `tests/test_learn_from_code.py::test_source_root_extension_applied` and `::test_ignored_paths_extension_excludes_matches` assert the same for code. `tests/test_learn_from_api.py::test_recorded_path_extension_applied` and `::test_live_mode_refused_under_pytest` assert recorded-path + live-mode refusal. `tests/test_learn_from_tests.py::test_source_root_extension_applied` asserts the tests source-root extension. Each test points the helper at a non-default path and asserts the helper found the content there; if the helpers ignored extensions, every one of these tests would fail with "no source found" or equivalent.
 
+### Phase 4 schema (`tc-explore`)
+
+Phase 4 ships three extensible sub-blocks under `tc-explore:` (read by `/tc:create-charter` for charter risk and area heuristics; by `/tc:explore` for exploration mode and recorded-session path; by the internal exploration-review sub-mode for review rubric extensions). The v1 `/tc:test-ideas` helper has no `test-ideas:` schema — the universal-English stopword list and five-character-stem matching are non-tunable in v1; project-specific keyword tuning is a deferred v2 surface.
+
+```yaml
+tc-explore:
+  charters:
+    # Additive case-insensitive risk-vocabulary tokens. Lines in
+    # <workspace>/risk-register/risk-register.md matching any universal-core
+    # OR extended keyword surface as risk-areas in the generated charter.
+    risk-keywords: [PCI, PHI, GDPR]
+    # Additive case-insensitive area tokens used by /tc:explore (Step 4.3)
+    # for journey detection. Universal core covers sign-in, sign-out,
+    # dashboard, search, upload, profile, settings, session, workspace.
+    area-keywords: [checkout, refund, claim, prescription]
+
+  exploration:
+    # recorded (default) or live. Live mode is refused under pytest via the
+    # PYTEST_CURRENT_TEST env var. Live mode v1 is documented but not yet
+    # implemented; recorded playback is sufficient for every Phase-4 contract.
+    mode: recorded
+    # Default: documents/uploaded/recorded-sessions. Resolves relative to
+    # <workspace>. Use a different path when the project's CI captures
+    # recordings under a sibling artifact directory.
+    recorded-path: documents/uploaded/recorded-sessions
+    # Live-mode-only (v2). v1 ignores both keys when mode is recorded.
+    mcp-endpoint: http://localhost:9999
+    target-url: http://localhost:8000
+
+  review:
+    # Reserved for v2 review-rubric extensions. v1 ships only the two
+    # universal-core checks: missing-evidence (asymmetric +/-3 second window)
+    # and charter-coverage-shortfall (every AC marked unobserved).
+    rubric-extensions: []
+```
+
+Missing keys = no extension. The helpers fall back to the documented defaults. The shipped seeded fixture in `tests/fixtures/seeded-exploration-session/` does not rely on any extension; every seeded anomaly, every coverage verdict, and every candidate scenario triggers via the universal cores plus the default paths.
+
+#### Worked example — Python web app + Playwright
+
+The consuming project is a Python web app with a Playwright + pytest test suite. Recordings are captured by the project's CI to a sibling artifact directory; the project supplies its own PCI-risk vocabulary for the charter generator to surface.
+
+```yaml
+tc-explore:
+  charters:
+    risk-keywords: [PCI, primary account number, fraud]
+    area-keywords: [checkout, refund, payment-method]
+  exploration:
+    mode: recorded
+    recorded-path: ../ci-artifacts/recorded-sessions
+```
+
+Effect: `/tc:create-charter` surfaces any risk-register line mentioning PCI / primary account number / fraud as a charter risk-area. `/tc:explore` reads recordings from `../ci-artifacts/recorded-sessions/<CH-ID>.json` rather than the workspace-default path. `/tc:test-ideas` runs against the resulting session summaries with no per-project tuning — the universal-stem matching catches `payment` / `payments`, `auth` / `authenticate` / `authentication`, and so on.
+
+#### Worked example — Mobile app with a non-Playwright MCP
+
+The consuming project is a React Native iOS app. The team uses a custom Appium-driving MCP instead of Playwright. v1 of `/tc:explore` reads any recorded-session JSON whose shape matches the universal core (`{timestamp, event_type, page_url, ...}` per event); the team's MCP records to that shape.
+
+```yaml
+tc-explore:
+  charters:
+    risk-keywords: [keychain, biometric, background-state]
+    area-keywords: [onboarding, push-notification, deep-link]
+  exploration:
+    mode: recorded
+    recorded-path: ../e2e/appium-recordings
+    # mcp-endpoint and target-url are live-mode-only (v2); recorded mode
+    # ignores both even when present.
+    mcp-endpoint: http://localhost:4723
+    target-url: ios://com.example.app
+  review:
+    rubric-extensions: []
+```
+
+Effect: the team's existing Appium recordings drive `/tc:explore`. The `event_type: page_load` semantics map to "screen" rather than "URL", but the helper does not care about the value semantics — it only counts events by type. Anomalies, screenshots, and coverage verdicts work the same. The `mcp-endpoint` and `target-url` keys are accepted as documentation of future v2 wiring; v1 ignores them under `mode: recorded`.
+
+#### Worked example — API-only project (no UI, no Playwright)
+
+The consuming project is a public REST API with no UI. Exploration is driven from the OpenAPI spec rather than a browser-recorded session. The team writes a thin script that exercises every spec-derived endpoint and records each `{method, path, status, headers, body}` to the universal-core JSON shape.
+
+```yaml
+tc-explore:
+  charters:
+    risk-keywords: [rate-limit, payload-size, idempotency-key]
+    area-keywords: [authentication, pagination, webhook]
+  exploration:
+    mode: recorded
+    recorded-path: ../qa/spec-derived-recordings
+```
+
+Effect: charters scope exploration around spec-derived endpoint families. `/tc:explore` reads the spec-driven recordings exactly as it would Playwright MCP recordings — the universal-core event types (`page_load`, `click`, `fill`, `screenshot`, `console_message`, `network_request`, `anomaly`) cover the API-only case naturally because API exercise records `network_request` and `anomaly` rows; the helper does not require the other event types to be populated. Coverage verdicts use the standard URL-and-keyword-match heuristic — for API-only projects URL paths dominate the heuristic, which is the desired behavior. `/tc:test-ideas` enriches Phase-2 REQ seeds via the same stem-matching as web-app projects.
+
+### Phase 4 — what landed
+
+- **Universal cores.** `/tc:create-charter` ships universal risk-vocabulary (`security`, `auth`, `performance`, `data-integrity`, `accessibility`, `compliance`, `session`, `permission`, `token`, `leak`) and universal area-vocabulary (`sign-in`, `sign-out`, `dashboard`, `search`, `upload`, `profile`, `settings`, `session`, `workspace`); both extend additively. `/tc:explore` ships six universal anomaly categories (`slow-response`, `console-error`, `broken-link`, `missing-evidence`, `auth-mismatch`, `unexpected-state`) with severities (`low`, `medium`, `high`, `critical`) and ten universal trigger words for coverage downgrade (`expiration`, `expired`, `expire`, `leak`, `leakage`, `concurrent`, `race`, `timeout`, `timed-out`, `rollback`). The internal exploration-review sub-mode ships two universal checks (`missing-evidence` with the asymmetric ±3-second rule; `charter-coverage-shortfall` for every AC marked `unobserved`). `/tc:session-summary` ships three universal candidate-scenario types (`happy`, `edge`, `negative`). `/tc:test-ideas` ships a universal-English stopword list and a five-character stem-match algorithm for charter-coverage → REQ-ID cross-reference.
+- **Schema keys** (per the YAML block above): `tc-explore.charters.{risk-keywords, area-keywords}`, `tc-explore.exploration.{mode, recorded-path, mcp-endpoint, target-url}`, `tc-explore.review.{rubric-extensions}`. No `tc-explore.test-ideas:` schema in v1 — the stopword list and stem length are deliberately non-tunable in v1; the deferred v2 surface would expose `tc-explore.test-ideas.{stopwords-extend, stem-length}`.
+- **Tests that would fail if helpers ignored extensions.** `tests/test_create_charter.py::test_risk_keywords_extension_applied` asserts that `tc-explore.charters.risk-keywords` surfaces a project-specific PCI risk-register line in the generated charter; `::test_area_keywords_extension_accepted` asserts the area extension is accepted alongside `--mission`. `tests/test_explore.py::test_recorded_path_extension_applied` asserts `tc-explore.exploration.recorded-path` points the helper at a custom location; `::test_live_mode_refused_under_pytest` asserts the live-mode refusal under the test harness. Each test points the helper at non-default keywords or a non-default path and asserts the helper found or surfaced the result; if the helpers ignored extensions, every one of these tests would fail with "keyword not surfaced" or "recording not found" or equivalent.
+
 ## Hook 2: project documents under `documents/uploaded/`
 
 The Phase 2 helpers read every Markdown file in `.test-commander/documents/uploaded/` that matches their convention — `REQ-\d+` markers for requirements, `US-\d+` for stories, `AC-\d+` for acceptance criteria. Drop your real product requirements there as Markdown files. No tool configuration is needed; the helpers find and parse them.

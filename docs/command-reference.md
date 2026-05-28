@@ -39,16 +39,25 @@ All five commands write per-source models under `<workspace>/product-knowledge/`
 
 For the methodology behind each helper, see [project-knowledge.md](../plugins/test-commander/skills/tc-knowledge/methodology/project-knowledge.md) (umbrella) plus [learning-from-documents.md](../plugins/test-commander/skills/tc-knowledge/methodology/learning-from-documents.md), [learning-from-specs.md](../plugins/test-commander/skills/tc-knowledge/methodology/learning-from-specs.md), [learning-from-code.md](../plugins/test-commander/skills/tc-knowledge/methodology/learning-from-code.md), [learning-from-api.md](../plugins/test-commander/skills/tc-knowledge/methodology/learning-from-api.md), and [learning-from-tests.md](../plugins/test-commander/skills/tc-knowledge/methodology/learning-from-tests.md). End-to-end walkthrough: [user-guide/building-project-knowledge.md](user-guide/building-project-knowledge.md).
 
+## Phase 4 commands (shipped)
+
+| Command | Skill | Per-command page |
+| --- | --- | --- |
+| `/tc:create-charter` | `tc-explore` | [create-charter.md](../plugins/test-commander/skills/tc-explore/commands/create-charter.md) |
+| `/tc:explore` | `tc-explore` | [explore.md](../plugins/test-commander/skills/tc-explore/commands/explore.md) |
+| `/tc:session-summary` | `tc-explore` | [session-summary.md](../plugins/test-commander/skills/tc-explore/commands/session-summary.md) |
+| `/tc:test-ideas` | `tc-explore` | [test-ideas.md](../plugins/test-commander/skills/tc-explore/commands/test-ideas.md) |
+
+`/tc:create-charter` scopes an exploration session against Phase-3 product-knowledge + Phase-2 open questions. `/tc:explore` replays a recorded Playwright MCP session against the charter, classifies events into Observations / Evidence / Anomalies / Charter Coverage, and runs the internal exploration-review sub-mode (suppressible with `--no-review`) that appends `[exploration-review]` gap signals to `<workspace>/requirements/open-questions.md`. `/tc:session-summary` synthesizes a per-session summary with aggregate counts and structured candidate scenarios, plus rebuilds `<workspace>/sessions/index.md`. `/tc:test-ideas` enriches the Phase-2 `tc-test-idea/v1` seeds under `<workspace>/test-ideas/REQ-*.md`, preserving every Phase-2 frontmatter key byte-for-byte, flipping `status: seed` → `status: enriched`, merging `phase_4_sessions:`, and appending a `## Phase 4 enrichment` body section.
+
+For the methodology behind each helper, see [exploratory-testing.md](../plugins/test-commander/skills/tc-explore/methodology/exploratory-testing.md) (umbrella) plus [charter-based-exploration.md](../plugins/test-commander/skills/tc-explore/methodology/charter-based-exploration.md), [session-based-test-management.md](../plugins/test-commander/skills/tc-explore/methodology/session-based-test-management.md), and [test-idea-model.md](../plugins/test-commander/skills/tc-explore/methodology/test-idea-model.md). End-to-end walkthrough: [user-guide/exploring-an-app.md](user-guide/exploring-an-app.md).
+
 ## Planned commands (not yet implemented)
 
 These will gain per-command pages as their phases ship.
 
 | Command | Skill | Phase |
 | --- | --- | --- |
-| `/tc:create-charter` | `tc-explore` | 4 |
-| `/tc:explore` | `tc-explore` | 4 |
-| `/tc:test-ideas` | `tc-explore` | 4 |
-| `/tc:session-summary` | `tc-explore` | 4 |
 | `/tc:generate-bdd` | `tc-bdd` | 5 |
 | `/tc:review-bdd` | `tc-bdd` | 5 |
 | `/tc:traceability-map` | `tc-traceability` | 5 |

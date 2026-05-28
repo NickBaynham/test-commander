@@ -240,8 +240,8 @@ See [`customizing-for-your-project.md`](customizing-for-your-project.md) for the
 
 After all five `/tc:learn-from-*` commands have run, the consuming project has structured knowledge artifacts under `<workspace>/product-knowledge/` plus a populated `<workspace>/requirements/open-questions.md`. Downstream phases consume this knowledge:
 
-- **Phase 4** (`tc-explore`, charter-based exploration) reads `system-model.md`, the per-source models, and `requirements/open-questions.md` to seed charter targets and risk areas.
-- **Phase 5** (`tc-bdd`, BDD generation) consumes the entity index, journey list, and business rules to scaffold `.feature` files. Phase 5 also populates `<workspace>/traceability/` linking requirements, entities, endpoints, and tests.
+- **Phase 4** (`tc-explore`, charter-based exploration) **is shipped** and reads `system-model.md`, the per-source models, and `requirements/open-questions.md` to seed charter targets and risk areas. Follow [exploring-an-app.md](exploring-an-app.md) for the Phase 4 end-to-end walkthrough.
+- **Phase 5** (`tc-bdd`, BDD generation) consumes the entity index, journey list, business rules, and Phase 4 enriched test-ideas to scaffold `.feature` files. Phase 5 also populates `<workspace>/traceability/` linking requirements, entities, endpoints, and tests.
 - **Phase 6** (`tc-build-framework`, automation) uses the code model + spec model + test coverage signal to scaffold a Playwright framework.
 - **Phase 7** (`tc-run`, execution + quality report) reads the cross-source knowledge to score risk and prioritize.
 

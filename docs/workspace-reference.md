@@ -146,11 +146,27 @@ Phase 3 does **not** write to `<workspace>/traceability/`. Cross-source traceabi
 
 End-to-end walkthrough: [user-guide/building-project-knowledge.md](user-guide/building-project-knowledge.md). For per-command methodology see [project-knowledge.md](../plugins/test-commander/skills/tc-knowledge/methodology/project-knowledge.md) (umbrella), [learning-from-documents.md](../plugins/test-commander/skills/tc-knowledge/methodology/learning-from-documents.md), [learning-from-specs.md](../plugins/test-commander/skills/tc-knowledge/methodology/learning-from-specs.md), [learning-from-code.md](../plugins/test-commander/skills/tc-knowledge/methodology/learning-from-code.md), [learning-from-api.md](../plugins/test-commander/skills/tc-knowledge/methodology/learning-from-api.md), and [learning-from-tests.md](../plugins/test-commander/skills/tc-knowledge/methodology/learning-from-tests.md).
 
-### `charters/`, `exploration-notes/`, `test-ideas/`, `sessions/` — Phase 4 (owner)
+### `charters/`, `exploration-notes/`, `test-ideas/`, `sessions/` — Phase 4 (shipped)
 
-Charters scope each exploratory session. Notes capture observations, surprises, bugs, ideas. Test-idea files hold specific, falsifiable claims that could be tested. Session records persist per-session metadata.
+Charters scope each exploratory session. Exploration notes capture every observation, screenshot, anomaly, and charter-coverage verdict from a single replay. Session summaries aggregate the exploration into counts plus structured candidate scenarios. Test-idea seeds (Phase-2-authored) get enriched in place with the per-session candidate scenarios.
 
-**`test-ideas/` is seeded by Phase 2.** `/tc:requirements-to-tests` writes one `test-ideas/<REQ-ID>.md` per reviewed requirement with the Phase-4-compatible `tc-test-idea/v1` schema (one happy + one edge + one negative anchor scenario per REQ). Phase 4 enriches these seeds with charters, exploration sessions, and refined ideas; **Phase 2 never overwrites existing seeds** so Phase 4 enrichments survive re-runs. The `tc-test-idea/v1` schema contract is documented in [`commands/requirements-to-tests.md`](../plugins/test-commander/skills/tc-requirements/commands/requirements-to-tests.md).
+Per-file ownership:
+
+| File / pattern | Written by | Mode |
+| --- | --- | --- |
+| `charters/<CH-NNN>.md` | `/tc:create-charter` | Skip-not-overwrite (user edits preserved; `--new-id` forces fresh allocation) |
+| `exploration-notes/<SESS-ID>.md` | `/tc:explore` | Overwrite (byte-deterministic against unchanged input) |
+| `sessions/<SESS-ID>.md` | `/tc:session-summary` | Overwrite (byte-deterministic against unchanged exploration note) |
+| `sessions/index.md` | `/tc:session-summary` | Overwrite (rebuilt from scratch by scanning every `sessions/SESS-*.md`, sorted by SESS-ID) |
+| `test-ideas/<REQ-ID>.md` | Phase 2 `/tc:requirements-to-tests` (seed), Phase 4 `/tc:test-ideas` (enrich in place) | Phase 2: skip-not-overwrite; Phase 4: in-place merge (frontmatter byte-preserving except `status:` and `phase_4_sessions:`; body-appending under a single `## Phase 4 enrichment` header) |
+
+**SESS-ID allocation is content-derived.** `SESS-YYYYMMDD-NNN` where NNN is derived deterministically from the recording's first-event timestamp via `(hour*60 + minute) % 1000`. Same recording produces the same SESS-ID across re-runs — the byte-determinism contract for both `/tc:explore` and `/tc:session-summary` depends on this.
+
+**Phase 4 writes only to its own directories.** Reads broadly (`<workspace>/product-knowledge/`, `requirements/`, `risk-register/`, the four self-owned dirs above); writes only to `charters/`, `exploration-notes/`, `sessions/`, `test-ideas/` (enrichment), plus a `[exploration-review]` line in `<workspace>/requirements/open-questions.md` per session when the internal review sub-mode fires a gap signal. **Not touched by Phase 4**: `<workspace>/product-knowledge/` (Phase 3 owner), `<workspace>/traceability/` (Phase 5 owner), `<workspace>/bdd/` (Phase 5 owner). These boundaries are asserted directly by `tests/test_phase_4_integration.py` (lands in Step 4.7).
+
+**The `tc-test-idea/v1` schema is shared across phases.** Phase 2 authors the seed: `schema`, `requirement_id`, `requirement_title`, `source`, `status: seed`, `ac_review_present`, `phase_2_findings`, `candidates`, `generated_by`. Phase 4 mutates exactly two keys (`status: seed` → `status: enriched`; merges `phase_4_sessions: [SESS-ID, ...]` sorted-deduplicated) and appends a `## Phase 4 enrichment` body section; every other Phase-2 key is preserved byte-for-byte. The full schema contract is documented in [`tc-explore/methodology/test-idea-model.md`](../plugins/test-commander/skills/tc-explore/methodology/test-idea-model.md) (Phase-4 view) and [`tc-requirements/commands/requirements-to-tests.md`](../plugins/test-commander/skills/tc-requirements/commands/requirements-to-tests.md) (Phase-2 view).
+
+End-to-end walkthrough: [user-guide/exploring-an-app.md](user-guide/exploring-an-app.md). For per-command methodology see [exploratory-testing.md](../plugins/test-commander/skills/tc-explore/methodology/exploratory-testing.md) (umbrella), [charter-based-exploration.md](../plugins/test-commander/skills/tc-explore/methodology/charter-based-exploration.md), [session-based-test-management.md](../plugins/test-commander/skills/tc-explore/methodology/session-based-test-management.md), and [test-idea-model.md](../plugins/test-commander/skills/tc-explore/methodology/test-idea-model.md).
 
 ### `bdd/` — Phase 5
 
