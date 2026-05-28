@@ -1,6 +1,6 @@
 ---
 name: tc-explore
-description: Charter-based exploratory testing commands for Test Commander. Use when the user runs /tc:create-charter, /tc:explore, /tc:session-summary, or /tc:test-ideas, or asks about exploratory testing, charters, session-based test management, anomaly detection, or enriching Phase-2 test-idea seeds with exploration-derived candidate scenarios. Owns the four commands that produce charters, drive Playwright MCP (or replay recorded sessions in tests), synthesize per-session summaries, and enrich the Phase-2 tc-test-idea/v1 seeds with refined scenarios drawn from exploration. Live mode is opt-in via tc-explore.mode: live and refused under pytest.
+description: Charter-based exploratory testing commands for Test Commander. Use when the user runs /tc:create-charter, /tc:explore, /tc:session-summary, or /tc:test-ideas, or asks about exploratory testing, charters, session-based test management, anomaly detection, or enriching Phase-2 test-idea seeds with exploration-derived candidate scenarios. Owns the four commands that produce charters, drive Playwright MCP (or replay recorded sessions in tests), synthesize per-session summaries, and enrich the Phase-2 tc-test-idea/v1 seeds with refined scenarios drawn from exploration. Live mode is opt-in via the tc-explore.mode setting and refused under pytest.
 ---
 
 # tc-explore
@@ -11,7 +11,7 @@ Each command is implemented as a Python helper script bundled inside the plugin 
 
 ## Status
 
-Phase 4 is in progress. The skill scaffold and seeded-exploration-session fixture (Step 4.1) plus `/tc:create-charter` (Step 4.2) plus `/tc:explore` (Step 4.3) plus `/tc:session-summary` (Step 4.4) plus `/tc:test-ideas` (Step 4.5) have shipped. All four Phase 4 commands are now end-to-end runnable:
+Phase 4 complete (2026-05-28); Phase 5 starts next. All four Phase 4 commands are end-to-end runnable:
 
 - `/tc:create-charter` — **shipped (Step 4.2).**
 - `/tc:explore` — **shipped (Step 4.3).** Auto-runs the internal exploration-review sub-mode at end of every session (suppressible with `--no-review`).
