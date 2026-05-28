@@ -11,11 +11,11 @@ Each command is implemented as a Python helper script bundled inside the plugin 
 
 ## Status
 
-Phase 4 is in progress. The skill scaffold and seeded-exploration-session fixture (Step 4.1) plus `/tc:create-charter` (Step 4.2) plus `/tc:explore` (Step 4.3) have shipped. Remaining command behavior arrives in subsequent sub-steps:
+Phase 4 is in progress. The skill scaffold and seeded-exploration-session fixture (Step 4.1) plus `/tc:create-charter` (Step 4.2) plus `/tc:explore` (Step 4.3) plus `/tc:session-summary` (Step 4.4) have shipped. Remaining command behavior arrives in subsequent sub-steps:
 
 - `/tc:create-charter` — **shipped (Step 4.2).**
 - `/tc:explore` — **shipped (Step 4.3).** Auto-runs the internal exploration-review sub-mode at end of every session (suppressible with `--no-review`).
-- `/tc:session-summary` — behavior arrives in Step 4.4.
+- `/tc:session-summary` — **shipped (Step 4.4).**
 - `/tc:test-ideas` — behavior arrives in Step 4.5. Enriches the Phase-2 `tc-test-idea/v1` seeds; preserves every Phase-2 frontmatter key byte-for-byte; bumps `status: seed` → `status: enriched`.
 
 Each sub-step ships the helper, methodology, template(s), and per-command page in a single commit, then updates this SKILL.md to describe the now-shipped behavior and remove the deferral wording for that command.
@@ -52,7 +52,17 @@ Full spec: [commands/explore.md](commands/explore.md). Methodology: [methodology
 
 ### `/tc:session-summary`
 
-Behavior arrives in Step 4.4. Will read `<workspace>/exploration-notes/<SESS-ID>.md` and synthesize a per-session summary at `<workspace>/sessions/<SESS-ID>.md`: charter resolved, duration, observation counts by event type, anomaly counts by category and severity, charter-coverage verdict, candidate scenarios extracted from the session (forward-compatible with Step 4.5's enrichment input). Also maintains `<workspace>/sessions/index.md` as the one-line-per-session ledger.
+Reads `<workspace>/exploration-notes/<SESS-ID>.md` (produced by `/tc:explore`; refused with precondition error pointing at `/tc:explore` when missing) and synthesizes a per-session summary at `<workspace>/sessions/<SESS-ID>.md`. Aggregates observations by `event_type`, anomalies by `category` AND `severity`, charter coverage into a one-line verdict (`X observed, Y partial, Z unobserved` of total ACs). Resolves the charter from `<workspace>/charters/<CH-ID>.md` (best-effort — tolerates missing charter with a `(not found)` placeholder so the synthesis still completes). Computes session duration from first/last observation timestamps. Synthesizes candidate scenarios deterministically: one `negative` candidate per anomaly (sorted by category); one `edge` candidate per partial/unobserved coverage verdict (in source order); up to three `happy` candidates from successful network requests on distinct `(method, path)` pairs (sorted by source_index). Each candidate carries four stable fields Step 4.5 reads: `id`, `title`, `type`, `source` (plus optional `linked_anomaly`). The shape is forward-compatible with Phase 2's `tc-test-idea/v1` candidates field. Writes byte-deterministically — re-running against an unchanged exploration note produces identical bytes. Also rebuilds `<workspace>/sessions/index.md` by scanning every `sessions/SESS-*.md` and emitting one row per match sorted by SESS-ID (chronological by YYYYMMDD prefix). Leaves an Executive Narrative section header for the Claude judgment layer to complete with anomaly severity calibration, candidate-scenario prioritization, partial-coverage follow-up recommendations, and cross-source correlation with Phase 3 product-knowledge artifacts.
+
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/session_summary.py <project-root> --session SESS-YYYYMMDD-NNN
+```
+
+`<project-root>` defaults to the current working directory. The `--session` flag is required; the SESS-ID format is documented in `/tc:explore`'s output.
+
+Full spec: [commands/session-summary.md](commands/session-summary.md). Methodology: [methodology/session-based-test-management.md](methodology/session-based-test-management.md) (Session summary subsection).
 
 ### `/tc:test-ideas`
 

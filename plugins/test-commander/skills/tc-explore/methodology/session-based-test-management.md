@@ -96,6 +96,36 @@ Fires for every acceptance criterion marked `unobserved` after the full session.
 
 The seeded fixture's CH-001 ends up with one `partial` AC (about session expiration) but zero `unobserved`, so the shortfall check does not fire for the seed. Tests that need to exercise the shortfall path synthesize a charter with deliberately-uncovered ACs.
 
+## Session summary (Step 4.4)
+
+`/tc:session-summary` reads the exploration note produced by `/tc:explore` and synthesizes a per-session summary at `<workspace>/sessions/<SESS-ID>.md` plus a one-line-per-session ledger at `<workspace>/sessions/index.md`. The summary aggregates the mechanical extraction the exploration note already carried, plus adds two pieces the note doesn't:
+
+1. **Aggregate counts.** Observations grouped by `event_type`; anomalies grouped by `category` AND `severity` (the exploration note's Anomalies table is per-row, not aggregated); coverage matrix aggregated into a one-line verdict (`X observed, Y partial, Z unobserved` of total ACs).
+2. **Candidate scenarios.** A structured list of test-idea seeds derived deterministically from the session, forward-compatible with Step 4.5's enrichment input.
+
+### Candidate scenario synthesis rules
+
+Three deterministic synthesis paths, run in this order so the resulting `CS-NNN-NNN` IDs are stable across re-runs:
+
+1. **`negative` candidates from anomalies** — one per anomaly, sorted by category for deterministic ordering. Title: `Reproduce <category> on <page_url>`. Source: `<SESS-ID>:anomaly:<category>`. `linked_anomaly` set to the category.
+2. **`edge` candidates from coverage gaps** — one per acceptance criterion marked `partial` OR `unobserved`, in source order. Title: `Follow-up exploration to fully cover acceptance criterion #N: '<criterion text>'`. Source: `<SESS-ID>:coverage:AC<N>:<verdict>`. `linked_anomaly` absent.
+3. **`happy` candidates from successful flows** — up to three, drawn from `network_request` observations returning 2xx on distinct `(method, path)` pairs, sorted by `source_index`. Title: `Happy path: METHOD path returns NNN`. Source: `<SESS-ID>:obs:<source_index>`. `linked_anomaly` absent.
+
+Each candidate carries four stable fields Step 4.5 reads: `id`, `title`, `type`, `source` (plus optional `linked_anomaly`). The shape is forward-compatible with Phase 2's `tc-test-idea/v1` candidates field — Step 4.5 (`/tc:test-ideas`) appends these to the existing Phase-2-seeded test-idea files under `<workspace>/test-ideas/<REQ-ID>.md` as a `## Phase 4 enrichment` body section.
+
+### Session-summary idempotency contract
+
+Re-running `/tc:session-summary --session <SESS-ID>` against an unchanged exploration note produces byte-identical bytes for both `sessions/<SESS-ID>.md` and `sessions/index.md`. Determinism factors:
+
+- The exploration note (the input) is byte-deterministic against the recorded session (per Step 4.3).
+- Candidate `CS-NNN-NNN` IDs are derived from the SESS-ID's last NNN segment plus a sequence ordinal across the deterministic candidate list.
+- Aggregate counts are pure functions of the parsed input.
+- The sessions index is rebuilt from scratch by scanning every `sessions/SESS-*.md` file and emitting one row per match sorted by SESS-ID (chronological by YYYYMMDD prefix).
+
+### What lands in the index
+
+The index row for each session lists the SESS-ID, the charter ID resolved from the title heading, the duration parsed from the Session bullet (when present), the anomaly count parsed from the Anomaly Summary header (when present), and the coverage verdict tuple `Xo/Yp/Zu` parsed from the Charter Coverage Summary header (when present). Older summaries written by manual edits or by previous helper versions surface with their available metadata; missing fields are simply omitted from the row.
+
 ## Claude judgment layer
 
 The mechanical extraction handles every dimension above deterministically. The Claude judgment layer adds:
