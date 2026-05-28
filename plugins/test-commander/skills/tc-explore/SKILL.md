@@ -11,10 +11,10 @@ Each command is implemented as a Python helper script bundled inside the plugin 
 
 ## Status
 
-Phase 4 is in progress. The skill scaffold and seeded-exploration-session fixture (Step 4.1) plus `/tc:create-charter` (Step 4.2) have shipped. Remaining command behavior arrives in subsequent sub-steps:
+Phase 4 is in progress. The skill scaffold and seeded-exploration-session fixture (Step 4.1) plus `/tc:create-charter` (Step 4.2) plus `/tc:explore` (Step 4.3) have shipped. Remaining command behavior arrives in subsequent sub-steps:
 
 - `/tc:create-charter` — **shipped (Step 4.2).**
-- `/tc:explore` — behavior arrives in Step 4.3. Auto-runs the internal exploration-review sub-mode at end of every session (suppressible with `--no-review`).
+- `/tc:explore` — **shipped (Step 4.3).** Auto-runs the internal exploration-review sub-mode at end of every session (suppressible with `--no-review`).
 - `/tc:session-summary` — behavior arrives in Step 4.4.
 - `/tc:test-ideas` — behavior arrives in Step 4.5. Enriches the Phase-2 `tc-test-idea/v1` seeds; preserves every Phase-2 frontmatter key byte-for-byte; bumps `status: seed` → `status: enriched`.
 
@@ -38,7 +38,17 @@ Full spec: [commands/create-charter.md](commands/create-charter.md). Methodology
 
 ### `/tc:explore`
 
-Behavior arrives in Step 4.3. Will drive Playwright MCP in `live` mode against a target URL OR replay a recorded session in `recorded` mode (default; pytest never reaches `live`). Captures observations + evidence + anomalies into `<workspace>/exploration-notes/<SESS-ID>.md`. Runs the internal exploration-review sub-mode at end of session — emits `[exploration-review]` gap signals to `<workspace>/requirements/open-questions.md` when the charter coverage shortfalls or evidence gaps are detected. The `--no-review` flag suppresses the review sub-mode for advanced users who chain commands manually.
+Reads a charter file at `<workspace>/charters/<CH-ID>.md` (required, refused with precondition error pointing at `/tc:create-charter` when missing) plus a recorded Playwright MCP session at the configured path (default `<workspace>/documents/uploaded/recorded-sessions/<CH-ID>.json`, overridable via `tc-explore.exploration.recorded-path`). Classifies every event into Observations (`page_load`, `click`, `fill`, `screenshot`, `console_message`, `network_request`), Evidence (every screenshot with its `screenshot_id` + caption), and Anomalies (the six universal-core categories `slow-response`, `console-error`, `broken-link`, `missing-evidence`, `auth-mismatch`, `unexpected-state` with severities from `{low, medium, high, critical}`). Computes a Charter-Coverage matrix marking each acceptance criterion `observed` / `partial` / `unobserved` based on URL-path + distinctive-keyword + trigger-word matching against the observed corpus. Runs the internal exploration-review sub-mode at end of session (suppressible with `--no-review`): emits `missing-evidence` gap signals for anomalies carrying `screenshot_id: null` AND no `screenshot` event within ±3s; emits `charter-coverage-shortfall` gap signals for every acceptance criterion marked `unobserved`. All gap signals route to `<workspace>/requirements/open-questions.md` with the `[exploration-review]` kind prefix and the Phase-2 `(source-id, question-text)` dedup contract. Writes `<workspace>/exploration-notes/<SESS-ID>.md` byte-deterministically — re-running against unchanged input produces identical bytes. Session IDs follow `SESS-YYYYMMDD-NNN` where NNN is derived deterministically from the first event's time-of-day so the same recording always produces the same SESS-ID. Live mode (`tc-explore.exploration.mode: live`) is documented for future use and **refused under pytest** via the `PYTEST_CURRENT_TEST` env-var check before any MCP connection is constructed (mirrors Phase 3 Step 3.5 verbatim).
+
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/explore.py <project-root> --charter CH-NNN [--no-review]
+```
+
+`<project-root>` defaults to the current working directory. The `--charter` flag is required. The `--no-review` flag suppresses the internal review sub-mode for advanced users who chain commands manually.
+
+Full spec: [commands/explore.md](commands/explore.md). Methodology: [methodology/session-based-test-management.md](methodology/session-based-test-management.md).
 
 ### `/tc:session-summary`
 
