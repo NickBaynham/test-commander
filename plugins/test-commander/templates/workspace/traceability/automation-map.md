@@ -2,6 +2,6 @@
 
 Automated Test -> Test Result -> Quality Report links.
 
-> Populated by `/tc:traceability-map` (Phase 5).
+> Populated by `/tc:automate` (Phase 6), which owns this map.
 
-_(empty until Phase 5 ships.)_
+_(empty until /tc:automate runs.)_
