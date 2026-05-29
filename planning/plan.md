@@ -2479,7 +2479,13 @@ No implementation lands before its tests. Every command's test suite drives the 
 
 #### Phase 5 — Lessons learned (running)
 
-Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. Each entry is preventative care for future implementers of similar work. (Populated as 5.1–5.7 land.)
+Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. Each entry is preventative care for future implementers of similar work.
+
+##### Step 5.1 — Skill scaffolds (`tc-bdd` + `tc-traceability`) + seeded-bdd fixture
+
+- **25/25 GREEN once the scaffold + fixture existed; the strict-PyYAML assertion landed in the scaffold step, not at sign-off.** Per the Phase 4 Step 4.8 future-implementer hint, both `tests/test_tc_bdd_scaffold.py` and `tests/test_tc_traceability_scaffold.py` parse the SKILL.md frontmatter with `yaml.safe_load` directly (not the regex parser `verify_skills.py` uses). This is the check that would have caught the Phase-4 colon-space bug at the unit-test layer; in Phase 5 it is an invariant from the first sub-step. Both descriptions were authored with no embedded `key: value` substring; the strict-parse assertion passed on first author. **Pattern**: the unit-layer strict-YAML parse is cheap insurance against the one bug `make verify` cannot catch (only `claude plugin validate` does). **Future-implementer hint**: keep the strict-parse assertion in every future skill's scaffold test.
+- **The fixture must match the real upstream output shape, not the plan's shorthand.** The 5.1 plan text said `REQ-001.md` carries "`### CS-NNN-NNN` candidate blocks." The real `enrich_test_ideas.py` output puts `### CS-` headings only in the **session summary** (`session_summary.py` output); the **enriched test-idea** instead carries `## Phase 4 enrichment` → `### SESS-…` sub-blocks with `- **CS-NNN-NNN**` candidate *bullets*. The fixture was authored to the real format (verified against `enrich_test_ideas.render_session_subblock` and `session_summary` render), and the scaffold test asserts the accurate shape: `### CS-` headings in `SESS-20260115-001.md`, and `>= 2` `CS-NNN-NNN` *references* in `REQ-001.md`. **Pattern**: when a fixture stands in for a prior phase's output, read that phase's render function and match its bytes — do not trust the plan's prose paraphrase. **Future-implementer hint**: Step 5.2's `generate_bdd.py` parser must consume the enriched test-idea's `### SESS-…` → `- **CS-…**` bullet shape (plus the Phase-2 `candidates:` frontmatter), not a `### CS-` heading shape, when reading candidates from `test-ideas/`.
+- **No new extensible surface in 5.1.** The scaffold ships SKILL.md + fixture + empty command/methodology/template dirs only; the `tc-bdd.tags.*` / `tc-bdd.review.rubric-extensions` config schema ships with the helpers in 5.2/5.3 and is documented in the customization guide in 5.5. Per Convention #6, `docs/user-guide/customizing-for-your-project.md` is unchanged this sub-step.
 
 ---
 
@@ -3040,7 +3046,7 @@ Phase 3 complete (2026-05-27) — see Completed.
 Phase 4 complete (2026-05-28) — see Completed.
 
 ### Phase 5
-- [ ] **5.1** — Scaffold `tc-bdd` + `tc-traceability` skills and the seeded-bdd fixture (enriched test-idea + session summary inputs; `flawed.feature` with one defect per universal review category; strict-PyYAML scaffold assertion on both SKILL.md files from the start)
+- [x] **5.1** — Scaffold `tc-bdd` + `tc-traceability` skills and the seeded-bdd fixture (enriched test-idea + session summary inputs; `flawed.feature` with one defect per universal review category; strict-PyYAML scaffold assertion on both SKILL.md files from the start)
 - [ ] **5.2** — `/tc:generate-bdd` (TDD) + umbrella `bdd-generation.md` methodology + `feature-template.feature` + summary template; emits Gherkin with `@req:`/`@cs:` linkage tags; declares the `Scenario` dataclass mirroring the enriched-test-idea shape; auto-runs the review sub-mode
 - [ ] **5.3** — `/tc:review-bdd` (TDD) + shared `_review_features()` (same code path 5.2 auto-runs) + `bdd-quality-review.md`; six-category universal rubric; `[bdd-review]` gap signals with the Phase-2 dedup contract
 - [ ] **5.4** — `/tc:traceability-map` (TDD) — extract shared `traceability_render.py` from `requirements_coverage.py` first (Phase-2 tests stay green); rebuild `requirements-map.md` (BDD-scenario column) + `test-map.md` with `pending` downstream links
