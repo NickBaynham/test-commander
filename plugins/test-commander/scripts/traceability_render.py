@@ -80,8 +80,20 @@ class TestMapRow:
     feature: str
 
 
-def render_test_map(rows: Sequence[TestMapRow]) -> str:
-    """Render the Phase-5 scenario-level test map with pending downstream links."""
+def render_test_map(
+    rows: Sequence[TestMapRow],
+    automated_by_cs: dict[str, str] | None = None,
+) -> str:
+    """Render the scenario-level test map.
+
+    ``automated_by_cs`` maps a candidate id (``CS-NNN-NNN``) to the generated
+    spec path that automates it (from ``automation-map.md``). The ``Automated
+    test`` column resolves to that spec when present; otherwise it stays
+    ``pending``. With no automation map (Phase 5), every row reads ``pending``,
+    so the file is byte-identical to the pre-Phase-6 output. ``Test result`` and
+    ``Quality report`` remain ``pending`` until Phase 7.
+    """
+    automated_by_cs = automated_by_cs or {}
     out = [TEST_MAP_TITLE, "", TEST_MAP_INTRO, ""]
     if not rows:
         out.append("_No BDD scenarios with linkage tags found._")
@@ -94,9 +106,11 @@ def render_test_map(rows: Sequence[TestMapRow]) -> str:
     )
     out.append("| --- | --- | --- | --- | --- | --- |")
     for r in rows:
+        spec = automated_by_cs.get(r.cs_id)
+        automated = f"`{spec}`" if spec else "pending"
         out.append(
             f"| {r.req_id} | {r.cs_id} | `{r.feature}` :: {r.scenario} | "
-            f"pending | pending | pending |"
+            f"{automated} | pending | pending |"
         )
     out.append("")
     return "\n".join(out)

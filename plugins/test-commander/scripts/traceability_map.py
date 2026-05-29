@@ -52,6 +52,10 @@ WORKSPACE_DIRNAME = ".test-commander"
 
 REQ_TAG_RE = re.compile(r"@req:(REQ-\d+)")
 CS_TAG_RE = re.compile(r"@cs:(CS-\d{3}-\d{3})")
+# Automation-map row: | REQ-NNN | CS-NNN-NNN | scenario | tests/e2e/<area>.spec.ts |
+AUTOMATION_ROW_RE = re.compile(
+    r"^\|\s*REQ-\d+\s*\|\s*(CS-\d{3}-\d{3})\s*\|[^|]*\|\s*(\S+\.spec\.ts)\s*\|"
+)
 
 
 @dataclass
@@ -96,6 +100,20 @@ def scan_scenarios(features_dir: Path) -> list[traceability_render.TestMapRow]:
     return rows
 
 
+def scan_automation_specs(automation_path: Path) -> dict[str, str]:
+    """Parse automation-map.md into {cs_id -> spec path}, so the test map's
+    Automated test column can resolve from the Phase-6-owned map. Empty when the
+    map is absent or carries no automated rows (the Phase-5 pending case)."""
+    specs: dict[str, str] = {}
+    if not automation_path.is_file():
+        return specs
+    for line in automation_path.read_text(encoding="utf-8").split("\n"):
+        m = AUTOMATION_ROW_RE.match(line)
+        if m:
+            specs.setdefault(m.group(1), m.group(2))
+    return specs
+
+
 # ---------------------------------------------------------------------------
 # Top-level entry
 # ---------------------------------------------------------------------------
@@ -124,6 +142,7 @@ def traceability_map(project_root: Path) -> TraceResult:
     rows = [(li.req_id, li.test_ideas, li.bdd_features, li.automation) for li in links]
 
     scenarios = scan_scenarios(workspace / "bdd" / "features")
+    automated_by_cs = scan_automation_specs(workspace / "traceability" / "automation-map.md")
 
     trace_dir = workspace / "traceability"
     trace_dir.mkdir(parents=True, exist_ok=True)
@@ -133,7 +152,7 @@ def traceability_map(project_root: Path) -> TraceResult:
         traceability_render.render_requirements_map(req_ids, rows), encoding="utf-8"
     )
     test_map_path.write_text(
-        traceability_render.render_test_map(scenarios), encoding="utf-8"
+        traceability_render.render_test_map(scenarios, automated_by_cs), encoding="utf-8"
     )
 
     return TraceResult(

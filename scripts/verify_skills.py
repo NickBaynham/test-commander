@@ -49,11 +49,12 @@ CATALOG: dict[str, float] = {
     "tc-continuous-quality": 13,
 }
 
-# Bumped as phases land. Phase 4 currently — tc-core (Phase 1, four commands),
-# tc-requirements (Phase 2, five commands), tc-knowledge (Phase 3, five
-# commands plus the shared synthesizer), and tc-explore (Phase 4, four
-# commands plus the internal exploration-review sub-mode) are all shipped.
-DEFAULT_PHASE_CAP: float = 5
+# Bumped as phases land. Through Phase 6 — tc-core (Phase 1), tc-requirements
+# (Phase 2), tc-knowledge (Phase 3), tc-explore (Phase 4), tc-bdd +
+# tc-traceability (Phase 5), and the four Phase 6 automation skills
+# (tc-build-framework, tc-automation-plan, tc-automate, tc-test-data) are all
+# shipped.
+DEFAULT_PHASE_CAP: float = 6
 
 KEBAB_CASE = re.compile(r"[a-z][a-z0-9-]*")
 FRONTMATTER_BLOCK = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
