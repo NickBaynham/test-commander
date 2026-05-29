@@ -47,6 +47,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from build_framework import ensure_framework
+from review_automation import review_automation
 from review_bdd import parse_feature_file
 
 WORKSPACE_DIRNAME = ".test-commander"
@@ -287,7 +288,11 @@ def render_automation_map(scenarios: list[AutoScenario]) -> str:
 
 
 def generate(
-    project_root: Path, *, area: str | None = None, scenario: str | None = None
+    project_root: Path,
+    *,
+    area: str | None = None,
+    scenario: str | None = None,
+    no_review: bool = False,
 ) -> AutomateOutcome:
     workspace = workspace_dir(project_root)
     plan_dir = workspace / "automation-plan"
@@ -356,6 +361,11 @@ def generate(
     map_file.parent.mkdir(parents=True, exist_ok=True)
     map_file.write_text(render_automation_map(all_scenarios), encoding="utf-8")
     outcome.map_path = map_file
+
+    # Auto-run the shared automation review unless suppressed. Only when specs
+    # were generated, so the review's "no specs" precondition never fires here.
+    if not no_review and outcome.spec_paths:
+        review_automation(project_root)
     return outcome
 
 
@@ -382,11 +392,21 @@ def main(argv: Iterable[str] | None = None) -> int:
     parser.add_argument(
         "--scenario", default=None, help="Generate for a single scenario by name."
     )
+    parser.add_argument(
+        "--no-review",
+        action="store_true",
+        help="Suppress the generate-time automation review (/tc:review-automation).",
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
     project_root = Path(args.project_root).resolve()
 
     try:
-        outcome = generate(project_root, area=args.area, scenario=args.scenario)
+        outcome = generate(
+            project_root,
+            area=args.area,
+            scenario=args.scenario,
+            no_review=args.no_review,
+        )
     except UninitializedWorkspaceError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
