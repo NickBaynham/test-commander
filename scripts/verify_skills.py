@@ -53,7 +53,7 @@ CATALOG: dict[str, float] = {
 # tc-requirements (Phase 2, five commands), tc-knowledge (Phase 3, five
 # commands plus the shared synthesizer), and tc-explore (Phase 4, four
 # commands plus the internal exploration-review sub-mode) are all shipped.
-DEFAULT_PHASE_CAP: float = 4
+DEFAULT_PHASE_CAP: float = 5
 
 KEBAB_CASE = re.compile(r"[a-z][a-z0-9-]*")
 FRONTMATTER_BLOCK = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
