@@ -13,8 +13,8 @@ Each command is implemented as a Python helper script bundled inside the plugin 
 
 Phase 5 in progress. The commands ship sub-step by sub-step:
 
-- `/tc:generate-bdd` — behavior ships in Step 5.2. Auto-runs the internal BDD review sub-mode at the end of generation (suppressible with `--no-review`).
-- `/tc:review-bdd` — behavior ships in Step 5.3. Standalone, re-runnable review of already-written `.feature` files; shares one implementation with the generate-time review sub-mode.
+- `/tc:generate-bdd` — **shipped (Step 5.2).** Generation only; the generate-time review auto-run wires in Step 5.3.
+- `/tc:review-bdd` — behavior ships in Step 5.3. Standalone, re-runnable review of already-written `.feature` files; the same implementation backs the generate-time review sub-mode.
 
 Each sub-step ships the helper, methodology, template(s), and per-command page in a single commit, then updates this SKILL.md to describe the now-shipped behavior and remove the deferral wording for that command.
 
@@ -22,11 +22,21 @@ Each sub-step ships the helper, methodology, template(s), and per-command page i
 
 ### `/tc:generate-bdd`
 
-Behavior arrives in Step 5.2. Will read the Phase-4-enriched test-idea seeds under `<workspace>/test-ideas/` plus the referenced session summaries under `<workspace>/sessions/` and Phase-3 product-knowledge for grounding, then write Gherkin `.feature` files under `<workspace>/bdd/features/`. Every scenario will carry machine-readable linkage tags (`@req:REQ-NNN`, `@cs:CS-NNN-NNN`) plus universal class tags and a project `@area:` tag, so `/tc:traceability-map` can rebuild the trace map mechanically. Also writes per-feature summaries under `<workspace>/bdd/summaries/`, rebuilds `<workspace>/bdd/index.md`, and auto-runs the review sub-mode.
+Reads the Phase-4-enriched test-idea seeds under `<workspace>/test-ideas/` (the `## Phase 4 enrichment` candidate bullets are the scenario source) and writes Gherkin `.feature` files under `<workspace>/bdd/features/`. One `Scenario` per Phase-4 candidate (`CS-NNN-NNN`), each carrying machine-readable linkage tags (`@req:REQ-NNN`, `@cs:CS-NNN-NNN`, plus `@anomaly:<category>` when anomaly-derived), a universal class tag mapped from the candidate type (`happy`/`positive` → `@smoke`; `edge`/`negative` → `@regression`), and an `@area:` namespace tag derived from the requirement title — so `/tc:traceability-map` can rebuild the trace map mechanically. Also writes a per-feature summary under `<workspace>/bdd/summaries/` and rebuilds `<workspace>/bdd/index.md`. Deterministic and byte-stable (overwrite mode). The helper emits a refinable scaffold; Claude rewrites the Given/When/Then into domain-grounded steps, promotes data-driven scenarios to `Scenario Outline`, and adds `@risk:`/`@persona:` values, per the methodology. Projects union extra class tags via `tc-bdd.tags.extra-classes` in `<workspace>/config.yaml`.
+
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/generate_bdd.py <project-root> [--req REQ-NNN]
+```
+
+`<project-root>` defaults to the current working directory. Refuses uninitialized workspaces (exit 2) and the absence of any enriched test-idea seed (exit 2; the precondition error directs the user at `/tc:test-ideas`). The generate-time review sub-mode (suppressible with `--no-review`) wires in Step 5.3.
+
+Full spec: [commands/generate-bdd.md](commands/generate-bdd.md). Methodology: [methodology/bdd-generation.md](methodology/bdd-generation.md).
 
 ### `/tc:review-bdd`
 
-Behavior arrives in Step 5.3. Will read `<workspace>/bdd/features/*.feature` and run the six-category universal review rubric (`ambiguous-step`, `missing-tag`, `untraceable`, `ui-coupled-step`, `missing-examples`, `conjunction-overload`), writing a verdict into each feature's summary and routing failures to `<workspace>/requirements/open-questions.md` as `[bdd-review]` gap signals. The same implementation backs the review sub-mode that `/tc:generate-bdd` auto-runs.
+Behavior arrives in Step 5.3. Will read `<workspace>/bdd/features/*.feature` and run the six-category universal review rubric (`ambiguous-step`, `missing-tag`, `untraceable`, `ui-coupled-step`, `missing-examples`, `conjunction-overload`), writing a verdict into each feature's summary and routing failures to `<workspace>/requirements/open-questions.md` as `[bdd-review]` gap signals. The same implementation backs the review sub-mode that `/tc:generate-bdd` auto-runs (wired in 5.3).
 
 ## Finding the helpers
 

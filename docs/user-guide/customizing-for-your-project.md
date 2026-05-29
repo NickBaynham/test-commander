@@ -339,6 +339,35 @@ Effect: charters scope exploration around spec-derived endpoint families. `/tc:e
 - **Schema keys** (per the YAML block above): `tc-explore.charters.{risk-keywords, area-keywords}`, `tc-explore.exploration.{mode, recorded-path, mcp-endpoint, target-url}`, `tc-explore.review.{rubric-extensions}`. No `tc-explore.test-ideas:` schema in v1 — the stopword list and stem length are deliberately non-tunable in v1; the deferred v2 surface would expose `tc-explore.test-ideas.{stopwords-extend, stem-length}`.
 - **Tests that would fail if helpers ignored extensions.** `tests/test_create_charter.py::test_risk_keywords_extension_applied` asserts that `tc-explore.charters.risk-keywords` surfaces a project-specific PCI risk-register line in the generated charter; `::test_area_keywords_extension_accepted` asserts the area extension is accepted alongside `--mission`. `tests/test_explore.py::test_recorded_path_extension_applied` asserts `tc-explore.exploration.recorded-path` points the helper at a custom location; `::test_live_mode_refused_under_pytest` asserts the live-mode refusal under the test harness. Each test points the helper at non-default keywords or a non-default path and asserts the helper found or surfaced the result; if the helpers ignored extensions, every one of these tests would fail with "keyword not surfaced" or "recording not found" or equivalent.
 
+### Phase 5 schema (`tc-bdd`)
+
+Phase 5 ships the `tc-bdd` skill (`/tc:generate-bdd`, `/tc:review-bdd`) and
+`tc-traceability` (`/tc:traceability-map`). The first configurable surface,
+shipped with `/tc:generate-bdd` in Step 5.2, lets a project union additional
+universal class tags onto every generated scenario:
+
+```yaml
+tc-bdd:
+  tags:
+    # Class tags unioned onto every generated scenario, in addition to the
+    # type-derived class (@smoke for happy/positive, @regression for
+    # edge/negative). A leading @ is optional; it is added if missing.
+    extra-classes: ["@automated-candidate"]
+```
+
+**Worked example — a project that wants every generated scenario marked as an
+automation candidate.** With the block above, a scenario the helper would
+otherwise tag `@area:checkout @req:REQ-014 @cs:CS-014-002 @regression` becomes
+`@area:checkout @req:REQ-014 @cs:CS-014-002 @regression @automated-candidate`,
+so a downstream `/tc:automation-plan` (Phase 6) can select the whole set by tag.
+
+The universal class core (`@smoke`, `@regression`, `@manual`, `@exploratory`,
+`@automated-candidate`) and the machine-readable linkage tags (`@req:`, `@cs:`,
+`@anomaly:`) are not project-tunable — they are the traceability contract. The
+project namespace **values** (`@area:`, `@risk:`, `@persona:`) are picked per
+project; see "Hook 4: project-defined tag namespaces" below. The full Phase 5
+schema (including the review rubric extension) is documented in Step 5.5.
+
 ## Hook 2: project documents under `documents/uploaded/`
 
 The Phase 2 helpers read every Markdown file in `.test-commander/documents/uploaded/` that matches their convention — `REQ-\d+` markers for requirements, `US-\d+` for stories, `AC-\d+` for acceptance criteria. Drop your real product requirements there as Markdown files. No tool configuration is needed; the helpers find and parse them.
