@@ -51,7 +51,10 @@ test:
 	pdm run pytest
 
 build:
-	@echo "Nothing to build yet. Runtimes ship in Phase 6 (Playwright) and Phase 10+ (web/API)."
+	@echo "The Playwright automation framework is built lazily inside a consuming"
+	@echo "project by /tc:build-framework (scripts/build_framework.py). The web/API"
+	@echo "runtime arrives in Phase 10+. This repo ships the plugin + Python helpers;"
+	@echo "there is no repo-level compile step."
 
 run:
 	@echo "Nothing to run yet. docker compose stack arrives in Phase 10+."

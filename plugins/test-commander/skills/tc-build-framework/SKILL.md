@@ -11,17 +11,27 @@ Each command is implemented as a Python helper script bundled inside the plugin 
 
 ## Status
 
-Phase 6 scaffold (Step 6.1). The command is registered but its behavior is not yet shipped:
+Phase 6 (Step 6.2). The command is end-to-end runnable:
 
-- `/tc:build-framework` — behavior arrives in Step 6.2. It will scaffold the project-root `tests/{e2e,pages,components,fixtures,utils}/` tree plus `playwright.config.ts` and `package.json` from bundled TypeScript templates, only if `tests/playwright.config.ts` is absent, and re-run as a byte-stable no-op. Step 6.2 also exposes `ensure_framework(project_root)` as the lazy-init entry point `/tc:automate` calls first.
-
-When Step 6.2 lands, this SKILL.md is updated to describe the shipped behavior and the deferral wording above is removed.
+- `/tc:build-framework` — **shipped (Step 6.2).** Scaffolds the project-root `tests/{e2e,pages,components,fixtures,utils}/` tree plus `playwright.config.ts` and `package.json`, creating each managed path only when absent so a re-run is a byte-stable no-op. Exposes `ensure_framework(project_root)` as the lazy-init entry point `/tc:automate` calls first.
 
 ## Commands
 
 ### `/tc:build-framework`
 
-Scaffolds the project-root automation framework lazily (only when absent) and idempotently. Full behavior is documented in the per-command page once Step 6.2 ships the helper.
+Scaffolds the project-root Playwright/TypeScript framework lazily (Decision D8): the `tests/{e2e,pages,components,fixtures,utils}/` tree, `tests/playwright.config.ts` (`testDir: './e2e'`, target from the `PLAYWRIGHT_BASE_URL` environment variable), and `tests/package.json` (declaring `@playwright/test` and `typescript`). Each path is created only when absent — a re-run reports `created 0` and leaves existing files byte-for-byte untouched, and a partial tree converges without clobbering user edits. The framework lands at the project root `tests/` tree, *outside* the `.test-commander/` workspace.
+
+The helper only writes TypeScript and JSON text — it never invokes `tsc` or `npx playwright test` and never reaches a browser. Execution is Phase 7's `/tc:run`. The four `.ts` object templates under [`templates/`](templates/) are the v1 rendering contract `/tc:automate` consumes.
+
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/build_framework.py <project-root>
+```
+
+`<project-root>` defaults to the current working directory. Refuses uninitialized workspaces (exit 2). `ensure_framework(project_root)` is the lazy-init entry point importable by the Phase 6.4 generator.
+
+Full spec: [commands/build-framework.md](commands/build-framework.md). Methodology: [methodology/playwright-standards.md](methodology/playwright-standards.md), [methodology/locator-strategy.md](methodology/locator-strategy.md).
 
 ## See also
 
