@@ -320,7 +320,7 @@ Missing keys = no extension; the helpers fall back to the universal cores. See [
 
 After the four Phase 4 commands have run, the consuming project has charters + exploration notes + session summaries + enriched test-idea seeds. Downstream phases consume this:
 
-- **Phase 5** (`tc-bdd`, BDD generation) reads enriched test-ideas as charter-grounded scenario seeds and emits `.feature` files. Phase 5 also populates `<workspace>/traceability/` linking requirements, entities, endpoints, and tests.
+- **Phase 5** (`tc-bdd` + `tc-traceability`, **shipped**) reads enriched test-ideas as scenario seeds and emits traceable `.feature` files, reviews them, and rebuilds `<workspace>/traceability/` linking requirements to test ideas and BDD scenarios. Follow [generating-bdd.md](generating-bdd.md) for the Phase 5 walkthrough.
 - **Phase 6** (`tc-build-framework`, automation) consumes the BDD output (not enriched test-ideas directly) to scaffold a Playwright framework.
 - **Phase 7** (`tc-run`, execution + quality report) uses the cross-source knowledge to score risk and prioritize.
 

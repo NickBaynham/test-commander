@@ -382,8 +382,77 @@ The universal class core (`@smoke`, `@regression`, `@manual`, `@exploratory`,
 `@automated-candidate`) and the machine-readable linkage tags (`@req:`, `@cs:`,
 `@anomaly:`) are not project-tunable — they are the traceability contract. The
 project namespace **values** (`@area:`, `@risk:`, `@persona:`) are picked per
-project; see "Hook 4: project-defined tag namespaces" below. Step 5.5 expands
-this section with three project-shape worked examples.
+project; see "Hook 4: project-defined tag namespaces" below.
+
+#### Worked examples by project shape
+
+The two surfaces above tune differently depending on how a project's BDD is
+shaped. Three materially-different shapes:
+
+- **Web app with browser-driven scenarios.** Scenarios describe user-visible
+  behavior across pages. The default `ui-words` rubric (`click`, `button`,
+  `url`, `selector`, …) is exactly right — no extension needed; it keeps
+  selectors and URLs out of the behavior specs. The project tunes
+  `tc-bdd.tags.extra-classes: ["@automated-candidate"]` so generated scenarios
+  flow into the Phase-6 automation plan, and picks `@area:` values per page
+  area (`@area:sign-in`, `@area:dashboard`).
+
+  ```yaml
+  tc-bdd:
+    tags:
+      extra-classes: ["@automated-candidate"]
+  ```
+
+- **API-only project with spec-derived scenarios.** Scenarios describe
+  request/response behavior, so "URL" is legitimately part of the language —
+  the project does **not** add URL terms to `ui-words` (that would mis-flag
+  endpoint references). Instead it adds API-draft placeholders to `vague-words`
+  so unfinished steps are caught, and tags risk by data class.
+
+  ```yaml
+  tc-bdd:
+    review:
+      rubric-extensions:
+        vague-words: ["tbd", "returns stuff", "some payload"]
+  ```
+
+- **Mobile app with screen-flow scenarios.** Gesture verbs leak into specs, so
+  the project extends `ui-words` with mobile gestures and marks exploratory
+  device-specific scenarios `@manual` during refinement.
+
+  ```yaml
+  tc-bdd:
+    review:
+      rubric-extensions:
+        ui-words: ["tap", "swipe", "pinch", "long-press"]
+  ```
+
+Each shape exercises a different surface as its primary tuning point: the web
+shape tunes `tags.extra-classes`, the API shape tunes `vague-words`, the mobile
+shape tunes `ui-words`.
+
+#### Phase 5 — what landed
+
+- **Universal cores.** `/tc:generate-bdd` ships a type→class map (`happy`/
+  `positive` → `@smoke`; `edge`/`negative` → `@regression`) and the `@req:`/
+  `@cs:`/`@anomaly:` linkage-tag convention. `/tc:review-bdd` ships the
+  six-category rubric (`ambiguous-step`, `missing-tag`, `untraceable`,
+  `ui-coupled-step`, `missing-examples`, `conjunction-overload`) with universal
+  vague-word and UI-word sets. `/tc:traceability-map` ships the shared
+  requirements-map renderer and the scenario-level test-map with `pending`
+  downstream links.
+- **Schema keys.** `tc-bdd.tags.extra-classes` (list) and
+  `tc-bdd.review.rubric-extensions.{vague-words, ui-words}` (lists). The linkage
+  tags and the type→class map are not tunable — they are the traceability
+  contract. `/tc:traceability-map` ships no `config.yaml` surface (the maps are
+  mechanical).
+- **Tests that would fail if helpers ignored extensions.**
+  `tests/test_generate_bdd.py::test_config_extra_classes_union` asserts a
+  configured `@automated-candidate` appears on every generated scenario;
+  `tests/test_review_bdd.py` drives the rubric against the seeded `flawed.feature`
+  and would fail if a category were dropped. If the helpers ignored the
+  `config.yaml` extensions, the union assertion would fail with "tag not
+  present".
 
 ## Hook 2: project documents under `documents/uploaded/`
 

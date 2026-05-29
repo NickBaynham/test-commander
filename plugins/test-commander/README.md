@@ -12,6 +12,8 @@ This README documents the plugin's contents. For the project overview, architect
 | `tc-requirements` | Phase 2 shipped | Owns `/tc:review-requirements`, `/tc:review-user-stories`, `/tc:review-acceptance-criteria`, `/tc:requirements-coverage`, `/tc:requirements-to-tests`. |
 | `tc-knowledge` | Phase 3 shipped | Owns `/tc:learn-from-docs`, `/tc:learn-from-specs`, `/tc:learn-from-code`, `/tc:learn-from-api`, `/tc:learn-from-tests` plus the shared `synthesize_system_model.py`. |
 | `tc-explore` | Phase 4 shipped | Owns `/tc:create-charter`, `/tc:explore` (with the internal exploration-review sub-mode), `/tc:session-summary`, `/tc:test-ideas`. |
+| `tc-bdd` | Phase 5 shipped | Owns `/tc:generate-bdd` (with the internal review sub-mode) and `/tc:review-bdd`. |
+| `tc-traceability` | Phase 5 shipped | Owns `/tc:traceability-map`. |
 
 ## What arrives later
 
@@ -19,7 +21,6 @@ Each Test Commander skill is created by the phase that needs it. Until that phas
 
 | Skill | Phase | Owns |
 | --- | --- | --- |
-| `tc-bdd`, `tc-traceability` | 5 | BDD generation and traceability maps |
 | `tc-build-framework`, `tc-automation-plan`, `tc-automate`, `tc-test-data` | 6 | Playwright framework and strategic automation |
 | `tc-run`, `tc-quality-report`, `tc-evidence` | 7 | Execution, evidence, quality report |
 | `tc-learning` | 8 | Governed continuous learning |

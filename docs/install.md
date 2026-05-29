@@ -57,7 +57,7 @@ make uninstall
 
 ## Verifying the install
 
-After `make install`, open Claude Code. The `test-commander:tc-core`, `test-commander:tc-requirements`, `test-commander:tc-knowledge`, and `test-commander:tc-explore` skills should appear in available skills. Run `/tc:init` (Phase 1) to bootstrap the workspace in your consuming project, then follow [user-guide/workflow.md](user-guide/workflow.md) for the Phase 1 walkthrough, [user-guide/reviewing-requirements.md](user-guide/reviewing-requirements.md) for the Phase 2 walkthrough, [user-guide/building-project-knowledge.md](user-guide/building-project-knowledge.md) for the Phase 3 walkthrough, and [user-guide/exploring-an-app.md](user-guide/exploring-an-app.md) for the Phase 4 walkthrough.
+After `make install`, open Claude Code. The `test-commander:tc-core`, `test-commander:tc-requirements`, `test-commander:tc-knowledge`, `test-commander:tc-explore`, `test-commander:tc-bdd`, and `test-commander:tc-traceability` skills should appear in available skills. Run `/tc:init` (Phase 1) to bootstrap the workspace in your consuming project, then follow [user-guide/workflow.md](user-guide/workflow.md) for the Phase 1 walkthrough, [user-guide/reviewing-requirements.md](user-guide/reviewing-requirements.md) for the Phase 2 walkthrough, [user-guide/building-project-knowledge.md](user-guide/building-project-knowledge.md) for the Phase 3 walkthrough, [user-guide/exploring-an-app.md](user-guide/exploring-an-app.md) for the Phase 4 walkthrough, and [user-guide/generating-bdd.md](user-guide/generating-bdd.md) for the Phase 5 walkthrough.
 
 ## Platform notes
 

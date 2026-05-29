@@ -52,15 +52,24 @@ For the methodology behind each helper, see [project-knowledge.md](../plugins/te
 
 For the methodology behind each helper, see [exploratory-testing.md](../plugins/test-commander/skills/tc-explore/methodology/exploratory-testing.md) (umbrella) plus [charter-based-exploration.md](../plugins/test-commander/skills/tc-explore/methodology/charter-based-exploration.md), [session-based-test-management.md](../plugins/test-commander/skills/tc-explore/methodology/session-based-test-management.md), and [test-idea-model.md](../plugins/test-commander/skills/tc-explore/methodology/test-idea-model.md). End-to-end walkthrough: [user-guide/exploring-an-app.md](user-guide/exploring-an-app.md).
 
+## Phase 5 commands (shipped)
+
+| Command | Skill | Per-command page |
+| --- | --- | --- |
+| `/tc:generate-bdd` | `tc-bdd` | [generate-bdd.md](../plugins/test-commander/skills/tc-bdd/commands/generate-bdd.md) |
+| `/tc:review-bdd` | `tc-bdd` | [review-bdd.md](../plugins/test-commander/skills/tc-bdd/commands/review-bdd.md) |
+| `/tc:traceability-map` | `tc-traceability` | [traceability-map.md](../plugins/test-commander/skills/tc-traceability/commands/traceability-map.md) |
+
+`/tc:generate-bdd` turns Phase-4-enriched test-idea seeds into Gherkin `.feature` files — one scenario per `CS-NNN-NNN` candidate, each carrying `@req:`/`@cs:` linkage tags, an `@area:` namespace tag, and a type-mapped class tag — then writes a per-feature summary, rebuilds `bdd/index.md`, and auto-runs the review sub-mode (suppressible with `--no-review`). `/tc:review-bdd` runs the six-category universal rubric (`ambiguous-step`, `missing-tag`, `untraceable`, `ui-coupled-step`, `missing-examples`, `conjunction-overload`), writes a verdict into each summary, and routes failures to `<workspace>/requirements/open-questions.md` as deduplicated `[bdd-review]` gap signals; it shares one `review_features()` implementation with the generate-time auto-run. `/tc:traceability-map` is the authoritative regenerator of `<workspace>/traceability/requirements-map.md` (the shared 4-column format `/tc:requirements-coverage` also writes) and `<workspace>/traceability/test-map.md` (the scenario-level chain with `pending` downstream links).
+
+For the methodology behind each helper, see [bdd-generation.md](../plugins/test-commander/skills/tc-bdd/methodology/bdd-generation.md) (umbrella) plus [bdd-quality-review.md](../plugins/test-commander/skills/tc-bdd/methodology/bdd-quality-review.md) and [traceability.md](../plugins/test-commander/skills/tc-traceability/methodology/traceability.md). End-to-end walkthrough: [user-guide/generating-bdd.md](user-guide/generating-bdd.md).
+
 ## Planned commands (not yet implemented)
 
 These will gain per-command pages as their phases ship.
 
 | Command | Skill | Phase |
 | --- | --- | --- |
-| `/tc:generate-bdd` | `tc-bdd` | 5 |
-| `/tc:review-bdd` | `tc-bdd` | 5 |
-| `/tc:traceability-map` | `tc-traceability` | 5 |
 | `/tc:build-framework` | `tc-build-framework` | 6 |
 | `/tc:automation-plan` | `tc-automation-plan` | 6 |
 | `/tc:automate` | `tc-automate` | 6 |

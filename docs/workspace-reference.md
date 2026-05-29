@@ -168,9 +168,19 @@ Per-file ownership:
 
 End-to-end walkthrough: [user-guide/exploring-an-app.md](user-guide/exploring-an-app.md). For per-command methodology see [exploratory-testing.md](../plugins/test-commander/skills/tc-explore/methodology/exploratory-testing.md) (umbrella), [charter-based-exploration.md](../plugins/test-commander/skills/tc-explore/methodology/charter-based-exploration.md), [session-based-test-management.md](../plugins/test-commander/skills/tc-explore/methodology/session-based-test-management.md), and [test-idea-model.md](../plugins/test-commander/skills/tc-explore/methodology/test-idea-model.md).
 
-### `bdd/` — Phase 5
+### `bdd/` — Phase 5 (shipped)
 
-`features/` contains the Gherkin `.feature` files; `summaries/` contains per-feature Markdown summaries with traceability links. Generated and reviewed by Test Commander; readable by product owners.
+`features/` contains the Gherkin `.feature` files; `summaries/` contains per-feature Markdown summaries with a review verdict; `index.md` is the scan-and-index of every feature. Generated and reviewed by Test Commander; readable by product owners.
+
+| Path | Written by | Mode |
+| --- | --- | --- |
+| `bdd/features/<area>.feature` | `/tc:generate-bdd` | overwrite; byte-deterministic |
+| `bdd/summaries/<area>.md` | `/tc:generate-bdd` (summary), `/tc:review-bdd` (verdict line) | overwrite; verdict updated in place |
+| `bdd/index.md` | `/tc:generate-bdd` (scan-and-index rebuild) | overwrite; byte-deterministic |
+
+**Linkage-tag convention.** Every generated scenario carries machine-readable provenance tags so `/tc:traceability-map` can rebuild the maps mechanically: `@req:REQ-NNN` (the requirement), `@cs:CS-NNN-NNN` (the candidate test idea), and `@anomaly:<category>` when the candidate is anomaly-derived. Universal class tags (`@smoke`, `@regression`, `@manual`, `@exploratory`, `@automated-candidate`) and project namespace values (`@area:`, `@risk:`, `@persona:`) round out the tag set. The `@req:`/`@cs:` tags are the join key between the generator and the mapper; a scenario missing them is flagged `untraceable` by `/tc:review-bdd`.
+
+**Phase 5 writes only to `bdd/`, `traceability/`, and the `[bdd-review]` line in `requirements/open-questions.md`.** It does not write `test-ideas/` (Phase 4 owns enrichment) or `product-knowledge/` (Phase 3).
 
 ### `automation-plan/` — Phase 6
 
@@ -188,9 +198,17 @@ Known and suspected risks, with the artifact that surfaced each one and the miti
 
 `current-quality-report.md` is the single-page release-readiness summary. `/tc:report` rewrites it in full and snapshots a copy to `history/YYYY-MM-DD-HHmm.md`. Per Decision D5 (committed history) and Open Question Q10 (retention policy), snapshots stay in git for now.
 
-### `traceability/` — Phase 5
+### `traceability/` — Phase 5 (shipped)
 
-Three maps maintained by `/tc:traceability-map`: requirement → test idea → BDD scenario, then test idea → BDD scenario → automated test, then automated test → result → quality report.
+`/tc:traceability-map` is the authoritative regenerator of the maps here from Phase 5 onward.
+
+| Path | Written by | Notes |
+| --- | --- | --- |
+| `traceability/requirements-map.md` | `/tc:traceability-map` (authoritative) and `/tc:requirements-coverage` (Phase-2 interim seed) | The shared 4-column REQ-ID / Test ideas / BDD features / Automation format. Both writers call the same `traceability_render.render_requirements_map`, so the file is **byte-identical** whichever wrote it — no format drift. |
+| `traceability/test-map.md` | `/tc:traceability-map` | The scenario-level chain: Requirement → Test idea (CS) → BDD scenario → Automated test → Test result → Quality report. The three downstream columns render `pending` until Phase 6 (automated tests) and Phase 7 (results, quality report) populate them. |
+| `traceability/automation-map.md` | Phase 6 (owner); Phase 2 seeds the column | Scanned by both coverage and the map; populated when automation lands. |
+
+**Reconciliation (Phase 2 ↔ Phase 5).** Phase 2's `/tc:requirements-coverage` already writes `requirements-map.md`; Phase 5's `/tc:traceability-map` is the authoritative regenerator. The shared renderer (`scripts/traceability_render.py`) guarantees both produce identical bytes, so there is no drift to reconcile — the scenario-level detail lives in the separate `test-map.md`, not as an extra column on `requirements-map.md`. Downstream chain links are reported `pending`, never invented.
 
 ### `evidence/` — Phase 7
 
