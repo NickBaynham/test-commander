@@ -361,12 +361,29 @@ otherwise tag `@area:checkout @req:REQ-014 @cs:CS-014-002 @regression` becomes
 `@area:checkout @req:REQ-014 @cs:CS-014-002 @regression @automated-candidate`,
 so a downstream `/tc:automation-plan` (Phase 6) can select the whole set by tag.
 
+The second surface, shipped with `/tc:review-bdd` in Step 5.3, lets a project
+add vague-word and UI-word tokens to the review rubric:
+
+```yaml
+tc-bdd:
+  review:
+    rubric-extensions:
+      vague-words: ["tbd", "wip"]   # flagged as ambiguous-step
+      ui-words: ["tap", "swipe"]    # flagged as ui-coupled-step
+```
+
+**Worked example — a mobile project.** A mobile team whose specs say "tap" and
+"swipe" adds those to `ui-words` so the `ui-coupled-step` check catches
+mobile-gesture leakage into behavior specs; adding `tbd`/`wip` to `vague-words`
+flags placeholder steps left in during drafting. The extensions union with the
+universal cores additively.
+
 The universal class core (`@smoke`, `@regression`, `@manual`, `@exploratory`,
 `@automated-candidate`) and the machine-readable linkage tags (`@req:`, `@cs:`,
 `@anomaly:`) are not project-tunable — they are the traceability contract. The
 project namespace **values** (`@area:`, `@risk:`, `@persona:`) are picked per
-project; see "Hook 4: project-defined tag namespaces" below. The full Phase 5
-schema (including the review rubric extension) is documented in Step 5.5.
+project; see "Hook 4: project-defined tag namespaces" below. Step 5.5 expands
+this section with three project-shape worked examples.
 
 ## Hook 2: project documents under `documents/uploaded/`
 

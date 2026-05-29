@@ -45,6 +45,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from review_bdd import review_features
+
 WORKSPACE_DIRNAME = ".test-commander"
 
 # Universal class tag per candidate type (D19). happy/positive -> @smoke; the
@@ -412,7 +414,9 @@ def discover_enriched(workspace: Path, req_id: str | None) -> list[Path]:
     return paths
 
 
-def run(project_root: Path, *, req_id: str | None = None) -> GenerateOutcome:
+def run(
+    project_root: Path, *, req_id: str | None = None, no_review: bool = False
+) -> GenerateOutcome:
     workspace = workspace_dir(project_root)
     seeds = discover_enriched(workspace, req_id)
     extra_classes = load_extra_classes(workspace)
@@ -438,6 +442,10 @@ def run(project_root: Path, *, req_id: str | None = None) -> GenerateOutcome:
     (workspace / "bdd" / "index.md").write_text(
         rebuild_index(features_dir), encoding="utf-8"
     )
+
+    # Auto-run the shared BDD review sub-mode unless suppressed.
+    if not no_review:
+        review_features(project_root)
     return outcome
 
 
@@ -465,11 +473,16 @@ def main(argv: Iterable[str] | None = None) -> int:
         default=None,
         help="Generate for a single REQ-ID. If omitted, every enriched seed.",
     )
+    parser.add_argument(
+        "--no-review",
+        action="store_true",
+        help="Suppress the generate-time BDD review sub-mode (/tc:review-bdd).",
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
     project_root = Path(args.project_root).resolve()
 
     try:
-        outcome = run(project_root, req_id=args.req)
+        outcome = run(project_root, req_id=args.req, no_review=args.no_review)
     except UninitializedWorkspaceError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2

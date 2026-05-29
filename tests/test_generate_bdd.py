@@ -82,6 +82,8 @@ def features(ws: Path) -> list[Path]:
 
 
 def load_module():
+    if str(SCRIPTS) not in sys.path:
+        sys.path.insert(0, str(SCRIPTS))  # generate_bdd imports sibling review_bdd
     spec = importlib.util.spec_from_file_location("generate_bdd", HELPER)
     module = importlib.util.module_from_spec(spec)
     assert spec and spec.loader

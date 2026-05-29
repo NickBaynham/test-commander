@@ -11,10 +11,10 @@ Each command is implemented as a Python helper script bundled inside the plugin 
 
 ## Status
 
-Phase 5 in progress. The commands ship sub-step by sub-step:
+Phase 5 in progress. Both `tc-bdd` commands are end-to-end runnable:
 
-- `/tc:generate-bdd` — **shipped (Step 5.2).** Generation only; the generate-time review auto-run wires in Step 5.3.
-- `/tc:review-bdd` — behavior ships in Step 5.3. Standalone, re-runnable review of already-written `.feature` files; the same implementation backs the generate-time review sub-mode.
+- `/tc:generate-bdd` — **shipped (Step 5.2).** Auto-runs the internal BDD review sub-mode at the end of generation (suppressible with `--no-review`).
+- `/tc:review-bdd` — **shipped (Step 5.3).** Standalone, re-runnable review of already-written `.feature` files; shares one implementation (`review_features()`) with the generate-time review sub-mode.
 
 Each sub-step ships the helper, methodology, template(s), and per-command page in a single commit, then updates this SKILL.md to describe the now-shipped behavior and remove the deferral wording for that command.
 
@@ -30,13 +30,23 @@ Reads the Phase-4-enriched test-idea seeds under `<workspace>/test-ideas/` (the 
 python3 <plugin-root>/scripts/generate_bdd.py <project-root> [--req REQ-NNN]
 ```
 
-`<project-root>` defaults to the current working directory. Refuses uninitialized workspaces (exit 2) and the absence of any enriched test-idea seed (exit 2; the precondition error directs the user at `/tc:test-ideas`). The generate-time review sub-mode (suppressible with `--no-review`) wires in Step 5.3.
+`<project-root>` defaults to the current working directory. Refuses uninitialized workspaces (exit 2) and the absence of any enriched test-idea seed (exit 2; the precondition error directs the user at `/tc:test-ideas`). After generation it auto-runs the BDD review sub-mode (the same implementation `/tc:review-bdd` uses), updating each feature's summary verdict and routing any findings to `requirements/open-questions.md`; pass `--no-review` to suppress it.
 
 Full spec: [commands/generate-bdd.md](commands/generate-bdd.md). Methodology: [methodology/bdd-generation.md](methodology/bdd-generation.md).
 
 ### `/tc:review-bdd`
 
-Behavior arrives in Step 5.3. Will read `<workspace>/bdd/features/*.feature` and run the six-category universal review rubric (`ambiguous-step`, `missing-tag`, `untraceable`, `ui-coupled-step`, `missing-examples`, `conjunction-overload`), writing a verdict into each feature's summary and routing failures to `<workspace>/requirements/open-questions.md` as `[bdd-review]` gap signals. The same implementation backs the review sub-mode that `/tc:generate-bdd` auto-runs (wired in 5.3).
+Reads `<workspace>/bdd/features/*.feature` and runs the six-category universal review rubric (`ambiguous-step`, `missing-tag`, `untraceable`, `ui-coupled-step`, `missing-examples`, `conjunction-overload`), one finding per category per scenario. Writes a verdict into each feature's `<workspace>/bdd/summaries/<area>.md` (`pass` or `N finding(s) - categories: ...`) and routes failures to `<workspace>/requirements/open-questions.md` as `[bdd-review]` gap signals (per-area source-id `tc-bdd/bdd-review-<area>`, Phase-2 dedup contract). A clean generated feature passes with zero findings; re-running is idempotent. The shared `review_features()` implementation is the same code path `/tc:generate-bdd` auto-runs. Project-specific vague/UI tokens union via `tc-bdd.review.rubric-extensions` in `<workspace>/config.yaml`.
+
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/review_bdd.py <project-root>
+```
+
+`<project-root>` defaults to the current working directory. Refuses uninitialized workspaces (exit 2) and the absence of any `.feature` file (exit 2; the precondition error directs the user at `/tc:generate-bdd`).
+
+Full spec: [commands/review-bdd.md](commands/review-bdd.md). Methodology: [methodology/bdd-quality-review.md](methodology/bdd-quality-review.md).
 
 ## Finding the helpers
 

@@ -52,9 +52,10 @@ the candidate is anomaly-derived; plus any `tc-bdd.tags.extra-classes`.
 Output is deterministic: scenarios sort by `cs_id`, index rows by filename,
 overwrite mode. Re-running against unchanged input is byte-identical.
 
-The review sub-mode (auto-run after generation, suppressible with
-`--no-review`) is wired in Step 5.3; until then, run `/tc:review-bdd`
-separately once it ships.
+After generation, the shared BDD review sub-mode auto-runs (the same
+`review_features()` implementation `/tc:review-bdd` uses): it updates each
+feature's summary verdict and routes any findings to
+`requirements/open-questions.md`. Pass `--no-review` to suppress it.
 
 ## Safety
 
