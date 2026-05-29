@@ -118,6 +118,51 @@ def test_r10_recommends_report_when_mvp_complete(tmp_path):
     assert rec.priority == 10
 
 
+# --- regression: cross-phase writes must not skip phases (Phase 2 Step 2.9) ---
+
+
+def test_phase_2_side_effects_do_not_skip_phases_3_4_5(tmp_path):
+    """Regression for the long-standing /tc:next skew (flagged Phase 2 Step 2.9,
+    fixed post-Phase-5).
+
+    Phase 2's helpers populate three directories that are NOT reliable signals
+    that a later phase ran:
+      - ``documents/`` holds user-uploaded inputs (populated before any phase).
+      - ``test-ideas/`` is Phase-4-owned but Phase 2 seeds it.
+      - ``traceability/`` is Phase-5-owned but Phase 2 writes the requirements map.
+
+    Before the fix those writes marked phases 3/4/5 ``in_progress`` and
+    ``/tc:next`` jumped straight to Phase 6 after only Phase 2. The phase status
+    signal must key on directories each phase *uniquely* produces, so after
+    Phase 2 the recommendation is Phase 3, not Phase 6.
+    """
+    init_workspace.init_workspace(tmp_path)
+    ws = tmp_path / ".test-commander"
+    # Phase 1 + Phase 2 genuinely done.
+    (ws / "project.md").write_text("# p\n\nreal project metadata\n", encoding="utf-8")
+    (ws / "requirements" / "requirements-inventory.md").write_text(
+        "# Inventory\n\nReal requirement.\n", encoding="utf-8"
+    )
+    # Phase 2 side effects into user-input + downstream-owned directories.
+    (ws / "documents" / "uploaded" / "requirements.md").write_text(
+        "REQ-001 the system shall do X\n", encoding="utf-8"
+    )
+    (ws / "test-ideas" / "REQ-001.md").write_text(
+        "# seed test ideas\n", encoding="utf-8"
+    )
+    (ws / "traceability" / "requirements-map.md").write_text(
+        "# Requirements Map\n\n| REQ-001 |\n", encoding="utf-8"
+    )
+
+    rec = next_step.next_step_for(tmp_path)
+    assert rec is not None
+    assert rec.command == "/tc:learn-from-docs", (
+        f"after Phase 2 only, /tc:next must recommend Phase 3, got {rec.command} "
+        f"(Phase {rec.phase})"
+    )
+    assert rec.phase == "3"
+
+
 # --- ranked-list + format ---
 
 def test_recommendations_are_ranked_lowest_priority_first(tmp_path):

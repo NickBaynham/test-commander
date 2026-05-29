@@ -8,8 +8,16 @@ A file is "populated" iff its content differs from the bundled template.
 A workspace file with no template counterpart is treated as populated
 (user-created content).
 
-A phase is "in_progress" iff at least one file owned by that phase is
-populated. Otherwise "not_started".
+A phase is "in_progress" iff at least one file in that phase's
+status-signal directories is populated. Otherwise "not_started".
+
+The status-signal directories are those a phase *uniquely* produces. A
+directory that an earlier phase also writes is not a reliable signal that
+the later phase ran, so it is excluded (see PHASE_OWNERSHIP comments). This
+prevents /tc:next from skipping phases: e.g. Phase 2 seeds ``test-ideas/``
+(Phase-4-owned) and writes ``traceability/`` (Phase-5-owned), and the user
+uploads inputs to ``documents/`` before any phase runs -- none of those
+mean Phase 3/4/5 have actually started.
 """
 
 import argparse
@@ -22,15 +30,22 @@ from pathlib import Path
 DEFAULT_TEMPLATE = Path(__file__).resolve().parent.parent / "templates" / "workspace"
 WORKSPACE_DIRNAME = ".test-commander"
 
-# Phase -> list of workspace-relative paths (files or dirs) it owns.
-# Drift between this map and the per-phase plan content is caught by code
-# review. Kept tight here so the snapshot stays cheap to compute.
+# Phase -> list of workspace-relative status-signal paths it *uniquely*
+# produces. A directory an earlier phase also writes is deliberately excluded
+# so it cannot mark this phase in_progress prematurely:
+#   - "documents" is user-uploaded input (populated before any phase) -> not a
+#     Phase-3 signal (Phase 3 is signalled by "product-knowledge").
+#   - "test-ideas" is seeded by Phase 2's /tc:requirements-to-tests -> not a
+#     Phase-4 signal (Phase 4 is signalled by charters/exploration-notes/sessions).
+#   - "traceability" is written by Phase 2's /tc:requirements-coverage -> not a
+#     Phase-5 signal (Phase 5 is signalled by "bdd").
+# Drift between this map and the per-phase plan content is caught by code review.
 PHASE_OWNERSHIP: dict[str, list[str]] = {
     "1": ["project.md", "config.yaml", "methodology.md", "journal"],
     "2": ["requirements", "risk-register"],
-    "3": ["product-knowledge", "documents"],
-    "4": ["charters", "exploration-notes", "test-ideas", "sessions"],
-    "5": ["bdd", "traceability"],
+    "3": ["product-knowledge"],
+    "4": ["charters", "exploration-notes", "sessions"],
+    "5": ["bdd"],
     "6": ["automation-plan", "test-data"],
     "7": ["quality-report", "evidence", "runs"],
     "8": ["learning"],
