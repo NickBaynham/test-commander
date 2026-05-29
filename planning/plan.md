@@ -2533,36 +2533,40 @@ Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Conventio
 
 ## Phase 6 — Playwright Framework (Lazy) and Strategic Automation
 
-**Goal.** Generate the Playwright TypeScript framework on demand, then produce strategic automation.
+**Goal.** Generate the Playwright TypeScript framework on demand, then produce strategic automation from the Phase-5 BDD scenarios. Ship four skills — `tc-build-framework` (lazy framework scaffold), `tc-automation-plan` (suitability scoring), `tc-automate` (`/tc:automate` + an internal review sub-mode), and `tc-test-data` (`/tc:generate-test-data`) — that turn `bdd/features/*.feature` into a Playwright/TypeScript suite under `tests/`, scored by a universal automation-suitability rubric, with test data living under `.test-commander/test-data/` and reached through fixtures.
 
-**Implementation.**
+**Architecture.** Each `/tc:*` command is a Python helper plus a Markdown command file inside `plugins/test-commander/skills/<skill>/` (per D18). The helpers do the deterministic work — scaffold the framework directory tree, score scenarios against the suitability rubric, render TypeScript page objects / specs / fixtures from the BDD scenarios and their `@req:`/`@cs:`/`@area:` tags, and populate test-data files; Claude does the judgment-heavy parts (writing the actual step logic and assertions, choosing locators, deciding which scenarios are worth automating beyond the mechanical score). This is the **first phase that ships an executable runtime** (Playwright/TypeScript), per D2; it also writes for the first time *outside* `.test-commander/` (the framework lives at the consuming project's `tests/`).
 
-- `/tc:build-framework` — **lazy, idempotent**. Builds `tests/` only if absent. Safe to call repeatedly.
-- `/tc:automation-plan`, `/tc:automate`, `/tc:review-automation`
-- `/tc:generate-test-data` — populate/regenerate `.test-commander/test-data/`. Tests reference data via fixtures.
-- Methodology: `automation-suitability.md`, `playwright-standards.md`, `locator-strategy.md`, `test-data-strategy.md`
-- Templates: `automation-plan-template.md`, `page-object-template.ts`, `component-object-template.ts`, `playwright-spec-template.ts`, `fixture-template.ts`, `test-data-template.json`
+**Phase-6 design decisions (folded in).**
 
-**Skills authored.** `tc-build-framework` (lazy), `tc-automation-plan`, `tc-automate` (single, suite, and bulk conversion paths), `tc-test-data`. Methodology and TS templates colocated.
+- **Generate-and-structurally-validate; never run Playwright under pytest.** The Python helpers generate TypeScript files; the pytest suite asserts the generated files' *structure* (valid TS scaffolding, correct imports, page-object/spec/fixture shape, linkage-tag provenance comments) by parsing the rendered text — it never invokes `npx playwright test` or reaches a browser. Actual execution is Phase 7's `/tc:run`; Phase 6's manual smoke (a spec run against a tester-supplied local app) is opt-in and **refused under pytest** via the `PYTEST_CURRENT_TEST` env-var check established in Phase 3 Step 3.5. This keeps the suite hermetic and the "no executable runtime in tests" property intact even though the *artifacts* are now executable.
+- **Lazy, idempotent framework build (D8).** `/tc:build-framework` writes the `tests/` tree + `playwright.config.ts` + `package.json` only if `tests/playwright.config.ts` is absent at the consuming project root; re-running is a byte-stable no-op (`created: 0`). `/tc:automate` (and Phase 7's `/tc:run`) check for `tests/playwright.config.ts` and call the build helper first when missing. The framework is **not** under `.test-commander/` — it is at the project root, so it is a real, runnable Playwright project.
+- **Retire the prior-phase runtime guard in the build commit (Per-Phase Convention #3).** Earlier phases may carry a guard asserting "no executable runtime ships before Phase 6" (e.g. a test forbidding `.ts`/`package.json` under the plugin, or a `make build` that only prints a placeholder). The sub-step that lands `/tc:build-framework` (6.2) retires that guard in the same commit and replaces the `make build` placeholder if present.
+- **TypeScript templates ship inside the plugin (D18).** `page-object-template.ts`, `component-object-template.ts`, `playwright-spec-template.ts`, `fixture-template.ts` live under `tc-build-framework/templates/`; `tc-automate` reads them to render concrete files. They are authored to pass `tsc --noEmit` / a lint shape check but are not compiled in the pytest suite.
+- **Test data lives under `.test-commander/test-data/`, never inline (D6).** `/tc:generate-test-data` writes `seed/` (baseline fixtures), `scenarios/` (per-suite data), and `factories/` (regenerable definitions); generated specs reach data only through a `tests/fixtures/` fixture, never by inlining values. Per Q11, the shipped formats are Markdown specs + YAML manifests for declarative data, with JSON for structured fixtures; Python factories only where a generator is too complex to express declaratively. A test asserts at least one fixture references a `test-data/` file and that no generated spec inlines data.
+- **Universal automation-suitability rubric (seven factors, D19).** `business-criticality`, `repeatability`, `determinism`, `setup-complexity`, `ui-stability`, `maintenance-cost`, `bug-detection-value`. The helper scores each BDD scenario mechanically from available signals (e.g. `@smoke`/`@regression` class, `@risk:` namespace, anomaly linkage, step count); Claude calibrates. Projects tune factor weights via `tc-automate.suitability.weights` in `<workspace>/config.yaml`; `@automated-candidate`-tagged scenarios are always in scope.
+- **Review is both an auto-run sub-mode and a standalone command (the Phase-5 pattern).** `/tc:automate` auto-runs the internal review sub-mode after generation (suppressible with `--no-review`), routing findings to `requirements/open-questions.md` as `[automation-review]` gap signals. `/tc:review-automation` is the standalone, re-runnable form sharing one `review_automation()` implementation. Per the Phase 5 Step 5.2/5.3 lesson, **6.5 owns the review engine and wires the auto-run into `tc-automate`** (no forward dependency in 6.4).
+- **Traceability hand-off.** `/tc:automate` writes `traceability/automation-map.md` (the Phase-6-owned map Phase 2 only seeded) linking each `@cs:`/`@req:` scenario to its generated spec path. `/tc:traceability-map` (Phase 5) already scans `automation-map.md`; when Phase 6 lands, a re-run populates the `Automated test` column of `test-map.md` from the new automation links (the `pending` placeholder resolves). The 6.x sub-step that ships `automate` confirms this round-trip.
+- **Helper-mirroring is the design.** `automation_plan.py` mirrors `traceability_map.py`/`review_bdd.py` (scan features → score → render); `automate.py` mirrors `generate_bdd.py` (parse scenarios → render artifacts); `review_automation.py` mirrors `review_bdd.py`; `generate_test_data.py` mirrors `enrich_test_ideas.py`. The genuinely new mechanical work is the **TypeScript rendering** (as Gherkin was the new surface in Phase 5) and the scan-and-index over `tests/`.
+- **Phase 6 fixture bundles a clean, automatable feature.** A new `tests/fixtures/seeded-automation/` carries a clean `<area>.feature` (sign-in, with `@automated-candidate` scenarios carrying resolvable `@req:`/`@cs:` tags — the shape `/tc:generate-bdd` emits when its input is clean, not the deliberately-flawed Phase-5 unit fixture) plus a `README.md`. Reuses the Account/Session/Workspace/Asset SaaS narrative so the 6.8 integration smoke composes with the upstream chain.
+- **Cross-phase write boundary.** Phase 6 reads `bdd/features/`, `automation-plan/`, `test-ideas/`, `product-knowledge/`. It writes the project-root `tests/` framework, `<workspace>/automation-plan/`, `<workspace>/test-data/`, `<workspace>/traceability/automation-map.md`, and the `[automation-review]` line in `open-questions.md`. It does not write `bdd/` (Phase 5) or `product-knowledge/` (Phase 3). `/tc:next`'s Phase-6 status keys on `automation-plan` + `test-data` (both under `.test-commander/`); the project-root `tests/` tree is outside the workspace and is not a status signal.
 
-**Design references.**
+**Skills authored.** `tc-build-framework` — `SKILL.md` + `commands/build-framework.md` + `methodology/playwright-standards.md` + `methodology/locator-strategy.md` + the four `.ts` templates. `tc-automation-plan` — `SKILL.md` + `commands/automation-plan.md` + `methodology/automation-suitability.md` + `templates/automation-plan-template.md`. `tc-automate` — `SKILL.md` + `commands/automate.md` + `commands/review-automation.md` + `methodology/automation-generation.md` (umbrella). `tc-test-data` — `SKILL.md` + `commands/generate-test-data.md` + `methodology/test-data-strategy.md` + `templates/test-data-template.json`.
 
-- `agentic-playwright-automation:setup-playwright-framework` (framework scaffold structure).
-- `agentic-playwright-automation:convert-bdd-to-playwright` (bulk-conversion approach).
-- `agentic-playwright-automation:generate-playwright-test` (single-test generation prompts).
-- `agentic-playwright-automation:generate-playwright-suite` (suite-generation prompts).
-- `agentic-playwright-automation:review-playwright-test` (review rubric).
+**Design references.** `agentic-playwright-automation:setup-playwright-framework` (framework scaffold structure), `:convert-bdd-to-playwright` (bulk-conversion approach), `:generate-playwright-test` (single-test prompts), `:generate-playwright-suite` (suite prompts), `:review-playwright-test` (review rubric). Per D1 (vendor-and-own), all four skills are authored in-repo; these are design references only. Playwright itself is a runtime dependency for the generated framework (installed lazily, not by the pytest suite).
 
-**Lazy-init rule.** `/tc:automate`, `/tc:run`, and any test-generating command must check `tests/playwright.config.ts`. If missing, call `/tc:build-framework` first and continue. Document this in `docs/user-guide/automation.md`.
+**Inputs read.** `<workspace>/bdd/features/`, `<workspace>/automation-plan/`, `<workspace>/test-ideas/`, `<workspace>/product-knowledge/`.
+
+**Outputs.** Project-root `tests/{e2e,pages,components,fixtures,utils}/` + `playwright.config.ts` + `package.json`; `<workspace>/automation-plan/*.md`; `<workspace>/test-data/{seed,scenarios,factories}/`; `<workspace>/traceability/automation-map.md`.
 
 **Framework structure.**
 
 ```
-tests/
-  e2e/
-  pages/
-  components/
-  fixtures/
+tests/                 # at the consuming project root, NOT under .test-commander/
+  e2e/                 # *.spec.ts
+  pages/               # page objects
+  components/          # component objects
+  fixtures/            # Playwright fixtures (the only path to test data)
   utils/
 playwright.config.ts
 package.json
@@ -2570,22 +2574,126 @@ package.json
 
 Test data is **not** under `tests/`. It is under `.test-commander/test-data/` and reached through fixtures.
 
-**Automation suitability rubric.** business criticality, repeatability, determinism, setup complexity, UI stability, maintenance cost, bug detection value.
+**Automation suitability rubric (universal core, seven factors).** `business-criticality`, `repeatability`, `determinism`, `setup-complexity`, `ui-stability`, `maintenance-cost`, `bug-detection-value`. Project weights tune via `tc-automate.suitability.weights`.
 
-**Documentation.** `docs/user-guide/automation.md` — explains the lazy framework, the suitability rubric, and the data flow.
+### Phase 6 — Execution outline
 
-**Review step.**
+Nine sub-steps. TDD throughout: every implementation step lands its tests red before turning them green. 6.1 scaffolds the four skills + the seeded-automation fixture; 6.2 builds the lazy framework (and retires the prior-phase runtime guard); 6.3–6.6 implement the four commands; 6.7 is the documentation pass; 6.8 is the testing finalization (cap bump + integration smoke); 6.9 is the sign-off with a `phase-6` tag.
 
-- `tc-automate`'s internal review sub-mode (designed after `agentic-playwright-automation:review-playwright-test`) runs on generated tests.
-- Test data files are referenced from at least one fixture; nothing inline.
+#### 6.1 — Skill scaffolds (four skills) and seeded-automation fixture
 
-**Test step.**
+- **Deliverables.** `SKILL.md` for `tc-build-framework`, `tc-automation-plan`, `tc-automate`, `tc-test-data` (frontmatter with no embedded `key: value` substring; body lists each skill's commands; deferral wording until each sub-step ships behavior). Empty `commands/`/`methodology/`/`templates/` dirs (`.gitkeep`). `tests/fixtures/seeded-automation/` with a clean `<area>.feature` (`@automated-candidate` scenarios, resolvable `@req:`/`@cs:` tags) + `README.md` documenting the narrative and the linkage-tag convention.
+- **Tests first.** `tests/test_tc_build_framework_scaffold.py` and three sibling scaffold tests (or one parametrized file) — each asserts the skill dir + `SKILL.md` (strict-PyYAML frontmatter parse from the start, per the Phase 5 Step 5.1 discipline), the three sub-dirs, and (for the fixture) a parseable clean feature with `@automated-candidate` + resolvable linkage tags.
+- **Definition of done.** Four skills scaffolded; fixture present; scaffold tests green; `verify_skills.py` reports the four new skills `UNEXPECTED (phase 6) — ahead of schedule` under `DEFAULT_PHASE_CAP=5` (cap bumps to 6 in 6.8). Confirm the `CATALOG` carries `tc-build-framework: 6`, `tc-automation-plan: 6`, `tc-automate: 6`, `tc-test-data: 6` (add if absent — earlier phases pre-seeded their next-phase catalog entries at scaffold time).
 
-- A smoke spec runs against a local example app (brought up by the tester; not vendored) and passes.
+#### 6.2 — `/tc:build-framework` (lazy, idempotent) + runtime-guard retirement (TDD)
 
-**Definition of done.**
+- **Helper.** `plugins/test-commander/scripts/build_framework.py` — scaffolds the project-root `tests/{e2e,pages,components,fixtures,utils}/` tree + `playwright.config.ts` + `package.json` from the bundled TS templates, **only if `tests/playwright.config.ts` is absent**; re-running is a byte-stable no-op (`created: 0, skipped: N`). Exposes `ensure_framework(project_root)` for the lazy-init callers.
+- **Methodology + templates.** `methodology/playwright-standards.md`, `methodology/locator-strategy.md`; the four `.ts` templates (`page-object-template.ts`, `component-object-template.ts`, `playwright-spec-template.ts`, `fixture-template.ts`).
+- **Guard retirement.** Locate and retire the prior-phase "no executable runtime before Phase 6" guard (grep tests for assertions forbidding `.ts`/`package.json`/`tests/` runtime; check `make build`'s placeholder). Replace in the same commit (Per-Phase Convention #3).
+- **Command file + SKILL.md update.** `commands/build-framework.md`; `tc-build-framework/SKILL.md` surfaces the shipped behavior.
+- **Tests first.** `tests/test_build_framework.py` — uninitialized workspace refused; first run scaffolds the full tree with `playwright.config.ts` + `package.json`; re-run is byte-stable no-op; the generated config/templates parse as well-formed (structural assertion, no `tsc`); `ensure_framework` is the lazy-init entry point.
+- **Definition of done.** Framework builds lazily and idempotently; guard retired; generated files structurally valid; SKILL.md updated.
 
-- Framework builds on demand, tests reference data via fixtures, suitability rubric is applied in the automation plan, `tc-automate`'s review sub-mode passes, user guide complete.
+#### 6.3 — `/tc:automation-plan` (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/automation_plan.py` (mirrors `traceability_map.py`/`review_bdd.py`). Scans `bdd/features/*.feature`, scores each scenario against the seven-factor suitability rubric (mechanical signals: class tags, `@risk:`, anomaly linkage, step count), and writes `<workspace>/automation-plan/<area>.md` ranking scenarios `automate` / `consider` / `manual` with the per-factor scores and a recommended order. `@automated-candidate` scenarios are always `automate`. Config: `tc-automate.suitability.weights`.
+- **Methodology + template.** `methodology/automation-suitability.md` (the seven factors with worked examples + Claude judgment layer); `templates/automation-plan-template.md`.
+- **Command file + SKILL.md update.** `commands/automation-plan.md`; `tc-automation-plan/SKILL.md`.
+- **Tests first.** `tests/test_automation_plan.py` — uninitialized refused; no features → plan notes "no scenarios" (not an error); seeded clean feature → plan written with every scenario scored, `@automated-candidate` marked `automate`, deterministic ordering; config weights change the ranking.
+- **Definition of done.** Plan written with rubric scores; deterministic; config-tunable; SKILL.md updated.
+
+#### 6.4 — `/tc:automate` (generation only) (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/automate.py` (mirrors `generate_bdd.py`). Reads the automation plan + `bdd/features/*.feature`, calls `build_framework.ensure_framework` first (lazy-init), and renders TypeScript page objects (`tests/pages/`), component objects, and specs (`tests/e2e/<area>.spec.ts`) for `automate`-ranked / `@automated-candidate` scenarios, each carrying a provenance comment (`// @req:REQ-NNN @cs:CS-NNN-NNN`) and reaching test data only via a `tests/fixtures/` fixture. Writes/updates `traceability/automation-map.md` linking scenario → spec path. Single / suite / bulk paths via `--scenario` / `--area` / all. Deterministic; overwrite mode for generated specs (preserve a user-edits region per the page-object template convention). **No auto-review in 6.4** — the review engine + the generate-time auto-run wiring (incl. `--no-review`) ship in 6.5 (the Phase-5 defer-not-defend pattern); the generated TS is authored to pass the 6.5 rubric.
+- **Methodology (umbrella).** `methodology/automation-generation.md` — the BDD → page-object → spec workflow, the locator + fixture discipline, the lazy-init contract, the cross-phase write boundary, and the Claude judgment layer.
+- **Command file + SKILL.md update.** `commands/automate.md`; `tc-automate/SKILL.md`.
+- **Tests first.** `tests/test_automate.py` — uninitialized refused; no plan/features refused pointing at `/tc:automation-plan`; seeded clean feature → `tests/e2e/<area>.spec.ts` + page object written with valid TS structure + provenance comments + a fixture-mediated data reference (no inlined data); `tests/playwright.config.ts` auto-built when absent (lazy-init); `automation-map.md` links scenario → spec; idempotent re-run byte-stable.
+- **Definition of done.** Generates structurally-valid TS with provenance + fixture-mediated data; lazy-init wired; automation-map updated; SKILL.md updated.
+
+#### 6.5 — `/tc:review-automation` + shared review + automate auto-run wiring (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/review_automation.py` (mirrors `review_bdd.py`). Reviews generated specs/page objects against a universal rubric (e.g. `inline-test-data`, `hardcoded-wait`, `missing-provenance`, `weak-locator`, `untraceable-spec`, `assertion-free`), writes a verdict into the automation plan / a review summary, and routes failures to `requirements/open-questions.md` as deduplicated `[automation-review]` gap signals. Exposes `review_automation()`; **6.5 wires the auto-run into `automate.py`** (`--no-review`) and updates `automate.md` + `tc-automate/SKILL.md` to describe the now-wired sub-mode (removing the 6.4 forward pointer).
+- **Methodology + template + command file.** `methodology/automation-review.md` (or a subsection); `templates/automation-review-template.md`; `commands/review-automation.md`.
+- **Tests first.** `tests/test_review_automation.py` — uninitialized refused; no specs refused pointing at `/tc:automate`; a deliberately-flawed seeded spec surfaces every rubric category once; a clean generated spec passes; `[automation-review]` dedup; `review_automation()` is the same code path `/tc:automate` auto-runs (identity + `--no-review` suppression).
+- **Definition of done.** Rubric detects every category; clean spec passes; auto-run wired and shared; SKILL.md updated.
+
+#### 6.6 — `/tc:generate-test-data` (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/generate_test_data.py` (mirrors `enrich_test_ideas.py`). Populates `<workspace>/test-data/{seed,scenarios,factories}/` from the BDD scenarios + product-knowledge entities (per Q11: Markdown specs + YAML manifests + JSON fixtures; Python factories only where declarative is insufficient). Deterministic; overwrite mode for generated data, skip-not-overwrite for user-authored.
+- **Methodology + template.** `methodology/test-data-strategy.md`; `templates/test-data-template.json`.
+- **Command file + SKILL.md update.** `commands/generate-test-data.md`; `tc-test-data/SKILL.md`.
+- **Tests first.** `tests/test_generate_test_data.py` — uninitialized refused; seeded → `test-data/` populated; a generated fixture references a `test-data/` file (the D6 contract); idempotent; user-authored data preserved.
+- **Definition of done.** Test data populated under `.test-commander/test-data/`; reached via a fixture; nothing inline; SKILL.md updated.
+
+#### 6.7 — Documentation pass *(dedicated step)*
+
+- **Deliverables.** Author `docs/user-guide/automation.md` (end-to-end: `/tc:build-framework` → `/tc:automation-plan` → `/tc:automate` (+ auto-review) → `/tc:review-automation` → `/tc:generate-test-data`, with verbatim helper output from the seeded chain; explains the lazy framework, the suitability rubric, and the data flow). Update `docs/command-reference.md` (Phase 6 shipped section). Update `docs/workspace-reference.md` (the project-root `tests/` framework, `automation-plan/`, `test-data/`, and `automation-map.md` ownership; the lazy-init + data-flow discipline). Customization-guide "Phase 6 schema" section (`tc-automate.suitability.weights` + any `tc-build-framework`/`tc-test-data` keys) with three project-shape worked examples + "Phase 6 — what landed". Status-line refresh across the six locations + the new `automation.md` Beyond-Phase-5 footer in `generating-bdd.md`. Final deferral-wording sweep across all four SKILL.md files, the umbrella methodology, and `docs/`.
+- **Definition of done.** Docs accurate; links resolve; link checker green; customization guide reflects the shipped schema with three project-shape examples.
+
+#### 6.8 — Testing finalization *(dedicated step)*
+
+- **Deliverables.** Bump `DEFAULT_PHASE_CAP` 5 → 6 (CATALOG entries already present from 6.1). `tests/test_phase_6_integration.py` (in-process, full Phase 2 → 3 → 4 → 5 → 6 sweep in natural order): assert the framework builds lazily and idempotently; the automation plan scores scenarios; `automate` generates structurally-valid TS with provenance + fixture-mediated data; `automation-map.md` links scenario → spec and a `/tc:traceability-map` re-run resolves the `Automated test` column of `test-map.md` from `pending`; the write boundary holds (`bdd/`, `product-knowledge/` byte-identical before/after Phase 6; the framework lands at project-root `tests/`, outside `.test-commander/`); `/tc:next` advances past `/tc:automation-plan`; Playwright execution refused under pytest. Byte-stable re-run contract.
+- **Definition of done.** Integration smoke passes; cap bump reflected; `make verify` clean; `verify_skills.py` reports all ten shipped skills `PRESENT` with `UNEXPECTED=0`.
+
+#### 6.9 — Sign-off
+
+Six sub-sub-steps mirroring 5.7. 6.9.1 cold-user walkthrough of `automation.md` from a clean `make install` (the `claude plugin validate` strict-YAML gate over four new SKILL.md files); 6.9.2 per-step DoD audit for 6.1–6.8; 6.9.3 plan + CHANGELOG closing; 6.9.4 documentation final pass; 6.9.5 test-first `tests/test_phase_6_signoff.py` (RED before the closing edits, GREEN after; pytest floor `>=` the prior count); 6.9.6 final DoD eval — `make verify`, replay the walkthrough, commit, push, annotated `phase-6` tag.
+
+#### Definition of done — consolidated
+
+| # | Check | Type |
+| --- | --- | --- |
+| 1 | All Phase 6 test files exist | auto (sign-off) |
+| 2 | Four helpers + `ensure_framework` exist | auto |
+| 3 | All command pages exist (build-framework, automation-plan, automate, review-automation, generate-test-data) | auto |
+| 4 | All methodology + TS/JSON templates exist | auto |
+| 5 | `seeded-automation` fixture exists with a clean automatable feature | auto |
+| 6 | `verify_skills.py` CATALOG has all four at phase 6 and `DEFAULT_PHASE_CAP >= 6`; `make verify` prints all ten skills PRESENT, `UNEXPECTED=0` | auto + verify |
+| 7 | Framework builds lazily + idempotently at project-root `tests/`; prior runtime guard retired | auto |
+| 8 | Generated TS is structurally valid, carries `@req:`/`@cs:` provenance, reaches data only via fixtures (nothing inline) | auto |
+| 9 | `review_automation()` shared between `/tc:automate` auto-run and `/tc:review-automation`; `--no-review` suppresses | auto |
+| 10 | `automation-map.md` links scenario → spec; `/tc:traceability-map` re-run resolves `test-map.md`'s `Automated test` column | auto (integration) |
+| 11 | Playwright execution refused under pytest; suite never reaches a browser | auto |
+| 12 | All four SKILL.md files describe shipped behavior, no deferral wording, strict-YAML frontmatter | auto |
+| 13 | Cold-user walkthrough of `automation.md` from clean state succeeds | evidence |
+| 14 | plan To Do Phase 6 collapsed; Completed has Phase 6 with date; CHANGELOG marked complete | evidence + sign-off |
+| 15 | `phase-6` annotated tag created and pushed | evidence |
+
+#### TDD pattern used in 6.2–6.6
+
+```
+write tests (red)             # define structure of the generated framework/plan/TS/data from the seeded fixture
+  → implement helper (green)  # minimum code; deterministic scaffold/score/render
+    → author methodology + template(s)
+      → author per-command page
+        → update the owning SKILL.md to surface shipped behavior
+          → 6.4 ships automate (generation only); 6.5 ships the review engine AND wires automate's auto-run
+            → verify (pytest + make verify)
+```
+
+#### Validation sequence
+
+1. 6.1 scaffold (four skills + fixture) with scaffold tests. Red → green.
+2. 6.2 build-framework + guard retirement. Run `make verify` (the guard retirement must not break the chain).
+3. 6.3 automation-plan; 6.4 automate (generation only); 6.5 review-automation + wire automate's auto-run; 6.6 generate-test-data — each tests-first, mirror the closest sibling helper.
+4. 6.7 documentation pass. `make verify`.
+5. 6.8 testing finalization: bump cap to 6, integration smoke. `make verify`.
+6. 6.9 sign-off in order (walkthrough → DoD audit → write sign-off test RED → plan/CHANGELOG edits GREEN → doc final pass → final DoD + `phase-6` tag).
+
+#### Failure modes
+
+- The generated TypeScript is not valid (would fail `tsc`/Playwright later). **Mitigation:** the bundled `.ts` templates are the v1 contract; `test_automate.py` asserts well-formed structure (imports, class/fixture shape, provenance comment) on every generated file. A real compile/run is the manual smoke (6.x test step), refused under pytest.
+- A generated spec inlines test data instead of using a fixture. **Mitigation:** `test_generate_test_data.py` / `test_automate.py` assert at least one fixture references a `test-data/` file and that generated specs contain no inlined data literals (D6).
+- `/tc:automate` runs before the framework exists. **Mitigation:** the lazy-init `ensure_framework` call builds it first; `test_automate.py` asserts a from-scratch run produces both `playwright.config.ts` and the spec.
+- The prior-phase runtime guard is missed and the suite still forbids runtime artifacts. **Mitigation:** 6.2 greps for the guard and retires it in the same commit; `make verify` red on the guard is the signal.
+- Playwright execution leaks into the pytest suite. **Mitigation:** the `PYTEST_CURRENT_TEST` refusal (Phase 3 Step 3.5 pattern) guards any execution entry point; the integration smoke asserts the refusal.
+- `automation-map.md` drift between Phase 2's seed and Phase 6's authoritative write. **Mitigation:** Phase 6 owns `automation-map.md`; if a shared renderer is warranted, extend `traceability_render.py` (the Phase 5 reconciliation pattern) rather than hand-rolling a second writer.
+- `phase-6` tag already exists locally. **Mitigation:** delete and recreate; never force-overwrite an origin tag without explicit user confirmation.
+
+#### Phase 6 — Lessons learned (running)
+
+Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. (Populated as 6.1–6.9 land.)
 
 ---
 
@@ -3092,11 +3200,15 @@ Phase 4 complete (2026-05-28) — see Completed.
 Phase 5 complete (2026-05-29) — see Completed.
 
 ### Phase 6
-- [ ] Author `/tc:build-framework` (lazy), `/tc:automation-plan`, `/tc:automate`, `/tc:review-automation`, `/tc:generate-test-data`
-- [ ] Wire the lazy-init check into commands that need the framework
-- [ ] Author methodology and templates (TS templates)
-- [ ] Author `docs/user-guide/automation.md`
-- [ ] Confirm review and test gates green
+- [ ] **6.1** — Scaffold the four skills (`tc-build-framework`, `tc-automation-plan`, `tc-automate`, `tc-test-data`) + `seeded-automation` fixture (a clean automatable `<area>.feature` with `@automated-candidate` scenarios); strict-PyYAML scaffold assertion on all four SKILL.md files
+- [ ] **6.2** — `/tc:build-framework` (lazy, idempotent) — scaffold the project-root `tests/` tree + `playwright.config.ts` + `package.json` only if absent; expose `ensure_framework`; ship the four `.ts` templates + `playwright-standards.md` + `locator-strategy.md`; **retire the prior-phase runtime guard in the same commit** (Per-Phase Convention #3)
+- [ ] **6.3** — `/tc:automation-plan` (TDD) — score each BDD scenario against the seven-factor suitability rubric; `automation-suitability.md` + `automation-plan-template.md`; `tc-automate.suitability.weights` config
+- [ ] **6.4** — `/tc:automate` (TDD, generation only) — render TypeScript page objects + specs from `automate`-ranked scenarios with `@req:`/`@cs:` provenance + fixture-mediated data; lazy-init via `ensure_framework`; write `automation-map.md`; umbrella `automation-generation.md` (review wiring deferred to 6.5)
+- [ ] **6.5** — `/tc:review-automation` (TDD) + shared `review_automation()` + wire automate's auto-run (`--no-review`); universal rubric (`inline-test-data`, `hardcoded-wait`, `missing-provenance`, `weak-locator`, `untraceable-spec`, `assertion-free`); `[automation-review]` gap signals
+- [ ] **6.6** — `/tc:generate-test-data` (TDD) — populate `test-data/{seed,scenarios,factories}/` (Markdown + YAML + JSON per Q11); generated fixtures reference data files, nothing inline (D6); `test-data-strategy.md` + `test-data-template.json`
+- [ ] **6.7** — Documentation pass: author `docs/user-guide/automation.md`; update command-reference, workspace-reference (project-root `tests/` framework + `test-data/` + `automation-map.md` ownership + lazy-init/data-flow), customizing-for-your-project (Phase 6 schema + three project-shape examples), status lines
+- [ ] **6.8** — Testing finalization: bump `DEFAULT_PHASE_CAP` to 6; author `test_phase_6_integration.py` (in-process, Phase 2 → … → 6); assert lazy-build idempotency, fixture-mediated data, `automation-map` → `test-map` resolution, write boundary, Playwright execution refused under pytest
+- [ ] **6.9** — Sign-off (six sub-sub-steps): cold-user walkthrough, per-step DoD audit, plan + CHANGELOG closing, doc final pass, test-first sign-off test, final DoD eval + `phase-6` annotated tag
 
 ### Phase 7
 - [ ] Author `/tc:run`, `/tc:analyze-results`, `/tc:report`, `/tc:quality-gate`
