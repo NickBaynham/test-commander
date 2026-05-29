@@ -2272,43 +2272,214 @@ Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Conventio
 
 ## Phase 5 — BDD Generation and Traceability
 
-**Goal.** Turn requirements, exploration, and ideas into BDD specs with full traceability.
+**Goal.** Turn requirements, exploration, and ideas into BDD specs with full traceability. Ship two skills — `tc-bdd` (`/tc:generate-bdd`, `/tc:review-bdd` + an internal review sub-mode) and `tc-traceability` (`/tc:traceability-map`) — that read the Phase-2 reviewed requirements, the Phase-4-enriched test-idea seeds, and the Phase-4 session summaries, generate Gherkin `.feature` files carrying mechanical linkage tags back to their source REQ/CS IDs, review those specs against a deterministic quality rubric, and rebuild the cross-cutting traceability map that ties every requirement to its test ideas and BDD scenarios (downstream links reported `pending` until Phases 6–7 populate them).
 
-**Implementation.**
+**Architecture.** Each `/tc:*` command is a Python helper plus a Markdown command file inside `plugins/test-commander/skills/<skill>/`. Helpers do the deterministic work (parse enriched test-idea frontmatter + `## Phase 4 enrichment` candidate blocks, render `.feature` files with linkage tags, run the BDD review rubric, scan `bdd/features/` and rebuild the trace maps); Claude executes the judgment-heavy parts (phrasing Given/When/Then in behavior-not-UI language, deciding which candidate scenarios merit a scenario vs. a scenario outline, ranking review findings beyond the mechanical category) by reading the per-command page and methodology docs. Phase 5 is fully deterministic and offline — no MCP, no network, no browser. There is no live/recorded mode split (unlike Phases 3–4); the only inputs are workspace Markdown artifacts.
 
-- `/tc:generate-bdd`, `/tc:review-bdd`, `/tc:traceability-map`
-- Methodology: `bdd-generation.md`, `traceability.md`
-- Templates: `feature-template.feature`, `bdd-review-template.md`, `traceability-map-template.md`
+**Phase-5 design decisions (folded in).**
 
-**Skills authored.** `tc-bdd` for generation and review; `tc-traceability` for the cross-cutting map. Methodology and templates for both.
+- **Linkage tags are the traceability contract.** Every generated scenario carries machine-readable provenance tags: `@req:REQ-NNN` and `@cs:CS-NNN-NNN` (plus optional `@anomaly:<category>` when the source candidate was anomaly-derived). `/tc:traceability-map` parses these tags to rebuild the map mechanically — the tag IS the cross-format contract between the generator (5.2) and the mapper (5.4). This closes the cross-phase contract triangle the Phase 4 Step 4.5 lesson predicted: enriched test-idea (`req_id`, `cs_id`, `type`, `title`, `source`, `linked_anomaly`) → `.feature` scenario tags (5.2) → trace-map rows (5.4). The generator declares a `Scenario` dataclass mirroring the enriched-test-idea candidate shape and asserts that parsing the enriched test-idea body recovers every field.
+- **`tc-traceability` is the single authoritative writer of `traceability/`; the Phase-2 write is reconciled via a shared renderer (resolves the prior "Phase 5 owns traceability" framing).** Phase 2's `requirements_coverage.py` already writes `traceability/requirements-map.md` and `traceability/automation-map.md`, so the loose claim in the Phase 3/4 design notes that "`traceability/` is Phase-5-owned and untouched upstream" was already false. Phase 5 reconciles this cleanly: the trace-map render logic in `requirements_coverage.py` (`_render_traceability_map`) is **factored out into a shared module** (`plugins/test-commander/scripts/traceability_render.py`) so Phase 2 and Phase 5 render byte-identically (DRY, per the parent CLAUDE.md). `/tc:traceability-map` is the authoritative regenerator: it rebuilds `requirements-map.md` (now enriched with a BDD-scenario column), writes `test-map.md` (test-idea → BDD scenario → `pending` downstream), and leaves `automation-map.md` as Phase 2 seeds it until Phase 6 owns it. Phase 2's narrower write remains a compatible interim seed; the shared renderer guarantees no format drift between the two callers.
+- **Downstream trace links are reported `pending`, never invented.** The full chain is Requirement → Test Idea → BDD Scenario → Automation Candidate → Automated Test → Test Result → Quality Report, but in Phase 5 only the first three links exist (Automation Candidate is partial via Phase-4 test-ideas; Automated Test = Phase 6; Test Result + Quality Report = Phase 7). The map renders `pending` for every link a later phase populates. "Traceability complete" in the DoD means "every requirement is linked to its test ideas and BDD scenarios; downstream columns honestly read `pending`" — it does not mean fabricating links that do not yet exist (per the project's never-invent-metrics rule).
+- **Review is both an auto-run sub-mode and a standalone command.** Mirroring the Phase 4 `/tc:explore` pattern: `/tc:generate-bdd` auto-runs the internal BDD review sub-mode at the end of generation (suppressible with `--no-review`), routing failures to `requirements/open-questions.md` as `[bdd-review]` gap signals. `/tc:review-bdd` is the standalone, re-runnable form that reviews already-written `.feature` files without regenerating them. Both share one `_review_features()` implementation.
+- **Two skills scaffolded together; staged cap-bump unchanged.** 5.1 scaffolds both `tc-bdd/SKILL.md` and `tc-traceability/SKILL.md` (the `CATALOG` entries `tc-bdd: 5` and `tc-traceability: 5` already exist from Step 0.6.1). Both report `UNEXPECTED (phase 5) — ahead of schedule` under `DEFAULT_PHASE_CAP=4` until the cap bumps to 5 in the testing-finalization sub-step (5.6), per the staged-bump discipline from every prior phase.
+- **Strict-YAML scaffold assertion from the start (per the Phase 4 Step 4.8 lesson).** Both new `SKILL.md` files get a `tests/test_*_scaffold.py` assertion that invokes PyYAML directly on the frontmatter and asserts a clean parse — landed in 5.1, not deferred to sign-off. This is the bug `claude plugin validate` caught in Phase 4 only at the cold-user walkthrough; Phase 5 catches it at the unit-test layer.
+- **Helper-mirroring is the design.** `generate_bdd.py` copy-renames the most-debugged sibling, `enrich_test_ideas.py` (it parses the same enriched test-idea frontmatter + `### CS-NNN-NNN` candidate blocks it consumes). `review_bdd.py` mirrors the `_review_session()` rubric pattern from `explore.py`. `traceability_map.py` mirrors `requirements_coverage.py` (which already scans the workspace and renders trace maps — the closest sibling). The integration smoke in 5.6 is budgeted as verification, not debugging, per the Phase 3 Step 3.8 / Phase 4 Step 4.7 lessons.
+- **Phase 5 fixture bundles seeded BDD inputs and one deliberate review defect per rubric dimension.** The new `tests/fixtures/seeded-bdd/` directory carries: an enriched test-idea `REQ-001.md` (status `enriched`, with a `## Phase 4 enrichment` section and `### CS-NNN-NNN` candidate blocks) plus a session summary `SESS-...md` (the generator inputs); and a `flawed.feature` carrying one seeded defect per universal BDD-review category (`ambiguous-step`, `missing-tag`, `untraceable`, `ui-coupled-step`, `missing-examples`, `conjunction-overload`) marked with the uniform `knowledge: <category>` token (per the Phase 3 Step 3.1 marker-uniformity lesson). The narrative reuses the Account / Session / Workspace / Asset SaaS-dashboard vocabulary from the Phase 3 + Phase 4 fixtures so the 5.6 integration smoke composes without translation.
+- **Cross-phase write boundary.** Phase 5 reads `<workspace>/requirements/` (reviewed requirements + acceptance criteria), `<workspace>/test-ideas/` (Phase-4-enriched seeds), `<workspace>/sessions/` (Phase-4 session summaries), and `<workspace>/product-knowledge/` (Phase-3 entities/journeys for scenario grounding). It writes `<workspace>/bdd/features/`, `<workspace>/bdd/summaries/`, `<workspace>/bdd/index.md`, `<workspace>/traceability/` (the three maps), and appends `[bdd-review]` gap signals to `<workspace>/requirements/open-questions.md`. It does NOT write to `product-knowledge/` (Phase 3) or `test-ideas/` (Phase 4 enriches; Phase 5 reads only). The 5.6 integration smoke asserts these boundaries directly.
 
-**Design references.** `exploratory-to-bdd:generate-bdd`, `exploratory-to-bdd:review-bdd`, `exploratory-to-bdd:explore-to-bdd` (BDD generation prompts, review rubric, exploration-to-spec bridging), `mcp-exploratory-testing:exploration-to-bdd` (handoff patterns).
+**Skills authored.** `tc-bdd` — `SKILL.md` plus two command files (`generate-bdd.md`, `review-bdd.md`), the umbrella `methodology/bdd-generation.md` plus `methodology/bdd-quality-review.md`, and templates `feature-template.feature`, `bdd-summary-template.md`, `bdd-review-template.md`. `tc-traceability` — `SKILL.md` plus `commands/traceability-map.md`, `methodology/traceability.md`, and `templates/traceability-map-template.md`.
 
-**Outputs.** `.test-commander/bdd/features/*.feature`, `.test-commander/bdd/summaries/`, `.test-commander/traceability/`.
+**Design references.** `exploratory-to-bdd:generate-bdd`, `exploratory-to-bdd:review-bdd`, `exploratory-to-bdd:explore-to-bdd` (BDD generation prompts, review rubric, exploration-to-spec bridging), `mcp-exploratory-testing:exploration-to-bdd` (handoff patterns). Per Decision D1 (vendor-and-own), `tc-bdd` and `tc-traceability` are authored in-repo; these skills are design references only, never runtime dependencies.
 
-**Tags.** Shipped universal classes: `@smoke`, `@regression`, `@manual`, `@exploratory`, `@automated-candidate`. Per D19, Test Commander ships no hard-coded domain, risk, or persona taxonomy — projects add values under shared namespaces:
+**Inputs read.** `<workspace>/requirements/`, `<workspace>/test-ideas/`, `<workspace>/sessions/`, `<workspace>/product-knowledge/`.
+
+**Outputs.** `.test-commander/bdd/features/*.feature`, `.test-commander/bdd/summaries/*.md`, `.test-commander/bdd/index.md`, `.test-commander/traceability/{requirements-map.md,test-map.md}`.
+
+**Tags.** Shipped universal classes: `@smoke`, `@regression`, `@manual`, `@exploratory`, `@automated-candidate`. Machine-readable linkage tags: `@req:REQ-NNN`, `@cs:CS-NNN-NNN`, `@anomaly:<category>`. Per D19, Test Commander ships no hard-coded domain, risk, or persona taxonomy — projects add values under shared namespaces:
 
 - `@area:<feature>` — project-defined feature areas (e.g. `@area:sign-in`, `@area:reports`).
 - `@risk:<class>` — project-defined risk classes (e.g. severity `@risk:high`/`@risk:medium`/`@risk:low`, or category `@risk:data-loss`/`@risk:availability`/`@risk:integrity`).
 - `@persona:<role>` — project-defined personas (e.g. `@persona:admin`, `@persona:operator`).
 
-Test Commander ships the namespaces; the consuming project picks values, documents them in its own BDD methodology notes, and configures any tag-driven gates.
+Test Commander ships the namespaces; the consuming project picks values (configured under `tc-bdd.tags.*` in `<workspace>/config.yaml`), documents them in its own BDD methodology notes, and configures any tag-driven gates. The customization guide (updated in 5.5) carries worked examples for three materially-different project shapes.
 
-**Traceability chain.** Requirement → Test Idea → BDD Scenario → Automation Candidate → Automated Test → Test Result → Quality Report.
+**Traceability chain.** Requirement → Test Idea → BDD Scenario → Automation Candidate → Automated Test → Test Result → Quality Report. Phase 5 populates the first three links; the trace map renders `pending` for Automated Test (Phase 6), Test Result, and Quality Report (Phase 7).
 
-**Documentation.** `docs/user-guide/generating-bdd.md`.
+**BDD review rubric (universal core).** Six categories, mirroring the Phase 4 anomaly-category model. `ambiguous-step` (vague Given/When/Then with no concrete subject or outcome), `missing-tag` (scenario lacking a required namespace tag — `@area:` or a linkage tag), `untraceable` (scenario with no `@req:`/`@cs:` linkage tag resolvable to an existing requirement/candidate), `ui-coupled-step` (steps describing clicks/selectors/URLs instead of behavior), `missing-examples` (a `Scenario Outline` with no `Examples:` table), `conjunction-overload` (a step chaining multiple behaviors with `and`/`,` such that it is not atomically assertable). The seeded fixture carries one defect per category. Project extensions union via `tc-bdd.review.rubric-extensions`.
 
-**Review step.**
+### Phase 5 — Execution outline
 
-- `tc-bdd`'s internal review sub-mode (designed after `exploratory-to-bdd:review-bdd`) runs against new specs; traceability map updated and verified.
+Seven sub-steps. TDD throughout: every implementation step lands its tests red before turning them green. Sub-step 5.1 scaffolds both skills and the shared seeded-bdd fixture; 5.2–5.4 implement the three commands; 5.5 is the dedicated documentation pass; 5.6 is the dedicated testing finalization (cap bump + integration smoke); 5.7 is the sign-off with a `phase-5` tag.
 
-**Test step.**
+#### 5.1 — Skill scaffolds (`tc-bdd` + `tc-traceability`) and seeded-bdd fixture
 
-- Round-trip a small requirement → BDD → traceability flow and assert the trace map contains the expected links.
+- **Deliverables.**
+  - `plugins/test-commander/skills/tc-bdd/SKILL.md` and `plugins/test-commander/skills/tc-traceability/SKILL.md` — each with YAML frontmatter (`name`, single-line trigger-style `description` with **no embedded `key: value` substring**, per the Phase 4 Step 4.8 lesson) and a body listing the skill's commands. `tc-bdd`'s body lists `/tc:generate-bdd`, `/tc:review-bdd`, and the internal review sub-mode; `tc-traceability`'s lists `/tc:traceability-map`. Both carry deferral wording until each sub-step turns it into shipped-behavior description.
+  - `commands/.gitkeep`, `methodology/.gitkeep`, `templates/.gitkeep` under both skills — removed by the first sub-step that lands real content in each directory.
+  - `tests/fixtures/seeded-bdd/` containing:
+    - `REQ-001.md` — an enriched test-idea seed (`status: enriched`, full Phase-2 `tc-test-idea/v1` frontmatter, a `## Phase 4 enrichment` section with two or more `### CS-NNN-NNN` candidate blocks carrying `type`/`title`/`source`/`linked_anomaly`).
+    - `SESS-20260115-001.md` — a session summary (the second generator input), reusing the SaaS-dashboard narrative.
+    - `flawed.feature` — a Gherkin file carrying one seeded defect per universal BDD-review category, each marked with a `# knowledge: <category>` comment so the scaffold test verifies rubric coverage with the uniform regex from Step 3.1.
+    - `README.md` — documents the linkage-tag convention, the universal review-category catalog, the marker convention, and the "deliberately generic; not a claim about scope" D19 framing.
+- **Tests first.** `tests/test_tc_bdd_scaffold.py` and `tests/test_tc_traceability_scaffold.py` — assert: each skill directory and `SKILL.md` present; frontmatter parses cleanly under **strict PyYAML** (`name == "tc-bdd"` / `"tc-traceability"`, non-empty description, no parse error); body references each command; `commands/`/`methodology/`/`templates/` dirs present; fixture directory exists with all four files; `REQ-001.md` parses with `status: enriched` and at least two `### CS-` candidate blocks; `flawed.feature` parses as Gherkin and every universal review category appears in at least one `knowledge:` marker. Test-first: red before any deliverable exists.
+- **Definition of done.** Both skills scaffolded; fixture covers every review category and ships valid enriched-test-idea inputs; scaffold tests green; `verify_skills.py` reports `tc-core/tc-requirements/tc-knowledge/tc-explore PRESENT` and `tc-bdd UNEXPECTED (phase 5) — ahead of schedule`, `tc-traceability UNEXPECTED (phase 5) — ahead of schedule` under `DEFAULT_PHASE_CAP=4` (the cap bumps to 5 in 5.6, not here).
+- **Review.** Manual read of the fixture against the BDD review rubric and the linkage-tag convention — confirm every review category has a seeded defect, the enriched test-idea is realistic but deliberately generic, and the `.feature` shape is forward-compatible with the 5.2 generator and 5.4 mapper.
 
-**Definition of done.**
+#### 5.2 — `/tc:generate-bdd` (TDD)
 
-- Feature files live under `.test-commander/bdd/features/`, summaries written, traceability complete, `tc-bdd`'s review sub-mode passes, user guide complete.
+- **Helper.** `plugins/test-commander/scripts/generate_bdd.py` (mirrors `enrich_test_ideas.py`). Reads `<workspace>/test-ideas/<REQ-ID>.md` (enriched seeds; `--req <REQ-ID>` for one, all enriched seeds otherwise), reads the referenced `<workspace>/sessions/` summaries and `<workspace>/product-knowledge/` for grounding, and writes `<workspace>/bdd/features/<area>.feature` — a Gherkin `Feature` with one `Scenario`/`Scenario Outline` per candidate, each carrying `@req:REQ-NNN`, `@cs:CS-NNN-NNN`, the universal class tags, and `@area:<feature>` derived from the requirement. Writes a per-feature `<workspace>/bdd/summaries/<area>.md` and rebuilds `<workspace>/bdd/index.md` (scan-and-index of every feature: scenario count, linkage coverage, review verdict). Declares a `Scenario` dataclass mirroring the enriched-test-idea candidate shape (`req_id`, `cs_id`, `type`, `title`, `source`, `linked_anomaly`) and asserts parsing the enriched body recovers every field. **Idempotency contract**: pure generated reports — overwrite mode; byte-deterministic re-run against unchanged inputs. Auto-runs the 5.3 review sub-mode at the end (suppressible with `--no-review`).
+- **Umbrella methodology.** `methodology/bdd-generation.md` — the umbrella 5.2–5.3 reference. Documents the test-idea → BDD → traceability workflow, Gherkin authoring discipline (behavior-not-UI, Given/When/Then atomicity, scenario vs. outline), the linkage-tag convention, the cross-phase write boundary, and a Claude-judgment-layer paragraph. (Per the Phase 4 Step 4.6 lesson, the umbrella's workflow diagram is on the Per-Phase-Convention #4 edit list for every command sub-step.)
+- **Templates.** `templates/feature-template.feature`, `templates/bdd-summary-template.md`.
+- **Command file.** `commands/generate-bdd.md` (Inputs / Outputs / Preconditions / Behavior / Safety / Implementation / Definition of Done / See also).
+- **SKILL.md update.** `tc-bdd/SKILL.md` updated to describe `/tc:generate-bdd`'s shipped behavior and the auto-running review sub-mode; deferral wording for this command removed.
+- **Tests first.** `tests/test_generate_bdd.py` — uninitialized workspace refused; no enriched test-ideas refused with a precondition error directing the user at `/tc:test-ideas`; seeded enriched `REQ-001.md` → `<area>.feature` written with valid Gherkin, every candidate rendered as a scenario, every scenario carrying resolvable `@req:`/`@cs:` linkage tags; the `Scenario`-shape contract test (`type`/`title`/`source` recovered from the enriched body); `bdd/index.md` lists the feature; idempotent re-run byte-identical; `--no-review` suppresses the `[bdd-review]` gap signals; `tc-bdd.tags.*` config extensions union with the universal classes.
+- **Definition of done.** Helper passes all cases; the generated `.feature` is valid Gherkin with linkage tags; umbrella + per-command methodology + templates + command page authored; `tc-bdd/SKILL.md` no longer defers `/tc:generate-bdd`.
+- **Verification.** Pytest green; eyeball a generated `.feature` for tone, tag placement, and Gherkin validity before declaring 5.2 done.
+
+#### 5.3 — `/tc:review-bdd` + internal review sub-mode (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/review_bdd.py` (mirrors the `_review_session()` rubric pattern from `explore.py`). Reads `<workspace>/bdd/features/*.feature`, runs the six-category universal review rubric, and writes a review verdict into each `<workspace>/bdd/summaries/<area>.md` plus routes failures to `<workspace>/requirements/open-questions.md` as `[bdd-review]` gap signals (with the `(source-id, question-text)` dedup contract from Phase 2; `source-id: tc-bdd/bdd-review-<area>`). Exposes `_review_features()` so `generate_bdd.py` (5.2) calls the same implementation for its auto-run sub-mode. **Idempotency contract**: re-running produces byte-identical verdicts and no duplicate gap signals.
+- **Methodology.** `methodology/bdd-quality-review.md` — the six review categories with one worked example per category drawn from the seeded `flawed.feature`, plus a Claude-judgment-layer paragraph (ranking severity beyond the mechanical category, deciding which ambiguous steps are acceptable shorthand vs. genuine defects).
+- **Templates.** `templates/bdd-review-template.md`.
+- **Command file.** `commands/review-bdd.md`.
+- **SKILL.md update.** `tc-bdd/SKILL.md` updated to describe `/tc:review-bdd` and confirm the auto-run sub-mode wiring; deferral wording removed.
+- **Tests first.** `tests/test_review_bdd.py` — uninitialized workspace refused; no `.feature` files refused with a clear error directing the user at `/tc:generate-bdd`; seeded `flawed.feature` → every one of the six universal review categories surfaced exactly once; `[bdd-review]` gap signals routed to open-questions with the dedup contract; idempotent re-run produces no duplicate signals; a clean (generated-by-5.2) feature produces a `pass` verdict with zero gap signals; the shared `_review_features()` is the same code path 5.2 auto-runs.
+- **Definition of done.** Helper passes all cases; the rubric-category coverage assertion is in the suite; methodology covers all six categories + the judgment layer; the auto-run sub-mode and the standalone command share one implementation; SKILL.md updated.
+- **Verification.** Pytest green; smoke run against the seeded fixture flags every seeded defect and passes a clean feature.
+
+#### 5.4 — `/tc:traceability-map` (TDD)
+
+- **Shared renderer extraction.** Factor `_render_traceability_map` out of `requirements_coverage.py` into `plugins/test-commander/scripts/traceability_render.py`; update `requirements_coverage.py` to import it (no behavior change — assert the Phase-2 tests stay green). This is the DRY reconciliation that lets Phase 2 and Phase 5 render byte-identically.
+- **Helper.** `plugins/test-commander/scripts/traceability_map.py` (mirrors `requirements_coverage.py`). Scans `<workspace>/requirements/` (requirement inventory), `<workspace>/test-ideas/` (enriched seeds), and `<workspace>/bdd/features/*.feature` (parsing `@req:`/`@cs:` linkage tags), then rebuilds `<workspace>/traceability/requirements-map.md` (now with a BDD-scenario column) and writes `<workspace>/traceability/test-map.md` (test-idea → BDD scenario → `pending` downstream) via the shared renderer. Downstream columns (Automated Test, Test Result, Quality Report) render `pending`. **Idempotency contract**: authoritative regenerator — overwrite mode; byte-deterministic; the only writer of `requirements-map.md` and `test-map.md` from Phase 5 onward.
+- **Methodology.** `methodology/traceability.md` — the full chain, the linkage-tag convention as the mechanical join key, the `pending`-not-invented discipline, the Phase-2-seed/Phase-5-authoritative reconciliation, and a Claude-judgment-layer paragraph (spotting requirements with zero scenarios, scenarios spanning multiple requirements).
+- **Templates.** `templates/traceability-map-template.md`.
+- **Command file.** `commands/traceability-map.md`. By end of 5.4, both `tc-bdd/SKILL.md` and `tc-traceability/SKILL.md` describe every shipped command with no deferral wording.
+- **Tests first.** `tests/test_traceability_map.py` — uninitialized workspace refused; no `.feature` files → map written with every requirement present and BDD-scenario column reading `none yet` (not an error); seeded chain (enriched `REQ-001.md` + generated `<area>.feature`) → `requirements-map.md` links REQ-001 to its CS IDs and to the generated scenarios via the linkage tags; `test-map.md` written with downstream columns reading `pending`; idempotent re-run byte-identical; a regression test asserting `traceability_render` produces identical output for the Phase-2 caller and the Phase-5 caller given the same links.
+- **Definition of done.** Helper passes all cases; shared renderer extracted and Phase-2 tests still green; `requirements-map.md` and `test-map.md` rebuilt with `pending` downstream; both SKILL.md files free of deferral wording.
+- **Verification.** Pytest green; smoke run produces a map that resolves REQ-001 → CS → scenario and reports downstream `pending`.
+
+#### 5.5 — Documentation pass *(dedicated step)*
+
+- **Deliverables.**
+  - Author `docs/user-guide/generating-bdd.md` — end-to-end walkthrough: `/tc:generate-bdd` → (auto review) → `/tc:review-bdd` → `/tc:traceability-map`. Sample input and output drawn from the seeded fixture chain (Phase 3 product-knowledge + Phase 4 sessions + Phase 4 enriched test-ideas, in that order, per the Phase 4 Step 4.6 lesson); embed verbatim helper output, not paraphrase. Mirrors `docs/user-guide/exploring-an-app.md` section-for-section.
+  - Update `docs/command-reference.md` — add the three Phase 5 commands as links into their per-command pages (new "Phase 5 commands (shipped)" section).
+  - Update `docs/workspace-reference.md` — per-file ownership tables for `bdd/features/`, `bdd/summaries/`, `bdd/index.md`, and the `traceability/` reconciliation (Phase 2 seeds; Phase 5 is authoritative; Phase 6 owns `automation-map.md`). Document the linkage-tag convention.
+  - Refresh status lines across the same six locations as Phase 4: `README.md` status header + doc index, `docs/install.md` "Verifying the install", `docs/user-guide/getting-started.md` "what's next", `docs/user-guide/workflow.md`, `docs/user-guide/exploring-an-app.md` footer "Beyond Phase 4", `plugins/test-commander/README.md` skill-status table (two new rows).
+  - **Customization-guide update (per the Per-Phase Customization-guide Convention / D19).** Add a "Phase 5 schema (`tc-bdd` / `tc-traceability`)" section to `docs/user-guide/customizing-for-your-project.md` covering the tag namespaces (`@area:`, `@risk:`, `@persona:`), `tc-bdd.tags.*`, and `tc-bdd.review.rubric-extensions`. At least three worked extension examples spanning materially-different project shapes (per the Phase 4 Step 4.6 lesson — vary by shape, not just vocabulary): a web app with browser-driven scenarios, an API-only project with spec-derived scenarios, a mobile app with screen-flow scenarios. Add a "Phase 5 — what landed" subsection naming the universal cores, schema keys, and the tests that defend them.
+  - **Final SKILL.md pass.** Confirm both SKILL.md files describe every shipped command, link to every per-command page, and instruct Claude to invoke the bundled helpers. Grep `behavior arrives in|coming in phase|when phase 5 ships` across both SKILL.md files, the umbrella `bdd-generation.md`, AND all of `docs/`.
+- **Definition of done.** Every doc accurate against the implementation; all cross-links resolve; link checker green; customization guide reflects the shipped schema with three worked examples spanning project shapes.
+- **Verification.** `python3 scripts/check_links.py` clean; grep for stale deferral wording across both SKILL.md files, the umbrella methodology, and `docs/` returns no hits; every YAML block in `customizing-for-your-project.md` parses.
+
+#### 5.6 — Testing finalization *(dedicated step, separate from per-command TDD)*
+
+- **Deliverables.**
+  - Bump `DEFAULT_PHASE_CAP` in `scripts/verify_skills.py` from `4` to `5` (the `CATALOG` entries `tc-bdd: 5` and `tc-traceability: 5` already exist).
+  - `tests/test_phase_5_integration.py` — integration smoke that creates a fresh tmp consuming project, runs `init_workspace.py`, then drives the full workflow in the natural order Phase 2 → Phase 3 → Phase 4 → Phase 5 (per the Phase 4 Step 4.7 sequencing lesson, so `[bdd-review]` lands on top of upstream open-questions entries rather than being clobbered). In-process imports. Assertions at every transition: `.feature` files written with valid Gherkin + resolvable linkage tags; review verdict written and `[bdd-review]` gap signal present for the appropriate defect; `requirements-map.md` + `test-map.md` rebuilt with REQ → CS → scenario links and `pending` downstream; `product-knowledge/` and `test-ideas/` byte-identical before and after Phase 5 (write-boundary discipline asserted directly, mirroring the Phase 4 traceability assertion); `/tc:next` advances past `/tc:generate-bdd` (the robust "advanced past" invariant — assert `command != /tc:generate-bdd`, not a pinned next command).
+  - Byte-stable re-run integration test: full Phase-5 sweep twice; assert byte-identical `.feature` files, maps, and line-stable open-questions.
+  - Shared-renderer regression: assert `requirements_coverage.py` output is unchanged after the `traceability_render` extraction (Phase-2 tests stay green).
+- **Definition of done.** Integration smoke passes; cap bump reflected; full `make verify` chain green; `verify_skills.py` reports all six shipped skills `PRESENT` with `UNEXPECTED=0`.
+- **Verification.** Captured `make verify` output. Per the Phase 3/4 lessons, the integration smoke is budgeted as verification not debugging; if it lands red, surface the discovery as a sub-step lesson and consider whether the unit-test coverage in 5.2–5.4 needs strengthening. **Note (per the Phase 2 Step 2.9 + Phase 4 Step 4.7 lessons): Phase 5 writing to `traceability/` and `bdd/` further perturbs the `/tc:next` phase-status heuristic; if the "advanced past" assertion is brittle, refine the R-rules in `next-step-inference.md` here rather than pinning a specific next command.**
+
+#### 5.7 — Sign-off
+
+Six sub-sub-steps. Mirrors the Phase 4 sign-off (4.8) exactly. Test-first: the sign-off test in 5.7.5 lands red before the plan/CHANGELOG edits in 5.7.3 turn it green. The final sub-step (5.7.6) captures evidence and pushes the `phase-5` annotated tag.
+
+##### 5.7.1 — Cold-user walkthrough of `generating-bdd.md`
+
+- **Deliverables.** Captured log of an end-to-end walkthrough from a freshly-installed plugin (`make uninstall` → `make install`, which runs `claude plugin validate` — the only strict-YAML gate) against a fresh tmp consuming project, with Phase 2 → 3 → 4 state pre-populated, then the three Phase 5 helpers in workflow order.
+- **Definition of done.** All commands succeed end to end. Output captured to `/tmp/tc-phase5-walkthrough.log`. Any failure is fixed and re-run before 5.7.2. **Keep the `make uninstall` + `make install` preamble exactly as-is (per the Phase 4 Step 4.8 lesson) — it exercises the strict validator no other step runs.**
+
+##### 5.7.2 — Per-step DoD audit
+
+- Line-by-line audit of 5.1 through 5.6 against their DoD lists: every helper, methodology, template, command file, and SKILL.md update present; every per-command test green; linkage tags resolve; write-boundary holds; both SKILL.md files free of deferral wording; `customizing-for-your-project.md` carries the Phase 5 schema with three worked examples. **Lesson-capture audit:** every Phase 5 sub-step (5.1–5.6) has an entry in `Phase 5 — Lessons learned (running)`; clean sub-steps record "no lessons" explicitly. Any unmet item blocks the sign-off.
+
+##### 5.7.3 — Plan and CHANGELOG updates
+
+- `planning/plan.md` — collapse `### Phase 5` To Do to a marker line; add a `### Phase 5 — BDD generation and traceability (YYYY-MM-DD)` section to `## Completed` with `[x]` per-step bullets, mirroring the Phase 4 closing format.
+- `CHANGELOG.md` — flip the Phase 5 heading from `(in progress)` to `(complete YYYY-MM-DD)` with per-sub-step Added bullets.
+
+##### 5.7.4 — Documentation final pass
+
+- Edit wherever Phase 5 wording has drifted across the six sub-steps (README status line, getting-started "what's next", install verifying-install paragraph, `generating-bdd.md` intro, `exploring-an-app.md` "Beyond Phase 4" footer, `plugins/test-commander/README.md` skill table, customization-guide tense). "Phase 5 in progress" → "Phase 5 complete (YYYY-MM-DD); Phase 6 starts next". All cross-links resolve.
+
+##### 5.7.5 — Pre-flight tests for sign-off
+
+- `tests/test_phase_5_signoff.py`. Coverage: all Phase 5 pytest files exist (`test_tc_bdd_scaffold`, `test_tc_traceability_scaffold`, `test_generate_bdd`, `test_review_bdd`, `test_traceability_map`, `test_phase_5_integration`, `test_phase_5_signoff`); all three helpers + `traceability_render.py` exist; all command files exist under both skills; all methodology + template files exist; `seeded-bdd/` fixture exists with all four files; `verify_skills.py` has `CATALOG["tc-bdd"] == 5`, `CATALOG["tc-traceability"] == 5`, and `DEFAULT_PHASE_CAP >= 5` (per the Phase-2 Step-2.8 lesson — never assert `==` on the cap); both SKILL.md files describe every shipped command with no deferral wording AND parse under strict PyYAML; `customizing-for-your-project.md` has a Phase 5 `tc-bdd:` YAML block matching the shipped schema with at least three project-shape headings; the `Phase 5 — Lessons learned (running)` subsection has an entry per sub-step (5.1–5.6); CHANGELOG Phase 5 marked complete with a date; `plan.md` Completed has a Phase 5 subsection; `plan.md` To Do Phase 5 collapsed to the marker line; total pytest count meets the floor (`>= 460` — Phase 4 finished at 422; Phase 5 adds two scaffold suites, three per-command suites, integration, and sign-off). Test-first: red before 5.7.3's edits, green after.
+
+##### 5.7.6 — Final DoD evaluation (close Phase 5)
+
+1. `make verify` — every test green, link checker clean, `verify_skills.py` reports all six shipped skills `PRESENT` with `UNEXPECTED=0`.
+2. Replay the 5.7.1 walkthrough end to end.
+3. Capture output to `/tmp/tc-phase5-signoff.log`.
+4. Commit the plan/CHANGELOG/docs updates + the sign-off test in one final commit.
+5. Push to origin.
+6. Create annotated tag: `git tag -a phase-5 -m "Phase 5 — BDD generation and traceability complete."`.
+7. Push tag: `git push origin phase-5`.
+
+- **Definition of done.** All seven steps complete. Tag visible on origin (`git ls-remote origin phase-5` resolves). Evidence log captured. Phase 5 is closed.
+
+#### Definition of done — consolidated 15 checks
+
+Eleven automated; four evidence-based.
+
+| # | Check | Type | How |
+| --- | --- | --- | --- |
+| 1 | All seven Phase 5 test files exist | auto | sign-off test |
+| 2 | All three helpers + `traceability_render.py` exist | auto | sign-off test |
+| 3 | All three command files exist (two under `tc-bdd/commands/`, one under `tc-traceability/commands/`) | auto | sign-off test |
+| 4 | All methodology files exist (`bdd-generation.md`, `bdd-quality-review.md`, `traceability.md`) | auto | sign-off test |
+| 5 | All templates exist (`feature-template.feature`, `bdd-summary-template.md`, `bdd-review-template.md`, `traceability-map-template.md`) | auto | sign-off test |
+| 6 | `seeded-bdd/` fixture exists and covers every universal review category | auto | scaffold test |
+| 7 | `verify_skills.py` has `CATALOG["tc-bdd"] == 5` and `CATALOG["tc-traceability"] == 5` and `DEFAULT_PHASE_CAP >= 5`; `make verify` prints all six skills PRESENT with `UNEXPECTED=0` | auto | sign-off test + `make verify` |
+| 8 | Integration smoke `test_phase_5_integration` passes; `product-knowledge/` + `test-ideas/` untouched assertions hold; `/tc:next` advances past `/tc:generate-bdd` | auto | pytest |
+| 9 | Both SKILL.md files describe every shipped command with no deferral wording and parse under strict PyYAML | auto | sign-off test |
+| 10 | Linkage-tag contract: every generated scenario carries a `@req:`/`@cs:` tag resolvable by `traceability_map.py` | auto | generate-bdd + traceability-map tests |
+| 11 | `make verify` chain clean (link checker covers the new docs) | auto | full chain |
+| 12 | Cold-user walkthrough of `generating-bdd.md` from clean state succeeds (5.7.1) | evidence | `/tmp/tc-phase5-walkthrough.log` |
+| 13 | Per-step DoD audit clean for 5.1–5.6 (5.7.2) | evidence | audit notes |
+| 14 | `plan.md` To Do Phase 5 collapsed; Completed has Phase 5 subsection with date (5.7.3); CHANGELOG Phase 5 marked complete | evidence | sign-off test + grep |
+| 15 | `phase-5` annotated tag created and pushed (5.7.6) | evidence | `git tag -l phase-5` + `git ls-remote origin phase-5` |
+
+#### TDD pattern used in 5.2–5.4
+
+```
+write tests (red)             # define expected behavior per dimension from the seeded fixture, including linkage-tag resolution + Scenario-shape recovery
+  → implement helper (green)  # minimum code to pass; mechanical generation/review/mapping only
+    → author methodology + template (umbrella bdd-generation.md lands in 5.2)
+      → author per-command page
+        → update the owning SKILL.md to surface shipped behavior
+          → wire the review sub-mode (5.3 ships _review_features(); 5.2 auto-runs it)
+            → verify (pytest + make verify)
+```
+
+No implementation lands before its tests. Every command's test suite drives the helper from the same seeded fixture so the rubric and the linkage-tag convention are the contract.
+
+#### Validation sequence
+
+1. Author 5.1 (two skill scaffolds + fixture) with the two scaffold tests. Confirm pytest red → green.
+2. Author 5.2 (`/tc:generate-bdd` + umbrella `bdd-generation.md`): tests, helper, methodology, templates, command file, SKILL.md, pytest.
+3. Author 5.3 (`/tc:review-bdd` + the shared `_review_features()`): tests, helper, methodology, template, command file, SKILL.md, pytest.
+4. Author 5.4 (`/tc:traceability-map`): extract `traceability_render.py` first (Phase-2 tests stay green), then tests, helper, methodology, template, command file, SKILL.md, pytest.
+5. 5.5 documentation pass. Run `make verify`.
+6. 5.6 testing finalization: bump `DEFAULT_PHASE_CAP` to 5, integration smoke. Run `make verify`.
+7. 5.7 sign-off, in order: 5.7.1 walkthrough (capture log; fix failures first) → 5.7.2 DoD audit (block on any unmet item) → 5.7.5 write `test_phase_5_signoff.py` (expect red on plan/CHANGELOG edits) → 5.7.3 update `plan.md` + `CHANGELOG.md` (re-run sign-off test → green) → 5.7.4 doc final read-through (`make verify`) → 5.7.6 final DoD eval (commit, push, annotated tag, tag push).
+
+#### Failure modes
+
+- The Gherkin a helper emits is not valid (parser would reject it downstream in Phase 6). **Mitigation:** the seeded `feature-template.feature` is the v1 contract; `test_generate_bdd.py` parses every generated `.feature` and asserts well-formed Feature/Scenario/tag structure before declaring 5.2 done.
+- A generated scenario lacks a resolvable `@req:`/`@cs:` linkage tag, breaking traceability. **Mitigation:** the generator always emits the linkage tags from the enriched test-idea's `req_id`/`cs_id`; `test_traceability_map.py` asserts every scenario in the seeded chain resolves to an existing requirement/candidate; an unresolvable tag is a `untraceable` review finding (5.3).
+- Two writers of `requirements-map.md` (Phase 2 + Phase 5) drift in format. **Mitigation:** the shared `traceability_render.py` module is the single render path; the 5.6 regression test asserts both callers produce identical output for the same links.
+- Phase 5 writes into `product-knowledge/` or `test-ideas/` accidentally. **Mitigation:** the write-boundary design decision forbids it; the 5.6 integration smoke asserts both directories are byte-identical before and after the Phase 5 sweep.
+- `[bdd-review]` gap signals duplicate across re-runs, or are clobbered by an upstream Phase-2 run. **Mitigation:** the `(source-id, question-text)` dedup contract (`source-id: tc-bdd/bdd-review-<area>`) makes re-runs idempotent; the integration smoke runs Phase 2 → 3 → 4 → 5 so the `[bdd-review]` line lands on top of upstream entries (per the Phase 4 Step 4.7 sequencing lesson).
+- `bdd/index.md` rebuild regex fails to match the helper's own output shape. **Mitigation (per the Phase 4 Step 4.4 lesson):** declare the index parser regex with explicit branches for every `.feature`/summary shape the helper produces; document the regex coverage in the helper docstring.
+- The `/tc:next` heuristic skips Phase 6 because Phase 5 wrote to `traceability/`. **Mitigation:** use the robust "advanced past" invariant in the integration test; refine the `next-step-inference.md` R-rules in 5.6 if the assertion is brittle (the Phase 2 Step 2.9 lesson flagged this would eventually need attention).
+- The cold-user walkthrough (5.7.1) surfaces a strict-YAML frontmatter bug in a SKILL.md. **Mitigation:** the 5.1 scaffold tests already assert strict-PyYAML parse on both SKILL.md files, so this should be caught at the unit layer; the walkthrough preamble remains the backstop.
+- `phase-5` tag already exists locally. **Mitigation:** delete and recreate; never force-overwrite an existing tag on origin without explicit user confirmation.
+
+#### Phase 5 — Lessons learned (running)
+
+Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. Each entry is preventative care for future implementers of similar work. (Populated as 5.1–5.7 land.)
 
 ---
 
@@ -2869,11 +3040,13 @@ Phase 3 complete (2026-05-27) — see Completed.
 Phase 4 complete (2026-05-28) — see Completed.
 
 ### Phase 5
-- [ ] Author `/tc:generate-bdd`, `/tc:review-bdd`, `/tc:traceability-map`
-- [ ] Move feature files to `.test-commander/bdd/features/`
-- [ ] Author methodology and templates
-- [ ] Author `docs/user-guide/generating-bdd.md`
-- [ ] Confirm review and test gates green
+- [ ] **5.1** — Scaffold `tc-bdd` + `tc-traceability` skills and the seeded-bdd fixture (enriched test-idea + session summary inputs; `flawed.feature` with one defect per universal review category; strict-PyYAML scaffold assertion on both SKILL.md files from the start)
+- [ ] **5.2** — `/tc:generate-bdd` (TDD) + umbrella `bdd-generation.md` methodology + `feature-template.feature` + summary template; emits Gherkin with `@req:`/`@cs:` linkage tags; declares the `Scenario` dataclass mirroring the enriched-test-idea shape; auto-runs the review sub-mode
+- [ ] **5.3** — `/tc:review-bdd` (TDD) + shared `_review_features()` (same code path 5.2 auto-runs) + `bdd-quality-review.md`; six-category universal rubric; `[bdd-review]` gap signals with the Phase-2 dedup contract
+- [ ] **5.4** — `/tc:traceability-map` (TDD) — extract shared `traceability_render.py` from `requirements_coverage.py` first (Phase-2 tests stay green); rebuild `requirements-map.md` (BDD-scenario column) + `test-map.md` with `pending` downstream links
+- [ ] **5.5** — Documentation pass: author `docs/user-guide/generating-bdd.md`; update command-reference, workspace-reference (bdd/ + traceability/ reconciliation + linkage-tag convention), customizing-for-your-project (Phase 5 tag-namespace schema + three project-shape worked examples), status lines
+- [ ] **5.6** — Testing finalization: bump `DEFAULT_PHASE_CAP` to 5; author `test_phase_5_integration.py` (in-process, Phase 2 → 3 → 4 → 5 order); assert `product-knowledge/` + `test-ideas/` untouched and shared-renderer regression; `/tc:next` advances past `/tc:generate-bdd`
+- [ ] **5.7** — Sign-off (six sub-sub-steps): cold-user walkthrough, per-step DoD audit, plan + CHANGELOG closing, doc final pass, test-first sign-off test, final DoD eval + `phase-5` annotated tag
 
 ### Phase 6
 - [ ] Author `/tc:build-framework` (lazy), `/tc:automation-plan`, `/tc:automate`, `/tc:review-automation`, `/tc:generate-test-data`
