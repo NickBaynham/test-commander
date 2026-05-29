@@ -99,7 +99,7 @@ Runs in order:
 
 ## Commit and sign-off conventions
 
-**Per-sub-step commits.** Each phase sub-step lands as one commit. Subject is the sub-step name, e.g. `Phase 2, Step 2.4: /tc:review-acceptance-criteria helper, methodology, template, command page`. The body is multi-paragraph and descriptive — it documents the deliverables, the TDD trace (RED → GREEN with any bug-fixes that surfaced), the verify-chain output, and the lessons captured. **Always include the `Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>` line** at the end of the commit body — this repo's convention is to attribute Claude's work.
+**Per-sub-step commits.** Each phase sub-step lands as one commit. Subject is the sub-step name, e.g. `Phase 2, Step 2.4: /tc:review-acceptance-criteria helper, methodology, template, command page`. The body is multi-paragraph and descriptive — it documents the deliverables, the TDD trace (RED → GREEN with any bug-fixes that surfaced), the verify-chain output, and the lessons captured. **Always include a `Co-Authored-By: Claude Opus <version> <noreply@anthropic.com>` line** at the end of the commit body — this repo's convention is to attribute Claude's work. Name the model that actually authored the work (currently `Claude Opus 4.8`); match the trailer the recent commits use rather than pinning a stale version.
 
 **Plan-only commits.** When the plan changes without code (decision additions, convention codification, lesson backfill, sub-step expansion), use a `plan:` subject prefix: `plan: backfill Phase 2 lessons learned + new Per-Phase Convention for sub-step lesson capture`.
 
@@ -117,7 +117,7 @@ Phase N, Step N.M: <subject>
 
 <paragraph 4: lessons captured>
 
-Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 EOF
 )"
 ```
