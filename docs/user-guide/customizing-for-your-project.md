@@ -482,9 +482,83 @@ keeps the default rather than corrupting the score — check the generated
 The seven factor **names**, the rank thresholds (`>= 8` automate, `>= 5`
 consider), and the two hard overrides (`@automated-candidate` always automate,
 `@manual` always manual) are not tunable — they are the rubric contract. Only the
-per-factor weights are project-tunable. (Phase 6's later sub-steps add more
-surfaces; Step 6.7's documentation pass expands this section with the full Phase 6
-schema and three project-shape worked examples.)
+per-factor weights are project-tunable.
+
+`tc-automate.suitability.weights` is the **only** `config.yaml` surface Phase 6
+adds. The other two Phase 6 inputs are not `config.yaml` keys:
+
+- **`PLAYWRIGHT_BASE_URL`** (environment variable) — the target the generated
+  `playwright.config.ts` points at. It is a runtime value, not a workspace
+  setting, so it lives in the environment, never in `config.yaml`.
+- **The `test-data/` seed shape** — universal and fixed; a project fills in real
+  field values by hand-editing the generated `seed/<area>.json` (preserved if
+  marker-less) or adding a Python factory under `test-data/factories/`, not via
+  `config.yaml`.
+
+#### Worked examples by project shape
+
+The suitability weights tune differently depending on what a project optimizes
+for. Three materially-different shapes:
+
+- **Web app prioritizing smoke coverage.** A team that wants its critical-path
+  smoke scenarios automated first raises `regression-value` so `@smoke`-tagged
+  scenarios outrank everything else.
+
+  ```yaml
+  tc-automate:
+    suitability:
+      weights:
+        regression-value: 4
+  ```
+
+- **Risk-driven / compliance project.** A team that automates by risk class
+  first raises `risk-flagged`, so a `@risk:high` scenario is promoted ahead of
+  lower-risk but otherwise-strong candidates.
+
+  ```yaml
+  tc-automate:
+    suitability:
+      weights:
+        risk-flagged: 4
+  ```
+
+- **Large suite favoring stable, data-driven specs.** A team drowning in flaky
+  candidates de-emphasizes traceability (everything is traceable anyway) and
+  rewards stability, so `right-sized` and `data-ready` scenarios rank higher.
+
+  ```yaml
+  tc-automate:
+    suitability:
+      weights:
+        traceable: 1
+        right-sized: 3
+        data-ready: 3
+  ```
+
+Each shape changes which scenarios cross the `>= 8` automate threshold; the
+threshold and factor names themselves stay fixed. Confirm the effect in the
+generated `automation-plan/<area>.md` table.
+
+#### Phase 6 — what landed
+
+- **Universal cores.** `/tc:build-framework` ships a universal Playwright config
+  (target via `PLAYWRIGHT_BASE_URL`) and four `.ts` object templates.
+  `/tc:automation-plan` ships the seven-factor rubric with fixed names,
+  thresholds, and hard overrides. `/tc:automate` ships the provenance + fixture
+  conventions; `/tc:review-automation` ships the six-category review rubric;
+  `/tc:generate-test-data` ships the universal seed shape.
+- **Schema keys.** `tc-automate.suitability.weights` (mapping of the seven factor
+  names to integer weights) — the only `config.yaml` surface. Unknown names are
+  ignored (a typo keeps the default, never corrupts the score).
+- **Not tunable.** The rubric factor names, thresholds, and overrides; the six
+  review categories; the framework layout; the seed shape. The target URL is an
+  env var, not a config key.
+- **Tests that would fail if the helper ignored the weights.**
+  `tests/test_automation_plan.py::test_config_weights_change_ranking` writes a
+  borderline non-candidate scenario and asserts boosting `traceable` flips it
+  from `consider` to `automate`; if the helper ignored
+  `tc-automate.suitability.weights`, the rank would not change and the assertion
+  would fail.
 
 ## Hook 2: project documents under `documents/uploaded/`
 

@@ -14,6 +14,10 @@ This README documents the plugin's contents. For the project overview, architect
 | `tc-explore` | Phase 4 shipped | Owns `/tc:create-charter`, `/tc:explore` (with the internal exploration-review sub-mode), `/tc:session-summary`, `/tc:test-ideas`. |
 | `tc-bdd` | Phase 5 shipped | Owns `/tc:generate-bdd` (with the internal review sub-mode) and `/tc:review-bdd`. |
 | `tc-traceability` | Phase 5 shipped | Owns `/tc:traceability-map`. |
+| `tc-build-framework` | Phase 6 shipped | Owns `/tc:build-framework` (the lazy Playwright framework). |
+| `tc-automation-plan` | Phase 6 shipped | Owns `/tc:automation-plan` (the seven-factor suitability rubric). |
+| `tc-automate` | Phase 6 shipped | Owns `/tc:automate` (with the internal automation-review sub-mode) and `/tc:review-automation`. |
+| `tc-test-data` | Phase 6 shipped | Owns `/tc:generate-test-data`. |
 
 ## What arrives later
 
@@ -21,7 +25,6 @@ Each Test Commander skill is created by the phase that needs it. Until that phas
 
 | Skill | Phase | Owns |
 | --- | --- | --- |
-| `tc-build-framework`, `tc-automation-plan`, `tc-automate`, `tc-test-data` | 6 | Playwright framework and strategic automation |
 | `tc-run`, `tc-quality-report`, `tc-evidence` | 7 | Execution, evidence, quality report |
 | `tc-learning` | 8 | Governed continuous learning |
 | `tc-visualize` | 9 | Mermaid diagrams and infographics |

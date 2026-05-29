@@ -2,8 +2,8 @@
 
 Generate Playwright/TypeScript page objects, per-area fixtures, and specs for
 `automate`-ranked BDD scenarios, each carrying `@req:`/`@cs:` provenance and
-reaching test data only through a fixture. Writes the automation map. Generation
-only - the review sub-mode is wired in Step 6.5.
+reaching test data only through a fixture. Writes the automation map, then
+auto-runs the automation review (suppressible with `--no-review`).
 
 ## Inputs
 
@@ -50,9 +50,12 @@ Deterministic: scenarios sort by `cs` then name; overwrite mode for specs and
 fixtures; the page object's user-edits region is carried forward, so a re-run
 with no edits is byte-identical.
 
-Generation only: no review runs here. The generated TypeScript is authored to
-pass the Step 6.5 rubric; Step 6.5 adds `/tc:review-automation` and wires it as
-an auto-run at the end of this command (with `--no-review` to suppress).
+After writing the automation map, this command auto-runs the shared
+`review_automation()` (the same engine `/tc:review-automation` uses), updating
+the review summary and routing findings to `requirements/open-questions.md`.
+Pass `--no-review` to suppress the auto-run. The generated TypeScript is authored
+to pass the review rubric (provenance, fixture-mediated data, a real assertion,
+role-based locators, no hardcoded waits).
 
 ## Safety
 

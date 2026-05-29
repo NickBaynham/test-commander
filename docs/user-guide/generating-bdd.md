@@ -173,7 +173,7 @@ Phase 5 ships universal tag classes and a universal review rubric. Projects pick
 
 ## Beyond Phase 5
 
-Phase 6 builds the Playwright framework on demand and turns `@automated-candidate` scenarios into automated tests, filling the `Automated test` column of `test-map.md`. Phase 7 runs them and fills `Test result` and `Quality report`.
+Phase 6 builds the Playwright framework on demand and turns `@automated-candidate` scenarios into automated tests, filling the `Automated test` column of `test-map.md` — see [automation.md](automation.md) for the Phase 6 walkthrough. Phase 7 runs them and fills `Test result` and `Quality report`.
 
 ## See also
 

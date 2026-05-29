@@ -64,17 +64,26 @@ For the methodology behind each helper, see [exploratory-testing.md](../plugins/
 
 For the methodology behind each helper, see [bdd-generation.md](../plugins/test-commander/skills/tc-bdd/methodology/bdd-generation.md) (umbrella) plus [bdd-quality-review.md](../plugins/test-commander/skills/tc-bdd/methodology/bdd-quality-review.md) and [traceability.md](../plugins/test-commander/skills/tc-traceability/methodology/traceability.md). End-to-end walkthrough: [user-guide/generating-bdd.md](user-guide/generating-bdd.md).
 
+## Phase 6 commands (shipped)
+
+| Command | Skill | Per-command page |
+| --- | --- | --- |
+| `/tc:build-framework` | `tc-build-framework` | [build-framework.md](../plugins/test-commander/skills/tc-build-framework/commands/build-framework.md) |
+| `/tc:automation-plan` | `tc-automation-plan` | [automation-plan.md](../plugins/test-commander/skills/tc-automation-plan/commands/automation-plan.md) |
+| `/tc:automate` | `tc-automate` | [automate.md](../plugins/test-commander/skills/tc-automate/commands/automate.md) |
+| `/tc:review-automation` | `tc-automate` | [review-automation.md](../plugins/test-commander/skills/tc-automate/commands/review-automation.md) |
+| `/tc:generate-test-data` | `tc-test-data` | [generate-test-data.md](../plugins/test-commander/skills/tc-test-data/commands/generate-test-data.md) |
+
+`/tc:build-framework` scaffolds the project-root Playwright/TypeScript framework lazily (Decision D8) — the `tests/{e2e,pages,components,fixtures,utils}/` tree plus `playwright.config.ts` and `package.json`, created only when absent. `/tc:automation-plan` scores every BDD scenario against the universal seven-factor suitability rubric (`traceable`, `regression-value`, `risk-flagged`, `deterministic`, `right-sized`, `data-ready`, `persona-scoped`) and writes `automation-plan/<area>.md` ranking each `automate` / `consider` / `manual`. `/tc:automate` renders page objects, per-area fixtures, and specs for `automate`-ranked scenarios — each `test()` carrying a `// @req:`/`@cs:` provenance comment and reaching data only through its fixture — writes `traceability/automation-map.md`, and auto-runs the review (suppressible with `--no-review`). `/tc:review-automation` runs the six-category universal rubric (`inline-test-data`, `hardcoded-wait`, `missing-provenance`, `weak-locator`, `untraceable-spec`, `assertion-free`), writes `automation-plan/review-summary.md`, and routes failures to `requirements/open-questions.md` as deduplicated `[automation-review]` signals; it shares one `review_automation()` implementation with the auto-run. `/tc:generate-test-data` populates `test-data/seed/<area>.json` and `test-data/scenarios/<area>.md` so the generated fixtures reach data through a file, never inline (Decision D6).
+
+The Phase 6 commands generate and structurally validate TypeScript — they never invoke `tsc` or `npx playwright test` (execution is Phase 7's `/tc:run`). For the methodology, see [playwright-standards.md](../plugins/test-commander/skills/tc-build-framework/methodology/playwright-standards.md), [automation-suitability.md](../plugins/test-commander/skills/tc-automation-plan/methodology/automation-suitability.md), [automation-generation.md](../plugins/test-commander/skills/tc-automate/methodology/automation-generation.md), and [test-data-strategy.md](../plugins/test-commander/skills/tc-test-data/methodology/test-data-strategy.md). End-to-end walkthrough: [user-guide/automation.md](user-guide/automation.md).
+
 ## Planned commands (not yet implemented)
 
 These will gain per-command pages as their phases ship.
 
 | Command | Skill | Phase |
 | --- | --- | --- |
-| `/tc:build-framework` | `tc-build-framework` | 6 |
-| `/tc:automation-plan` | `tc-automation-plan` | 6 |
-| `/tc:automate` | `tc-automate` | 6 |
-| `/tc:review-automation` | `tc-automate` | 6 |
-| `/tc:generate-test-data` | `tc-test-data` | 6 |
 | `/tc:run` | `tc-run` | 7 |
 | `/tc:analyze-results` | `tc-run` | 7 |
 | `/tc:report` | `tc-quality-report` | 7 |

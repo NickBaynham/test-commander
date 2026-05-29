@@ -27,7 +27,7 @@ a resolvable `@req:`/`@cs:` linkage, renders three artifacts per `@area:`:
 
 Every generated `test()` carries the `// @req: @cs:` comment linking it back to
 its requirement and candidate scenario. This is what lets `/tc:traceability-map`
-resolve the `Automated test` column and what the Step 6.5 review enforces
+resolve the `Automated test` column and what the automation review enforces
 (`missing-provenance`, `untraceable-spec`). A generated test without provenance
 is a defect.
 
@@ -60,11 +60,13 @@ only seeded it). It never writes `bdd/` (Phase 5) or `product-knowledge/`
 
 ## Generation, then review
 
-Step 6.4 ships generation only; the generated TypeScript is authored to pass the
-Step 6.5 review rubric (provenance present, data via a fixture, a real
-assertion, role-based locators, no hardcoded waits). Step 6.5 adds
-`/tc:review-automation` and wires it as an auto-run at the end of `/tc:automate`
-(suppressible with `--no-review`).
+`/tc:automate` auto-runs the automation review after writing the map: the
+generated TypeScript is authored to pass the review rubric (provenance present,
+data via a fixture, a real assertion, role-based locators, no hardcoded waits),
+and the shared `review_automation()` confirms it. Pass `--no-review` to suppress
+the auto-run (for example, when generating in bulk and reviewing once at the
+end); the standalone `/tc:review-automation` runs the same engine. See the
+[automation review methodology](automation-review.md).
 
 ## The Claude judgment layer
 
