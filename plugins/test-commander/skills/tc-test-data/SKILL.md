@@ -11,17 +11,25 @@ Each command is implemented as a Python helper script bundled inside the plugin 
 
 ## Status
 
-Phase 6 scaffold (Step 6.1). The command is registered but its behavior is not yet shipped:
+Phase 6 (Step 6.6). The command is end-to-end runnable:
 
-- `/tc:generate-test-data` — behavior arrives in Step 6.6. It will populate `<workspace>/test-data/{seed,scenarios,factories}/` from the BDD scenarios and product-knowledge entities (Markdown specs plus YAML manifests plus JSON fixtures per Open Question Q11; Python factories only where declarative is insufficient), overwriting generated data and preserving user-authored data.
-
-When Step 6.6 lands, this SKILL.md is updated to describe the shipped behavior and the deferral wording above is removed.
+- `/tc:generate-test-data` — **shipped (Step 6.6).** Populates `<workspace>/test-data/seed/<area>.json` and `test-data/scenarios/<area>.md` from the BDD scenarios so the per-area fixture `/tc:automate` generates reaches its data through a file (D6).
 
 ## Commands
 
 ### `/tc:generate-test-data`
 
-Populates the workspace test-data tree from BDD scenarios and product-knowledge entities, reached via fixtures. Full behavior is documented in the per-command page once Step 6.6 ships the helper.
+Scans `<workspace>/bdd/features/*.feature` and, per `@area:`, writes `test-data/seed/<area>.json` (the JSON fixture the generated per-area fixture loads — one record per `@cs:` candidate) and `test-data/scenarios/<area>.md` (a Markdown spec of each scenario's declarative data requirement). Per Open Question Q11, declarative formats (JSON fixtures + Markdown specs) cover the universal case; hand-authored Python factories under `test-data/factories/` are the exception and are never written here. Overwrite mode for generated files (those carrying the generated marker); **skip-not-overwrite** for user-authored files (no marker), so hand-tuned data survives. Deterministic (byte-identical re-run). The shipped seed shape is universal (D19): generic records keyed by candidate id; Claude fleshes out realistic field values from `product-knowledge/`. This closes the D6 loop — the fixture's `test-data/seed/<area>.json` reference resolves to a real file, so no data is inlined in the spec.
+
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/generate_test_data.py <project-root>
+```
+
+`<project-root>` defaults to the current working directory. Refuses uninitialized workspaces (exit 2) and the absence of any `.feature` file (exit 2; the precondition error directs the user at `/tc:generate-bdd`).
+
+Full spec: [commands/generate-test-data.md](commands/generate-test-data.md). Methodology: [methodology/test-data-strategy.md](methodology/test-data-strategy.md).
 
 ## See also
 

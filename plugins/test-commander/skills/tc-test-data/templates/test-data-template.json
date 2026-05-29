@@ -1,0 +1,11 @@
+{
+  "_generated_by": "/tc:generate-test-data",
+  "area": "<area>",
+  "records": {
+    "CS-NNN-NNN": {
+      "id": "CS-NNN-NNN",
+      "requirement": "REQ-NNN",
+      "label": "<scenario title>"
+    }
+  }
+}
