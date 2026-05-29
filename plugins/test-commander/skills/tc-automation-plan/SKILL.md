@@ -11,17 +11,25 @@ Each command is implemented as a Python helper script bundled inside the plugin 
 
 ## Status
 
-Phase 6 scaffold (Step 6.1). The command is registered but its behavior is not yet shipped:
+Phase 6 (Step 6.3). The command is end-to-end runnable:
 
-- `/tc:automation-plan` — behavior arrives in Step 6.3. It will scan `<workspace>/bdd/features/*.feature`, score each scenario against the seven-factor rubric (mechanical signals plus a Claude judgment layer), and write `<workspace>/automation-plan/<area>.md` ranking scenarios `automate` / `consider` / `manual`. Scenarios tagged `@automated-candidate` are always `automate`. Suitability weights are tunable under `tc-automate.suitability.weights` in `<workspace>/config.yaml`.
-
-When Step 6.3 lands, this SKILL.md is updated to describe the shipped behavior and the deferral wording above is removed.
+- `/tc:automation-plan` — **shipped (Step 6.3).** Scans `<workspace>/bdd/features/*.feature`, scores each scenario against the seven-factor rubric, and writes `<workspace>/automation-plan/<area>.md` ranking scenarios `automate` / `consider` / `manual`.
 
 ## Commands
 
 ### `/tc:automation-plan`
 
-Scores and ranks BDD scenarios for automation suitability and writes a per-area plan. Full behavior is documented in the per-command page once Step 6.3 ships the helper.
+Scans `<workspace>/bdd/features/*.feature` and scores each scenario against a universal seven-factor suitability rubric (`traceable`, `regression-value`, `risk-flagged`, `deterministic`, `right-sized`, `data-ready`, `persona-scoped`), then writes `<workspace>/automation-plan/<area>.md` ranking every scenario `automate` / `consider` / `manual` with its per-factor scores and a recommended order. Two hard overrides bypass the score: `@automated-candidate` always ranks `automate`; `@manual` always ranks `manual`. Deterministic (byte-identical re-run). The mechanical score is a first pass — Claude then reviews the plan against `product-knowledge/` and may promote or hold back a scenario with a note (the judgment layer). Suitability weights are tunable under `tc-automate.suitability.weights` in `<workspace>/config.yaml`.
+
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/automation_plan.py <project-root>
+```
+
+`<project-root>` defaults to the current working directory. Refuses uninitialized workspaces (exit 2); the absence of any `.feature` file is not an error (it reports "no scenarios to plan" and exits 0, directing the user at `/tc:generate-bdd`).
+
+Full spec: [commands/automation-plan.md](commands/automation-plan.md). Methodology: [methodology/automation-suitability.md](methodology/automation-suitability.md).
 
 ## See also
 

@@ -454,6 +454,38 @@ shape tunes `ui-words`.
   `config.yaml` extensions, the union assertion would fail with "tag not
   present".
 
+### Phase 6 schema (`tc-automate`)
+
+Phase 6 ships the automation skills. The first configurable surface, shipped
+with `/tc:automation-plan` in Step 6.3, lets a project re-weight the seven-factor
+automation-suitability rubric:
+
+```yaml
+tc-automate:
+  suitability:
+    weights:
+      # Only these seven factor names are recognized; an omitted or unknown
+      # name keeps its default weight. Defaults: traceable 3, regression-value 2,
+      # risk-flagged 2, deterministic 2, right-sized 1, data-ready 1,
+      # persona-scoped 1.
+      risk-flagged: 4
+```
+
+**Worked example — a project that automates by risk first.** The default rubric
+weights `traceable` highest (3). A team whose priority is "automate the riskiest
+behavior before anything else" raises `risk-flagged` to 4, so a `@risk:high`
+scenario that scores `consider` under the defaults is promoted to `automate`.
+Because the factor names are fixed and unknown names are ignored, a typo silently
+keeps the default rather than corrupting the score — check the generated
+`automation-plan/<area>.md` table to confirm the new weighting took effect.
+
+The seven factor **names**, the rank thresholds (`>= 8` automate, `>= 5`
+consider), and the two hard overrides (`@automated-candidate` always automate,
+`@manual` always manual) are not tunable — they are the rubric contract. Only the
+per-factor weights are project-tunable. (Phase 6's later sub-steps add more
+surfaces; Step 6.7's documentation pass expands this section with the full Phase 6
+schema and three project-shape worked examples.)
+
 ## Hook 2: project documents under `documents/uploaded/`
 
 The Phase 2 helpers read every Markdown file in `.test-commander/documents/uploaded/` that matches their convention — `REQ-\d+` markers for requirements, `US-\d+` for stories, `AC-\d+` for acceptance criteria. Drop your real product requirements there as Markdown files. No tool configuration is needed; the helpers find and parse them.
