@@ -11,7 +11,7 @@ Each command is implemented as a Python helper script bundled inside the plugin 
 
 ## Status
 
-Phase 5 in progress. Both `tc-bdd` commands are end-to-end runnable:
+Phase 5 complete (2026-05-29). Both `tc-bdd` commands are end-to-end runnable:
 
 - `/tc:generate-bdd` — **shipped (Step 5.2).** Auto-runs the internal BDD review sub-mode at the end of generation (suppressible with `--no-review`).
 - `/tc:review-bdd` — **shipped (Step 5.3).** Standalone, re-runnable review of already-written `.feature` files; shares one implementation (`review_features()`) with the generate-time review sub-mode.

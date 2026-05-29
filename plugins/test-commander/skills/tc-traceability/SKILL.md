@@ -11,7 +11,7 @@ The command is implemented as a Python helper script bundled inside the plugin (
 
 ## Status
 
-Phase 5 in progress. The command is end-to-end runnable:
+Phase 5 complete (2026-05-29). The command is end-to-end runnable:
 
 - `/tc:traceability-map` — **shipped (Step 5.4).**
 
