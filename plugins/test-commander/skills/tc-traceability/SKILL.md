@@ -11,17 +11,27 @@ The command is implemented as a Python helper script bundled inside the plugin (
 
 ## Status
 
-Phase 5 in progress. The command ships in Step 5.4:
+Phase 5 in progress. The command is end-to-end runnable:
 
-- `/tc:traceability-map` — behavior ships in Step 5.4.
+- `/tc:traceability-map` — **shipped (Step 5.4).**
 
 ## Commands
 
 ### `/tc:traceability-map`
 
-Behavior arrives in Step 5.4. Will scan `<workspace>/requirements/` (the requirement inventory), `<workspace>/test-ideas/` (Phase-4-enriched seeds), and `<workspace>/bdd/features/*.feature` (parsing the `@req:`/`@cs:` linkage tags), then rebuild `<workspace>/traceability/requirements-map.md` (enriched with a BDD-scenario column) and write `<workspace>/traceability/test-map.md` (test idea to BDD scenario, with downstream links reported `pending`). It is the authoritative regenerator of those two maps from Phase 5 onward; the Phase-2 `requirements_coverage.py` write is reconciled via a shared render module so both callers produce byte-identical output. Downstream chain links (Automated Test, Test Result, Quality Report) render `pending` and are never invented.
+Scans `<workspace>/requirements/` (the requirement inventory), `<workspace>/test-ideas/` (Phase-4-enriched seeds), and `<workspace>/bdd/features/*.feature` (parsing the `@req:`/`@cs:` linkage tags `/tc:generate-bdd` emits), then rebuilds two maps under `<workspace>/traceability/`. `requirements-map.md` is the shared 4-column requirement-to-downstream view (REQ-ID / Test ideas / BDD features / Automation) rendered by the same `traceability_render.render_requirements_map` `/tc:requirements-coverage` uses — byte-identical whichever command wrote it, so there is no format drift. `test-map.md` is the new scenario-level chain (Requirement → Test idea (CS) → BDD scenario → Automated test → Test result → Quality report); the three downstream columns render `pending` and are never invented. From Phase 5 onward this command is the authoritative writer of both maps; the Phase-2 `/tc:requirements-coverage` write is a compatible interim seed. Overwrite mode, byte-deterministic. Reuses the Phase-2 `requirements_coverage` scanners and `review_bdd.parse_feature_file` for DRY.
 
-The full traceability chain is: Requirement to Test Idea to BDD Scenario to Automation Candidate to Automated Test to Test Result to Quality Report. Phase 5 populates the first three links.
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/traceability_map.py <project-root>
+```
+
+`<project-root>` defaults to the current working directory. Refuses uninitialized workspaces (exit 2) and a missing/ungenerated requirements inventory (exit 2; the precondition error directs the user at `/tc:review-requirements`). No `.feature` files is not an error — the requirements map still lists every requirement and the test map carries the empty-note.
+
+The full traceability chain is: Requirement → Test Idea → BDD Scenario → Automation Candidate → Automated Test → Test Result → Quality Report. Phase 5 populates the first three links.
+
+Full spec: [commands/traceability-map.md](commands/traceability-map.md). Methodology: [methodology/traceability.md](methodology/traceability.md).
 
 ## Finding the helper
 
