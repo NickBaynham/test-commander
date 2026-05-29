@@ -1,7 +1,7 @@
 # Phase 6 — Playwright Framework and Strategic Automation (implementation summary)
 
-Status: implementation complete (sub-steps 6.1–6.8); sign-off (6.9) and the
-annotated `phase-6` tag pending. Four skills shipped — `tc-build-framework`,
+Status: complete 2026-05-29, tagged `phase-6` on origin. Four skills shipped —
+`tc-build-framework`,
 `tc-automation-plan`, `tc-automate`, `tc-test-data` — adding five commands and
 the project's **first executable artifacts** (generated Playwright/TypeScript).
 This document summarizes what Phase 6 delivered, the user-facing capabilities it
@@ -177,9 +177,10 @@ automation-plan glob mistook the placeholder for a real plan); and the 6.8
 discovery that the `test-map` `Automated test` resolution was not yet wired —
 the integration test landed RED on exactly that and drove the fix.
 
-## Quality state at Phase 6 implementation close (pre-sign-off)
+## Quality state at Phase 6 close
 
-- 600 tests passing; `ruff` clean; `check_links.py` clean across 192 files.
+- 622 tests passing (the 22 sign-off tests included); `ruff` clean;
+  `check_links.py` clean across 193 files.
 - `verify_skills.py` reports all ten shipped skills `PRESENT`
   (`tc-core`, `tc-requirements`, `tc-knowledge`, `tc-explore`, `tc-bdd`,
   `tc-traceability`, `tc-build-framework`, `tc-automation-plan`, `tc-automate`,
@@ -187,11 +188,8 @@ the integration test landed RED on exactly that and drove the fix.
 - All four Phase 6 `SKILL.md` files describe every shipped command with no
   deferral wording.
 
-## What comes next (Phase 6.9, then Phase 7)
+## What comes next (Phase 7)
 
-Step 6.9 is the sign-off: a cold-user walkthrough from a clean `make install`,
-the per-step DoD audit, the plan + CHANGELOG closing (flip the status to "Phase 6
-complete"), the test-first `test_phase_6_signoff.py`, and the annotated `phase-6`
-tag. Then Phase 7 (`tc-run`, `tc-quality-report`, `tc-evidence`) executes the
-generated suite, captures evidence, and fills the `Test result` and `Quality
-report` columns of `test-map.md` that Phase 6 left `pending`.
+Phase 7 (`tc-run`, `tc-quality-report`, `tc-evidence`) executes the generated
+suite, captures evidence, and fills the `Test result` and `Quality report`
+columns of `test-map.md` that Phase 6 left `pending`.
