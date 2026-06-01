@@ -560,6 +560,91 @@ generated `automation-plan/<area>.md` table.
   `tc-automate.suitability.weights`, the rank would not change and the assertion
   would fail.
 
+### Phase 7 schema (`tc-quality-report`)
+
+Phase 7 ships execution, evidence, and reporting. Its one `config.yaml` surface
+is the quality-gate thresholds — the bar a release must clear. The run modes,
+the evidence policy, the triage rubric, the report section catalog, and the gate
+*criteria* are universal; only the gate *thresholds* are project-tuned, under
+`tc-quality-report.gate.thresholds`:
+
+| Key | Default | Meaning | Breach |
+| --- | --- | --- | --- |
+| `min-pass-rate` | `1.0` | minimum `passed / total` of the latest run | FAIL |
+| `max-failed` | `0` | maximum failing tests | FAIL |
+| `max-flaky` | `0` | maximum flaky (pass-on-retry) tests | WARN |
+| `max-open-questions` | `0` | maximum unresolved open questions | WARN |
+
+Any unset key keeps its default; unknown keys and unparseable values are ignored
+(the gate falls back to the default for that criterion). The verdict is the worst
+per-criterion verdict (`PASS < WARN < FAIL`); the CLI exits `1` on FAIL so CI can
+branch on it. Tune by project maturity and risk tolerance — vary the *bar*, not
+the universal criteria.
+
+#### Worked example — a regulated platform (zero-tolerance gate)
+
+A safety- or compliance-critical project ships nothing with a known failure and
+treats flakiness as a defect:
+
+```yaml
+tc-quality-report:
+  gate:
+    thresholds:
+      min-pass-rate: 1.0       # 100% of the suite must pass
+      max-failed: 0            # no failing tests
+      max-flaky: 0             # no flaky tests (a flake is a defect)
+      max-open-questions: 0    # every open question resolved before release
+```
+
+#### Worked example — an early-stage product (pragmatic gate)
+
+A fast-moving product tolerates a small transient-failure margin and a few
+known-flaky tests, but still blocks on hard failures:
+
+```yaml
+tc-quality-report:
+  gate:
+    thresholds:
+      min-pass-rate: 0.95      # allow a 5% transient margin
+      max-failed: 0            # but never ship a hard failure
+      max-flaky: 5             # tolerate a few known flakies (WARN above)
+      max-open-questions: 25   # WARN above 25 unresolved questions
+```
+
+#### Worked example — an internal tool (advisory gate)
+
+An internal dashboard wants the gate as a signal, not a blocker, so the soft
+criteria warn generously while the hard floor stays meaningful:
+
+```yaml
+tc-quality-report:
+  gate:
+    thresholds:
+      min-pass-rate: 0.80      # a low but non-trivial floor
+      max-failed: 2            # a couple of known failures are acceptable
+      max-flaky: 50            # effectively advisory
+      max-open-questions: 100  # effectively advisory
+```
+
+#### Phase 7 — what landed
+
+- **Universal cores.** `/tc:run` ships the run modes and the result schema;
+  `/tc:analyze-results` ships the four-category triage rubric; the `tc-evidence`
+  indexer ships the commit-versus-ignore evidence policy; `/tc:report` ships the
+  fifteen-section catalog and the `[fact]`/`[interpretation]`/`[review]`
+  separation; `/tc:quality-gate` ships the four gate criteria.
+- **Schema keys.** `tc-quality-report.gate.thresholds` (`min-pass-rate`,
+  `max-failed`, `max-flaky`, `max-open-questions`) — the only `config.yaml`
+  surface. Unknown keys are ignored (a typo keeps the default).
+- **Not tunable.** The run modes, the result schema, the triage categories, the
+  evidence policy, the report section catalog, and the gate *criteria*. The
+  Playwright target is the `PLAYWRIGHT_BASE_URL` env var, not a config key.
+- **Tests that would fail if the helper ignored the thresholds.**
+  `tests/test_quality_gate.py::test_loose_thresholds_pass` and
+  `::test_flaky_only_warns` write a `tc-quality-report.gate.thresholds` block and
+  assert the verdict flips (FAIL → PASS, and FAIL → WARN); if the helper ignored
+  the config, the verdict would stay FAIL and both assertions would fail.
+
 ## Hook 2: project documents under `documents/uploaded/`
 
 The Phase 2 helpers read every Markdown file in `.test-commander/documents/uploaded/` that matches their convention — `REQ-\d+` markers for requirements, `US-\d+` for stories, `AC-\d+` for acceptance criteria. Drop your real product requirements there as Markdown files. No tool configuration is needed; the helpers find and parse them.

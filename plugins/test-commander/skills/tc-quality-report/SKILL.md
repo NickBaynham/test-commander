@@ -11,12 +11,10 @@ Each command is implemented as a Python helper script bundled inside the plugin 
 
 ## Status
 
-Phase 7 (Step 7.5). `/tc:report` is end-to-end runnable; `/tc:quality-gate` is registered but not yet shipped:
+Phase 7 (Step 7.6). Both commands are end-to-end runnable:
 
 - `/tc:report` — **shipped (Step 7.5).** Aggregates the workspace into `<workspace>/quality-report/current-quality-report.md` with all fifteen spec'd sections (keeping `[fact]` / `[interpretation]` / `[review]` content separated), snapshots a byte-identical full copy to `quality-report/history/<YYYY-MM-DD-HHmm>.md` (kept forever; filename from an injected clock for determinism), and rebuilds the traceability maps so the `Test result` and `Quality report` columns of `traceability/test-map.md` resolve from `pending`.
-- `/tc:quality-gate` — behavior arrives in Step 7.6. It will evaluate the report and latest run against project-defined thresholds (`tc-quality-report.gate.thresholds`) and return PASS / WARN / FAIL with a per-criterion breakdown, reading only measured values (never inventing metrics).
-
-When Step 7.6 lands, this SKILL.md is updated to describe the shipped `/tc:quality-gate` behavior and the deferral wording above is removed.
+- `/tc:quality-gate` — **shipped (Step 7.6).** Evaluates the latest run and the quality report against project-defined thresholds (`tc-quality-report.gate.thresholds`) and returns PASS / WARN / FAIL with a per-criterion breakdown (pass rate, failed tests, flaky tests, open questions), reading only measured values. Writes `quality-report/quality-gate.md`; the CLI exits `1` on FAIL so CI can branch on it.
 
 ## Commands
 
@@ -36,7 +34,17 @@ Full spec: [commands/report.md](commands/report.md). Methodology: [methodology/q
 
 ### `/tc:quality-gate`
 
-Evaluates release readiness against project-defined thresholds and returns PASS / WARN / FAIL. Full behavior is documented in the per-command page once Step 7.6 ships the helper.
+Evaluates the latest run and the quality report against four criteria — pass rate and failed tests (hard; breach → FAIL), flaky tests and open questions (soft; breach → WARN) — and returns the worst per-criterion verdict (`PASS < WARN < FAIL`). Reads only measured values (with no run record, pass rate reads `n/a` and passes vacuously). Writes the verdict and breakdown to `<workspace>/quality-report/quality-gate.md`. Thresholds are project-tunable via `tc-quality-report.gate.thresholds` (defaults: `min-pass-rate` 1.0, `max-failed` 0, `max-flaky` 0, `max-open-questions` 0). Deterministic (no clock).
+
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/quality_gate.py <project-root>
+```
+
+`<project-root>` defaults to the current working directory. Refuses uninitialized workspaces (exit 2) and the absence of a generated quality report (exit 2; the precondition error directs the user at `/tc:report`). The CLI exits `0` for PASS/WARN and `1` for FAIL, so CI can branch on the gate.
+
+Full spec: [commands/quality-gate.md](commands/quality-gate.md). Methodology: [methodology/quality-gates.md](methodology/quality-gates.md).
 
 ## See also
 
