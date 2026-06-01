@@ -2756,6 +2756,102 @@ Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Conventio
 
 - Run + report + gate work end-to-end, history snapshots commit cleanly, evidence policy enforced, user guides complete.
 
+### Phase 7 — Execution outline
+
+Nine sub-steps. TDD throughout: every implementation step lands its tests red before turning them green. 7.1 scaffolds the three skills + the seeded-results fixture; 7.2 ships `/tc:run` (the project's **first real test execution**); 7.3 ships the `tc-evidence` indexer and wires it into run; 7.4–7.6 implement `/tc:analyze-results`, `/tc:report`, `/tc:quality-gate`; 7.7 is the documentation pass; 7.8 is the testing finalization (cap bump + integration smoke + the `test-map` downstream-column resolution); 7.9 is the sign-off with a `phase-7` tag.
+
+**Three disciplines Phase 7 introduces (read before 7.1).**
+
+- **Hermetic pytest is preserved even though the artifacts now run.** `/tc:run` shells out to `npx playwright test` (and the `postman` CLI for the API path) in real use, but the pytest suite must stay browser-free. Mirror the Phase 3 Step 3.5 / Phase 4 Step 4.7 pattern: the real subprocess invocation is **refused under pytest** via the `PYTEST_CURRENT_TEST` env-var guard, and every test exercises the result-ingestion / report-building logic against a **recorded Playwright JSON report** fixture — never a live browser. The "no executable runtime in tests" property holds.
+- **Injected-clock determinism.** Run IDs (`runs/<RUN-ID>/`) and report/history-snapshot filenames carry a timestamp, which breaks the byte-determinism every prior phase relied on. Resolution: the helpers take an **injected `now`** (a `--now` flag / parameter); tests pass a fixed timestamp so generated artifacts are byte-stable. Production reads the wall clock. Document the contract in each helper's docstring; do not call `datetime.now()` inline.
+- **Evidence policy (Q5/Q3/Q10).** Screenshots are committed (`evidence/screenshots/`); videos and traces are git-ignored by default with a documented `git-lfs` opt-in; JSON/HTML reports are committed and referenced from the quality report. History snapshots are full copies (Q3), kept forever in git (Q10). The policy is config-tunable and enforced by the `tc-evidence` indexer, not by the test author's discipline.
+
+#### 7.1 — Skill scaffolds (three skills) and seeded-results fixture
+
+- **Deliverables.** `SKILL.md` for `tc-run`, `tc-quality-report`, `tc-evidence` (strict-PyYAML frontmatter with **no embedded `key: value` substring** per the Phase 4 Step 4.8 lesson; body lists each skill's commands; `tc-evidence`'s body documents that it is an **internal cross-cutting indexer with no user-facing command**, invoked by `tc-run` and later by `tc-web`; deferral wording until each sub-step ships behavior). Empty `commands/`/`methodology/`/`templates/` dirs (`.gitkeep`). `tests/fixtures/seeded-results/` containing: a recorded Playwright JSON report (`results.json`) with at least one `passed`, one `failed`, and one `flaky` (pass-on-retry) case, each carrying the `@req:`/`@cs:` provenance that links it back to a generated spec; sample evidence artifacts (a committed-class screenshot stub plus a video/trace stub to exercise the policy split); and a populated upstream chain (a Phase-6 `automation-map.md` + a generated `<area>.spec.ts`) so `/tc:run` can map results → scenarios → requirements. `README.md` documents the result schema, the evidence-policy categories, the linkage convention, and the deliberately-generic D19 framing.
+- **Tests first.** A parametrized scaffold test (or three siblings) — each asserts the skill dir + `SKILL.md` (strict-PyYAML parse from the start), the three sub-dirs, and (for the fixture) a parseable `results.json` carrying at least one passed/failed/flaky case with resolvable linkage tags.
+- **Definition of done.** Three skills scaffolded; fixture present; scaffold tests green; `verify_skills.py` reports the three new skills `UNEXPECTED (phase 7) — ahead of schedule` under `DEFAULT_PHASE_CAP=6` (cap bumps to 7 in 7.8). Confirm `CATALOG` carries `tc-run: 7`, `tc-quality-report: 7`, `tc-evidence: 7` (add if absent).
+
+#### 7.2 — `/tc:run` (execution + result capture; execution refused under pytest) (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/run_tests.py`. Two responsibilities split by the hermetic boundary: **(a)** in real use shells out to `npx playwright test` (and `postman` for the API path) for the requested run mode (smoke / regression / feature-specific / failed-only / tagged) — **refused under pytest** via the `PYTEST_CURRENT_TEST` guard with a clear message; **(b)** ingests the Playwright JSON report (the recorded fixture under pytest), and writes a per-run record under `<workspace>/runs/<RUN-ID>/` (RUN-ID from the injected clock), mapping each result to its scenario/spec via the `@req:`/`@cs:` provenance and the Phase-6 `automation-map.md`. Run modes select which specs run. **No evidence-index auto-call in 7.2** — the indexer + the auto-run wiring (incl. `--no-index`) ship in 7.3 (the Phase-5/6 defer-not-defend pattern); 7.2 leaves a forward pointer. Upstream is read-only (no `automation-map.md` / spec mutation). **Injected-clock determinism**: tests pass a fixed `now` → byte-stable run records.
+- **Methodology + templates.** `methodology/test-execution.md` (run modes, the hermetic boundary, the injected-clock contract, the result schema, the Claude judgment layer); `templates/test-run-summary-template.md`.
+- **Command file + SKILL.md update.** `commands/run.md`; `tc-run/SKILL.md` surfaces the shipped behavior (a brief forward pointer that evidence indexing wires in 7.3 is acceptable mid-phase).
+- **Tests first.** `tests/test_run_tests.py` — uninitialized workspace refused; the real Playwright invocation refused under pytest with the directing message; recorded `results.json` ingested → `runs/<RUN-ID>/` record written mapping each pass/fail/flaky to its scenario via provenance; run modes filter the result set; the injected clock makes the run record byte-stable; `automation-map.md` and the generated specs are byte-identical before/after (read-only upstream).
+- **Definition of done.** Results ingested into per-run records; real execution refused under pytest; run modes work; deterministic via the injected clock; SKILL.md updated.
+
+#### 7.3 — `tc-evidence` indexer + evidence policy + run auto-index wiring (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/index_evidence.py`. Routes raw run artifacts to the evidence tree per the policy (screenshots → committed `evidence/screenshots/`; videos + traces → `evidence/{videos,traces}/` git-ignored by default with the documented `git-lfs` opt-in; JSON/HTML → committed), writes `<workspace>/evidence/evidence-index.md` (each artifact with its run + scenario provenance), and manages the evidence `.gitignore` + the lfs opt-in note. Exposes `index_run_evidence()`; **7.3 wires the auto-call into `run_tests.py`** (`--no-index` to suppress) and updates `run.md` + `tc-run/SKILL.md` to describe the now-wired indexing (removing the 7.2 forward pointer).
+- **Methodology + template.** `methodology/evidence-management.md` (the policy table, the commit/lfs/ignore decision per artifact type, the index discipline, the Claude judgment layer); `templates/evidence-summary-template.md`.
+- **Tests first.** `tests/test_index_evidence.py` — screenshots routed and committed; videos/traces routed and git-ignored (assert the `.gitignore` entry exists, not that the files are deleted); the evidence index lists every artifact with provenance; idempotent re-run byte-stable; `index_run_evidence()` is the same code path `/tc:run` auto-runs (identity + `--no-index` suppression).
+- **Definition of done.** Evidence routed per policy; index written; `.gitignore`/lfs opt-in handled; auto-run wired and shared; `tc-evidence`/`tc-run` SKILL.md updated.
+
+#### 7.4 — `/tc:analyze-results` (failure triage + flaky detection) (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/analyze_results.py` (mirrors the `review_*` rubric pattern; design reference `agentic-playwright-automation:investigate-playwright-failure`). Reads `runs/<RUN-ID>/` records, classifies each failure against a universal triage rubric (product-defect / test-defect / environment / flaky), detects flaky tests from the recorded report's pass-on-retry signal, writes the analysis into the run record, and routes confirmed gaps to `requirements/open-questions.md` as deduplicated `[test-analysis]` signals.
+- **Methodology + template.** `methodology/failure-triage.md` (the triage categories with one worked example each + the Claude judgment layer); `templates/analysis-template.md`.
+- **Tests first.** `tests/test_analyze_results.py` — uninitialized refused; no runs refused pointing at `/tc:run`; seeded report with a failure + a flaky case → each classified exactly once; `[test-analysis]` dedup; a clean run → no signals; deterministic.
+- **Definition of done.** Failures triaged, flaky tests flagged, signals routed and deduped; SKILL.md updated.
+
+#### 7.5 — `/tc:report` (quality report + history snapshot) + `test-map` downstream resolution (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/build_report.py`. Aggregates the workspace into `<workspace>/quality-report/current-quality-report.md` with **every spec'd section** (executive summary, coverage, requirements readiness, exploratory findings, automated regression status from the latest run, known risks, known defects, open questions, automation health, flaky tests, evidence summary, traceability summary, recommendations, release readiness, recent changes), keeping **facts, interpretation, and human-review items clearly separated**. Then snapshots a full copy to `<workspace>/quality-report/history/<YYYY-MM-DD-HHmm>.md` (Q3 full snapshot, Q10 keep-forever; filename from the injected clock). **Also extends `traceability_map.py`** to resolve the `Test result` column (from `runs/`) and the `Quality report` column (from `quality-report/`) of `test-map.md` from `pending` — the columns Phase 6 left pending (mirrors the Step 6.8 `Automated test` resolution; wired here, asserted in 7.8). **Injected-clock determinism**: same inputs + same `now` → byte-identical current report and snapshot.
+- **Methodology + template.** `methodology/quality-reporting.md` (the section catalog, the facts-vs-interpretation separation, the never-invent-metrics rule, the history-snapshot discipline, the Claude judgment layer); `templates/quality-report-template.md`.
+- **Tests first.** `tests/test_build_report.py` — uninitialized refused; seeded chain → `current-quality-report.md` with every section present; facts / interpretation / human-review separated; history snapshot written under the injected-clock filename; re-run with the same clock byte-identical; `test-map.md` `Test result` + `Quality report` columns resolve from `pending` to the run/report references.
+- **Definition of done.** Report carries all sections; history snapshots; deterministic via the injected clock; `test-map` downstream columns resolved; SKILL.md updated.
+
+#### 7.6 — `/tc:quality-gate` (PASS / WARN / FAIL) (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/quality_gate.py`. Evaluates the quality report / latest run against project-defined thresholds (config `tc-quality-report.gate.thresholds` — e.g. min pass rate, max open critical defects, max flaky count) and returns **PASS / WARN / FAIL** with the per-criterion breakdown, writing a gate verdict file. Release-readiness reads only measured values (never invents metrics).
+- **Methodology + template.** `methodology/quality-gates.md` (the criteria, the PASS/WARN/FAIL thresholds, the judgment layer); `templates/quality-gate-template.md`.
+- **Tests first.** `tests/test_quality_gate.py` — uninitialized refused; no report refused pointing at `/tc:report`; seeded report → PASS/WARN/FAIL computed against the default thresholds; config thresholds change the verdict; deterministic.
+- **Definition of done.** Gate returns PASS/WARN/FAIL against thresholds; config-tunable; deterministic; SKILL.md updated. By end of 7.6 all three SKILL.md files describe every shipped command/indexer with no deferral wording.
+
+#### 7.7 — Documentation pass *(dedicated step)*
+
+- **Deliverables.** Author `docs/user-guide/running-tests.md` (end-to-end: `/tc:run` → (auto evidence index) → `/tc:analyze-results` → `/tc:report` → `/tc:quality-gate`, with verbatim helper output from the seeded chain; explains run modes, the hermetic boundary, the injected-clock determinism, and the evidence policy) and `docs/user-guide/quality-report.md` (the report sections, history, and the gate). Update `docs/command-reference.md` (Phase 7 shipped section) and `docs/workspace-reference.md` (`runs/`, the `evidence/` policy split, `quality-report/` + `history/` ownership, and the `test-map` downstream resolution). Add a "Phase 7 schema (`tc-run` / `tc-quality-report` / `tc-evidence`)" section to `docs/user-guide/customizing-for-your-project.md` covering the run-mode and evidence-policy keys and `tc-quality-report.gate.thresholds`, with three worked examples spanning materially-different project shapes + a "Phase 7 — what landed" subsection. Status-line refresh across the six locations + a "Beyond Phase 6" footer in `automation.md`. Final deferral-wording sweep across all three SKILL.md files, the methodology, and `docs/`.
+- **Definition of done.** Docs accurate against the implementation; all cross-links resolve; link checker green; customization guide reflects the shipped schema with three project-shape examples.
+
+#### 7.8 — Testing finalization *(dedicated step)*
+
+- **Deliverables.** Bump `DEFAULT_PHASE_CAP` 6 → 7 (CATALOG entries already present from 7.1). `tests/test_phase_7_integration.py` (in-process, full Phase 2 → 3 → 4 → 5 → 6 → 7 sweep in natural order, injected clock): assert run records written from the recorded report; evidence routed per the policy split; analysis classifies the failure + flaky case; the report carries every section + a history snapshot; the gate returns a verdict; `test-map.md` `Test result` + `Quality report` columns resolve from `pending`; the write boundary holds (`bdd/`, `product-knowledge/`, and the project-root `tests/` framework byte-identical before/after Phase 7); Playwright execution refused under pytest; `/tc:next` advances past `/tc:run` (the robust "advanced past" invariant). Byte-stable re-run with a fixed clock. **`PHASE_OWNERSHIP` narrowing** (per the line-1472 future-implementer hint): Phase 7 now writes **real files** under `evidence/`, so confirm Phase 4's `in_progress` signal does not key on `evidence/` (it keys on `charters`/`exploration-notes`/`sessions`), and set Phase 7's signal to key only on directories it uniquely produces (`runs/` + `quality-report/`); add the regression test.
+- **Definition of done.** Integration smoke passes; cap bump reflected; full `make verify` chain green; `verify_skills.py` reports all thirteen shipped skills `PRESENT` with `UNEXPECTED=0`.
+
+#### 7.9 — Sign-off
+
+Six sub-sub-steps. Mirrors the Phase 6 sign-off (6.9) exactly. Test-first: the sign-off test in 7.9.5 lands red before the plan/CHANGELOG edits in 7.9.3 turn it green. The final sub-step (7.9.6) captures evidence and pushes the `phase-7` annotated tag.
+
+##### 7.9.1 — Cold-user walkthrough of `running-tests.md`
+
+- **Deliverables.** Captured log of an end-to-end walkthrough from a freshly-installed plugin (`make uninstall` → `make install`, which runs `claude plugin validate`) against a fresh tmp consuming project with Phase 2 → 6 state pre-populated, then the Phase 7 helpers in workflow order. **Keep the `make uninstall` + `make install` preamble exactly as-is** (per the Phase 4 Step 4.8 lesson — it exercises the strict validator no other step runs).
+- **Definition of done.** All commands succeed end to end. Output captured to `/tmp/tc-phase7-walkthrough.log`. Any failure is fixed and re-run before 7.9.2.
+
+##### 7.9.2 — Per-step DoD audit
+
+- Line-by-line audit of 7.1 through 7.8 against their DoD lists: every helper, methodology, template, command file, and SKILL.md update present; every per-command test green; results map to scenarios; the write boundary holds; all three SKILL.md files free of deferral wording; `customizing-for-your-project.md` carries the Phase 7 schema with three worked examples. **Lesson-capture audit:** every Phase 7 sub-step (7.1–7.8) has an entry in `Phase 7 — Lessons learned (running)`; clean sub-steps record "no lessons" explicitly.
+
+##### 7.9.3 — Plan and CHANGELOG updates
+
+- `planning/plan.md` — collapse `### Phase 7` To Do to a marker line; add a `### Phase 7 — Execution, evidence, and quality report (YYYY-MM-DD)` section to `## Completed` with `[x]` per-step bullets, mirroring the Phase 6 closing format.
+- `CHANGELOG.md` — flip the Phase 7 heading from `(in progress)` to `(complete YYYY-MM-DD)` with per-sub-step Added bullets.
+
+##### 7.9.4 — Documentation final pass
+
+- Edit wherever Phase 7 wording has drifted across the six sub-steps (README status line, getting-started "what's next", install verifying-install paragraph, `running-tests.md` intro, `automation.md` "Beyond Phase 6" footer, `plugins/test-commander/README.md` skill table, customization-guide tense). "Phase 7 in progress" → "Phase 7 complete (YYYY-MM-DD); Phase 8 starts next". All cross-links resolve.
+
+##### 7.9.5 — Pre-flight tests for sign-off
+
+- `tests/test_phase_7_signoff.py`. Coverage: all Phase 7 pytest files exist (`test_tc_run_scaffold` etc., `test_run_tests`, `test_index_evidence`, `test_analyze_results`, `test_build_report`, `test_quality_gate`, `test_phase_7_integration`, `test_phase_7_signoff`); all five helpers exist (`run_tests`, `index_evidence`, `analyze_results`, `build_report`, `quality_gate`); all command files exist; all methodology + template files exist; `seeded-results/` fixture intact; `verify_skills.py` has `CATALOG["tc-run"] == 7`, `CATALOG["tc-quality-report"] == 7`, `CATALOG["tc-evidence"] == 7`, and `DEFAULT_PHASE_CAP >= 7` (per the Phase-2 Step-2.8 lesson — never assert `==` on the cap); all three SKILL.md files describe every shipped command/indexer with no deferral wording AND parse under strict PyYAML; `customizing-for-your-project.md` has a Phase 7 YAML block matching the shipped schema with at least three project-shape headings; the `Phase 7 — Lessons learned (running)` subsection has an entry per sub-step (7.1–7.8); CHANGELOG Phase 7 marked complete with a date; `plan.md` Completed has a Phase 7 subsection; `plan.md` To Do Phase 7 collapsed to the marker line; total pytest count meets the floor (`>= 700` — Phase 6 finished at 622; Phase 7 adds the scaffold suites, five per-command/indexer suites, integration, and sign-off). Test-first: red before 7.9.3's edits, green after.
+
+##### 7.9.6 — Final DoD evaluation (close Phase 7)
+
+- `make verify` clean; replay the cold-user walkthrough; commit; push; annotated `phase-7` tag pushed to origin.
+
+#### Phase 7 — Lessons learned (running)
+
+Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. (Populated as 7.1–7.9 land.)
+
 ---
 
 ## Phase 8 — Continuous Learning and Self-Improvement
@@ -3220,12 +3316,18 @@ Phase 5 complete (2026-05-29) — see Completed.
 ### Phase 6
 Phase 6 complete (2026-05-29) — see Completed.
 ### Phase 7
-- [ ] Author `/tc:run`, `/tc:analyze-results`, `/tc:report`, `/tc:quality-gate`
-- [ ] Implement history snapshot and commit flow
-- [ ] Author methodology and templates
-- [ ] Document evidence policy (commits vs lfs vs ignored)
-- [ ] Author `docs/user-guide/running-tests.md` and `quality-report.md`
-- [ ] Confirm review and test gates green
+
+See `### Phase 7 — Execution outline` for full sub-step detail.
+
+- [ ] 7.1 — Skill scaffolds (`tc-run` + `tc-quality-report` + `tc-evidence`) and seeded-results fixture
+- [ ] 7.2 — `/tc:run` (execution + result capture; execution refused under pytest)
+- [ ] 7.3 — `tc-evidence` indexer + evidence policy + run auto-index wiring
+- [ ] 7.4 — `/tc:analyze-results` (failure triage + flaky detection)
+- [ ] 7.5 — `/tc:report` (quality report + history snapshot) + `test-map` downstream resolution
+- [ ] 7.6 — `/tc:quality-gate` (PASS / WARN / FAIL)
+- [ ] 7.7 — Documentation pass (`running-tests.md`, `quality-report.md`, customization-guide Phase 7 schema)
+- [ ] 7.8 — Testing finalization (cap bump 6 → 7 + integration smoke + `PHASE_OWNERSHIP` narrowing)
+- [ ] 7.9 — Sign-off (cold-user walkthrough, DoD audit, plan/CHANGELOG close, pre-flight test, `phase-7` tag)
 
 ### Phase 8
 - [ ] Author `/tc:learn`, `/tc:learn-from-failures`, `/tc:learn-from-exploration`, `/tc:learn-from-feedback`, `/tc:review-lessons`, `/tc:promote-lessons`
