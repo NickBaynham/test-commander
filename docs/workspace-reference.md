@@ -194,9 +194,9 @@ Test data lives here, never in test code (Decision D6). `/tc:generate-test-data`
 
 Known and suspected risks, with the artifact that surfaced each one and the mitigation plan. Populated across Phase 2 (requirements) and Phase 4 (exploration); referenced by the quality report.
 
-### `quality-report/` — Phase 7
+### `quality-report/` — Phase 7 (shipped)
 
-`current-quality-report.md` is the single-page release-readiness summary. `/tc:report` rewrites it in full and snapshots a copy to `history/YYYY-MM-DD-HHmm.md`. Per Decision D5 (committed history) and Open Question Q10 (retention policy), snapshots stay in git for now.
+`current-quality-report.md` is the single-page release-readiness summary. `/tc:report` rewrites it in full with all fifteen sections, keeping `[fact]` (measured), `[interpretation]` (synthesis), and `[review]` (needs human review) content separated and never inventing a metric, and snapshots a byte-identical copy to `history/<YYYY-MM-DD-HHmm>.md` (filename from an injected clock for determinism). Per Decision D5 (committed history) and Open Question Q10 (retention policy), snapshots stay in git forever. `/tc:quality-gate` writes `quality-gate.md` here — the PASS / WARN / FAIL verdict against `tc-quality-report.gate.thresholds`.
 
 ### `traceability/` — Phase 5 (shipped)
 
@@ -205,14 +205,14 @@ Known and suspected risks, with the artifact that surfaced each one and the miti
 | Path | Written by | Notes |
 | --- | --- | --- |
 | `traceability/requirements-map.md` | `/tc:traceability-map` (authoritative) and `/tc:requirements-coverage` (Phase-2 interim seed) | The shared 4-column REQ-ID / Test ideas / BDD features / Automation format. Both writers call the same `traceability_render.render_requirements_map`, so the file is **byte-identical** whichever wrote it — no format drift. |
-| `traceability/test-map.md` | `/tc:traceability-map` | The scenario-level chain: Requirement → Test idea (CS) → BDD scenario → Automated test → Test result → Quality report. The downstream columns render `pending` until Phase 6 (automated tests, via the automation map) and Phase 7 (results, quality report) populate them. |
+| `traceability/test-map.md` | `/tc:traceability-map` (also rebuilt by `/tc:report`) | The scenario-level chain: Requirement → Test idea (CS) → BDD scenario → Automated test → Test result → Quality report. `Automated test` resolves from the Phase-6 automation map; `Test result` resolves from the latest `runs/` record and `Quality report` from `quality-report/` once `/tc:report` runs (Phase 7). A column renders `pending` only until its source exists. |
 | `traceability/automation-map.md` | `/tc:automate` (Phase 6, owner) | The per-scenario requirement / candidate / scenario / spec table. `/tc:automate` rebuilds it every run; `/tc:requirements-coverage` and `/tc:traceability-map` scan it (a `/tc:traceability-map` re-run after `/tc:automate` resolves the `test-map.md` `Automated test` column from `pending`). |
 
 **Reconciliation (Phase 2 ↔ Phase 5).** Phase 2's `/tc:requirements-coverage` already writes `requirements-map.md`; Phase 5's `/tc:traceability-map` is the authoritative regenerator. The shared renderer (`scripts/traceability_render.py`) guarantees both produce identical bytes, so there is no drift to reconcile — the scenario-level detail lives in the separate `test-map.md`, not as an extra column on `requirements-map.md`. Downstream chain links are reported `pending`, never invented.
 
-### `evidence/` — Phase 7
+### `evidence/` — Phase 7 (shipped)
 
-Artifacts from `/tc:run`. Screenshots and logs committed by default. Videos and traces are git-ignored unless `git-lfs` is opted in (per Decision D5 / Open Question Q5).
+Artifacts routed by the `tc-evidence` indexer (auto-run by `/tc:run`; `--no-index` to suppress). Screenshots (`screenshots/`) and logs/reports (`logs/`) are committed; videos (`videos/`) and traces (`traces/`) are git-ignored by default via `evidence/.gitignore` (`videos/*` / `traces/*`, keeping each dir's `README.md`), with a documented `git-lfs` opt-in (Decision D5 / Open Question Q5). `evidence-index.md` lists every artifact across all run records with its run and scenario provenance; it is rebuilt from the `runs/*/results.json` records, so a re-run over unchanged records is byte-identical.
 
 ### `learning/` — Phase 8
 
@@ -226,9 +226,9 @@ Mermaid source plus rendered SVG/PNG. `infographic/` holds higher-design-effort 
 
 Append-only narrative journal. `/tc:journal append "..."` writes one H2 timestamp section per call to a day file (`YYYY-MM-DD.md`). `/tc:journal summarize` prints entries chronologically within an inclusive `--from`/`--to` range.
 
-### `runs/` — Phase 7
+### `runs/` — Phase 7 (shipped)
 
-Per-run records from `/tc:run`: JSON/HTML reports, evidence references, failure triage.
+One directory per run, `runs/<RUN-ID>/` (RUN-ID `RUN-<YYYYMMDD>-<HHMMSS>` from the injected clock). `/tc:run` writes `run.md` (the human summary) and `results.json` (the machine-readable record — each result's status, retry count, error, provenance, and attachments); `/tc:analyze-results` adds `analysis.md` (the failure triage). These records are the source of truth the evidence indexer, the quality report, and the gate all read.
 
 ### `policy/` and `audit/` — Phase 10.5
 

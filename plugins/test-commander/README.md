@@ -18,6 +18,9 @@ This README documents the plugin's contents. For the project overview, architect
 | `tc-automation-plan` | Phase 6 shipped | Owns `/tc:automation-plan` (the seven-factor suitability rubric). |
 | `tc-automate` | Phase 6 shipped | Owns `/tc:automate` (with the internal automation-review sub-mode) and `/tc:review-automation`. |
 | `tc-test-data` | Phase 6 shipped | Owns `/tc:generate-test-data`. |
+| `tc-run` | Phase 7 shipped | Owns `/tc:run` (with the internal evidence-index sub-mode) and `/tc:analyze-results`. |
+| `tc-evidence` | Phase 7 shipped | The internal evidence indexer (no `/tc:*` command; invoked by `/tc:run`). |
+| `tc-quality-report` | Phase 7 shipped | Owns `/tc:report` and `/tc:quality-gate`. |
 
 ## What arrives later
 

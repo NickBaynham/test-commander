@@ -224,7 +224,7 @@ Phase 6 ships a universal framework, rubric, and data shape. The only `config.ya
 
 ## Beyond Phase 6
 
-Phase 7 runs the generated suite (`/tc:run`), captures evidence, and fills the `Test result` and `Quality report` columns of `test-map.md`, then gates quality (`/tc:quality-gate`).
+Phase 7 (shipped) runs the generated suite (`/tc:run`), captures evidence, triages failures (`/tc:analyze-results`), fills the `Test result` and `Quality report` columns of `test-map.md` (`/tc:report`), and gates quality (`/tc:quality-gate`). Walkthroughs: [running-tests.md](running-tests.md) and [quality-report.md](quality-report.md).
 
 ## See also
 

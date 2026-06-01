@@ -78,16 +78,25 @@ For the methodology behind each helper, see [bdd-generation.md](../plugins/test-
 
 The Phase 6 commands generate and structurally validate TypeScript — they never invoke `tsc` or `npx playwright test` (execution is Phase 7's `/tc:run`). For the methodology, see [playwright-standards.md](../plugins/test-commander/skills/tc-build-framework/methodology/playwright-standards.md), [automation-suitability.md](../plugins/test-commander/skills/tc-automation-plan/methodology/automation-suitability.md), [automation-generation.md](../plugins/test-commander/skills/tc-automate/methodology/automation-generation.md), and [test-data-strategy.md](../plugins/test-commander/skills/tc-test-data/methodology/test-data-strategy.md). End-to-end walkthrough: [user-guide/automation.md](user-guide/automation.md).
 
+## Phase 7 commands (shipped)
+
+| Command | Skill | Per-command page |
+| --- | --- | --- |
+| `/tc:run` | `tc-run` | [run.md](../plugins/test-commander/skills/tc-run/commands/run.md) |
+| `/tc:analyze-results` | `tc-run` | [analyze-results.md](../plugins/test-commander/skills/tc-run/commands/analyze-results.md) |
+| `/tc:report` | `tc-quality-report` | [report.md](../plugins/test-commander/skills/tc-quality-report/commands/report.md) |
+| `/tc:quality-gate` | `tc-quality-report` | [quality-gate.md](../plugins/test-commander/skills/tc-quality-report/commands/quality-gate.md) |
+
+`/tc:run` executes the generated suite (or ingests a recorded Playwright JSON report with `--report`) for a run mode — `all`, `smoke`, `regression`, `feature`, `failed-only`, `tagged` — and writes a per-run record under `runs/<RUN-ID>/` mapping each `passed` / `failed` / `flaky` result to its requirement, candidate, scenario, and spec; the real `npx playwright test` invocation is refused under pytest (the hermetic boundary). It auto-runs the `tc-evidence` indexer (`--no-index` to suppress), which routes screenshots (committed), videos, and traces (git-ignored via `evidence/.gitignore`, with a git-lfs opt-in) into `evidence/` and writes `evidence/evidence-index.md`. `/tc:analyze-results` triages every non-passed result (`product-defect` / `test-defect` / `environment` / `flaky`), writes `runs/<RUN-ID>/analysis.md`, and routes deduplicated `[test-analysis]` signals. `/tc:report` aggregates the workspace into `quality-report/current-quality-report.md` with all fifteen sections (keeping `[fact]` / `[interpretation]` / `[review]` separated), snapshots a full copy to `quality-report/history/<YYYY-MM-DD-HHmm>.md`, and rebuilds the traceability maps so `test-map.md`'s `Test result` and `Quality report` columns resolve from `pending`. `/tc:quality-gate` evaluates the latest run against `tc-quality-report.gate.thresholds` and returns PASS / WARN / FAIL (the CLI exits `1` on FAIL).
+
+`/tc:run` and `/tc:report` take an injected clock (`--now`) for byte-stable artifacts. For the methodology, see [test-execution.md](../plugins/test-commander/skills/tc-run/methodology/test-execution.md), [failure-triage.md](../plugins/test-commander/skills/tc-run/methodology/failure-triage.md), [evidence-management.md](../plugins/test-commander/skills/tc-evidence/methodology/evidence-management.md), [quality-reporting.md](../plugins/test-commander/skills/tc-quality-report/methodology/quality-reporting.md), and [quality-gates.md](../plugins/test-commander/skills/tc-quality-report/methodology/quality-gates.md). End-to-end walkthroughs: [user-guide/running-tests.md](user-guide/running-tests.md) and [user-guide/quality-report.md](user-guide/quality-report.md).
+
 ## Planned commands (not yet implemented)
 
 These will gain per-command pages as their phases ship.
 
 | Command | Skill | Phase |
 | --- | --- | --- |
-| `/tc:run` | `tc-run` | 7 |
-| `/tc:analyze-results` | `tc-run` | 7 |
-| `/tc:report` | `tc-quality-report` | 7 |
-| `/tc:quality-gate` | `tc-quality-report` | 7 |
 | `/tc:learn` | `tc-learning` | 8 |
 | `/tc:learn-from-failures` | `tc-learning` | 8 |
 | `/tc:learn-from-exploration` | `tc-learning` | 8 |
