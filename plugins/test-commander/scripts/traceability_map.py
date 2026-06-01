@@ -29,6 +29,7 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from collections.abc import Iterable
@@ -114,6 +115,37 @@ def scan_automation_specs(automation_path: Path) -> dict[str, str]:
     return specs
 
 
+def scan_run_results(runs_dir: Path) -> dict[str, str]:
+    """Parse the latest run record into {cs_id -> result status}, so the test
+    map's Test result column resolves from runs/ (Phase 7). Empty when no run
+    record exists (the pre-Phase-7 pending case), keeping the file byte-stable."""
+    results: dict[str, str] = {}
+    if not runs_dir.is_dir():
+        return results
+    records = sorted(runs_dir.glob("*/results.json"))
+    if not records:
+        return results
+    data = json.loads(records[-1].read_text(encoding="utf-8"))
+    for result in data.get("results", []):
+        cs_id = result.get("candidate")
+        status = result.get("status")
+        if cs_id and status:
+            results.setdefault(cs_id, status)
+    return results
+
+
+def quality_report_ref(quality_report_dir: Path) -> str | None:
+    """The reference the test map's Quality report column resolves to once a
+    generated quality report exists. None (pending) when absent or still the
+    template stub."""
+    report = quality_report_dir / "current-quality-report.md"
+    if not report.is_file():
+        return None
+    if "_(empty until" in report.read_text(encoding="utf-8"):
+        return None
+    return "`quality-report/current-quality-report.md`"
+
+
 # ---------------------------------------------------------------------------
 # Top-level entry
 # ---------------------------------------------------------------------------
@@ -143,6 +175,9 @@ def traceability_map(project_root: Path) -> TraceResult:
 
     scenarios = scan_scenarios(workspace / "bdd" / "features")
     automated_by_cs = scan_automation_specs(workspace / "traceability" / "automation-map.md")
+    result_by_cs = scan_run_results(workspace / "runs")
+    report_ref = quality_report_ref(workspace / "quality-report")
+    report_by_cs = {cs: report_ref for cs in result_by_cs} if report_ref else {}
 
     trace_dir = workspace / "traceability"
     trace_dir.mkdir(parents=True, exist_ok=True)
@@ -152,7 +187,10 @@ def traceability_map(project_root: Path) -> TraceResult:
         traceability_render.render_requirements_map(req_ids, rows), encoding="utf-8"
     )
     test_map_path.write_text(
-        traceability_render.render_test_map(scenarios, automated_by_cs), encoding="utf-8"
+        traceability_render.render_test_map(
+            scenarios, automated_by_cs, result_by_cs, report_by_cs
+        ),
+        encoding="utf-8",
     )
 
     return TraceResult(

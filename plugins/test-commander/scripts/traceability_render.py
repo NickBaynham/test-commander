@@ -83,17 +83,25 @@ class TestMapRow:
 def render_test_map(
     rows: Sequence[TestMapRow],
     automated_by_cs: dict[str, str] | None = None,
+    result_by_cs: dict[str, str] | None = None,
+    report_by_cs: dict[str, str] | None = None,
 ) -> str:
     """Render the scenario-level test map.
 
     ``automated_by_cs`` maps a candidate id (``CS-NNN-NNN``) to the generated
-    spec path that automates it (from ``automation-map.md``). The ``Automated
-    test`` column resolves to that spec when present; otherwise it stays
-    ``pending``. With no automation map (Phase 5), every row reads ``pending``,
-    so the file is byte-identical to the pre-Phase-6 output. ``Test result`` and
-    ``Quality report`` remain ``pending`` until Phase 7.
+    spec path that automates it (from ``automation-map.md``); the ``Automated
+    test`` column resolves to that spec when present (Phase 6). ``result_by_cs``
+    maps a candidate to its latest test result (``passed`` / ``failed`` /
+    ``flaky``, from ``runs/``) and ``report_by_cs`` to the quality-report
+    reference (from ``quality-report/``); the ``Test result`` and ``Quality
+    report`` columns resolve from those (Phase 7). Every column defaults to
+    ``pending`` when its source is absent, so with no automation map / runs /
+    report (Phase 5) every row reads ``pending`` and the file is byte-identical
+    to the pre-Phase-6 output.
     """
     automated_by_cs = automated_by_cs or {}
+    result_by_cs = result_by_cs or {}
+    report_by_cs = report_by_cs or {}
     out = [TEST_MAP_TITLE, "", TEST_MAP_INTRO, ""]
     if not rows:
         out.append("_No BDD scenarios with linkage tags found._")
@@ -108,9 +116,11 @@ def render_test_map(
     for r in rows:
         spec = automated_by_cs.get(r.cs_id)
         automated = f"`{spec}`" if spec else "pending"
+        result = result_by_cs.get(r.cs_id) or "pending"
+        report = report_by_cs.get(r.cs_id) or "pending"
         out.append(
             f"| {r.req_id} | {r.cs_id} | `{r.feature}` :: {r.scenario} | "
-            f"{automated} | pending | pending |"
+            f"{automated} | {result} | {report} |"
         )
     out.append("")
     return "\n".join(out)

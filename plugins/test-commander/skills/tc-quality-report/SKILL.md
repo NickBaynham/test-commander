@@ -11,18 +11,28 @@ Each command is implemented as a Python helper script bundled inside the plugin 
 
 ## Status
 
-Phase 7 scaffold (Step 7.1). The two commands are registered but their behavior is not yet shipped:
+Phase 7 (Step 7.5). `/tc:report` is end-to-end runnable; `/tc:quality-gate` is registered but not yet shipped:
 
-- `/tc:report` — behavior arrives in Step 7.5. It will aggregate the workspace into `<workspace>/quality-report/current-quality-report.md` with every spec'd section, snapshot a full copy to `quality-report/history/<YYYY-MM-DD-HHmm>.md` (full snapshot, kept forever; filename from an injected clock for determinism), and resolve the `Test result` and `Quality report` columns of `traceability/test-map.md` that Phase 6 left `pending`.
+- `/tc:report` — **shipped (Step 7.5).** Aggregates the workspace into `<workspace>/quality-report/current-quality-report.md` with all fifteen spec'd sections (keeping `[fact]` / `[interpretation]` / `[review]` content separated), snapshots a byte-identical full copy to `quality-report/history/<YYYY-MM-DD-HHmm>.md` (kept forever; filename from an injected clock for determinism), and rebuilds the traceability maps so the `Test result` and `Quality report` columns of `traceability/test-map.md` resolve from `pending`.
 - `/tc:quality-gate` — behavior arrives in Step 7.6. It will evaluate the report and latest run against project-defined thresholds (`tc-quality-report.gate.thresholds`) and return PASS / WARN / FAIL with a per-criterion breakdown, reading only measured values (never inventing metrics).
 
-When Steps 7.5 and 7.6 land, this SKILL.md is updated to describe the shipped behavior and the deferral wording above is removed.
+When Step 7.6 lands, this SKILL.md is updated to describe the shipped `/tc:quality-gate` behavior and the deferral wording above is removed.
 
 ## Commands
 
 ### `/tc:report`
 
-Aggregates the workspace into the current quality report and snapshots it into the committed history. Full behavior is documented in the per-command page once Step 7.5 ships the helper.
+Aggregates the workspace into `<workspace>/quality-report/current-quality-report.md` with all fifteen sections (executive summary, coverage, requirements readiness, exploratory findings, automated regression status, known risks, known defects, open questions, automation health, flaky tests, evidence summary, traceability summary, recommendations, release readiness, recent changes), keeping `[fact]` (measured), `[interpretation]` (synthesis), and `[review]` (needs human review) content clearly separated and never inventing a metric. Snapshots a byte-identical full copy to `quality-report/history/<YYYY-MM-DD-HHmm>.md`, then rebuilds the traceability maps so `test-map.md`'s `Test result` (from `runs/`) and `Quality report` (from this report) columns resolve from `pending`. Deterministic via an injected clock (`--now`).
+
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/build_report.py <project-root> [--now <ISO-8601>]
+```
+
+`<project-root>` defaults to the current working directory. Refuses uninitialized workspaces (exit 2). A report can be built before any test has run (run-derived sections read "no run yet").
+
+Full spec: [commands/report.md](commands/report.md). Methodology: [methodology/quality-reporting.md](methodology/quality-reporting.md).
 
 ### `/tc:quality-gate`
 
