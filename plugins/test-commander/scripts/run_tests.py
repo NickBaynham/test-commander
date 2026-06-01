@@ -129,6 +129,7 @@ class ResultRecord:
     spec: str | None
     tags: tuple[str, ...]
     attachments: tuple[str, ...]
+    error: str | None = None
 
     def sort_key(self) -> tuple[str, str, str]:
         return (self.req_id or "", self.cs_id or "", self.scenario)
@@ -225,6 +226,10 @@ def parse_report(report_text: str, automated_by_cs: dict[str, str]) -> list[Resu
                     for a in r.get("attachments", [])
                     if a.get("path")
                 )
+                error = next(
+                    (r["error"]["message"] for r in results if r.get("error", {}).get("message")),
+                    None,
+                )
                 records.append(
                     ResultRecord(
                         scenario=spec.get("title", ""),
@@ -235,6 +240,7 @@ def parse_report(report_text: str, automated_by_cs: dict[str, str]) -> list[Resu
                         spec=spec_path,
                         tags=tuple(tags),
                         attachments=attachments,
+                        error=error,
                     )
                 )
     return records
@@ -343,6 +349,7 @@ def render_results_json(run_id: str, mode: str, now: datetime, records: list[Res
                 "spec": r.spec,
                 "status": r.status,
                 "retries": r.retries,
+                "error": r.error,
                 "tags": list(r.tags),
                 "attachments": list(r.attachments),
             }

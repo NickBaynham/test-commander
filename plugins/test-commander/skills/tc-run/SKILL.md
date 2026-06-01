@@ -11,12 +11,10 @@ Each command is implemented as a Python helper script bundled inside the plugin 
 
 ## Status
 
-Phase 7 (Step 7.2). `/tc:run` is end-to-end runnable; `/tc:analyze-results` is registered but not yet shipped:
+Phase 7 (Step 7.4). Both commands are end-to-end runnable:
 
 - `/tc:run` — **shipped (Step 7.2; evidence auto-index wired in Step 7.3).** Executes the generated suite for the requested run mode (or ingests a recorded Playwright JSON report with `--report`) and writes a per-run record under `<workspace>/runs/<RUN-ID>/` mapping each result to its scenario, candidate, requirement, and spec via `@req:`/`@cs:` provenance and the Phase-6 `automation-map.md`. Real execution is refused under pytest (the hermetic boundary). Upstream is read-only. After writing the record it auto-runs the `tc-evidence` indexer (routing artifacts into `evidence/` and rebuilding `evidence/evidence-index.md`); pass `--no-index` to suppress it.
-- `/tc:analyze-results` — behavior arrives in Step 7.4. It will classify each failure against a universal triage rubric (product-defect, test-defect, environment, flaky), detect flaky tests from the pass-on-retry signal, and route confirmed gaps to `requirements/open-questions.md` as deduplicated `[test-analysis]` signals.
-
-When Step 7.4 lands, this SKILL.md is updated to describe the shipped `/tc:analyze-results` behavior and the deferral wording above is removed.
+- `/tc:analyze-results` — **shipped (Step 7.4).** Triages a run record: classifies each non-passed result against the universal rubric (`product-defect` / `test-defect` / `environment` / `flaky`), detecting flaky tests from the recorded pass-on-retry signal, writes `runs/<RUN-ID>/analysis.md`, and routes deduplicated `[test-analysis]` gap signals to `requirements/open-questions.md`.
 
 ## Commands
 
@@ -36,7 +34,17 @@ Full spec: [commands/run.md](commands/run.md). Methodology: [methodology/test-ex
 
 ### `/tc:analyze-results`
 
-Triages failures and flags flaky tests from the recorded run records. Full behavior is documented in the per-command page once Step 7.4 ships the helper.
+Triages a run record: classifies every non-passed result against the universal rubric — `flaky` (passed on retry), `environment` (infra/timeout error), `test-defect` (locator/selector error), or `product-defect` (the default assertion failure) — writes `runs/<RUN-ID>/analysis.md` (a table of every non-passed result with its requirement, candidate, scenario, status, and classification), and routes one deduplicated `[test-analysis]` signal per non-passed result to `requirements/open-questions.md` (`source-id` `tc-run/test-analysis-<CS>`, the Phase-2 dedup contract). Deterministic: the analysis is derived from the run record (no clock), so a re-run is byte-identical and routes no duplicate signals; a clean (all-passed) run produces none.
+
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/analyze_results.py <project-root> [--run-id <RUN-ID>]
+```
+
+`<project-root>` defaults to the current working directory; `--run-id` defaults to the latest run. Refuses uninitialized workspaces (exit 2) and the absence of any run record (exit 2; the precondition error directs the user at `/tc:run`).
+
+Full spec: [commands/analyze-results.md](commands/analyze-results.md). Methodology: [methodology/failure-triage.md](methodology/failure-triage.md).
 
 ## See also
 
