@@ -103,3 +103,26 @@ def test_orphan_workspace_file_counts_as_populated(tmp_path):
     snap = workspace_state.snapshot(tmp_path)
     assert snap.populated.get("requirements", 0) == 1
     assert snap.phase_status["2"] == "in_progress"
+
+
+def test_phase_7_signal_keys_on_runs_and_quality_report_not_evidence(tmp_path):
+    """Phase 7 narrowing (Step 7.8): the `tc-evidence` indexer populates
+    `evidence/` as a side effect of `/tc:run`, so `runs/` and `quality-report/`
+    are the canonical Phase-7 signals. Evidence content alone must not mark
+    Phase 7 in_progress (mirrors the Phase-2-side-effects narrowing)."""
+    assert "evidence" not in workspace_state.PHASE_OWNERSHIP["7"], (
+        "evidence/ is a side-effect of /tc:run; it must not be a Phase-7 status signal"
+    )
+    init_workspace.init_workspace(tmp_path)
+    ws = tmp_path / ".test-commander"
+    # Evidence content but no run record / report -> Phase 7 not started.
+    (ws / "evidence" / "evidence-index.md").write_text("# Evidence index\n", encoding="utf-8")
+    snap = workspace_state.snapshot(tmp_path)
+    assert snap.phase_status["7"] == "not_started", (
+        "evidence/ content must not signal Phase 7 in_progress"
+    )
+    # A run record does signal Phase 7.
+    run_dir = ws / "runs" / "RUN-20260115-093000"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "run.md").write_text("# run\n", encoding="utf-8")
+    assert workspace_state.snapshot(tmp_path).phase_status["7"] == "in_progress"

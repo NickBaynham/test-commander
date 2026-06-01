@@ -39,6 +39,10 @@ WORKSPACE_DIRNAME = ".test-commander"
 #     Phase-4 signal (Phase 4 is signalled by charters/exploration-notes/sessions).
 #   - "traceability" is written by Phase 2's /tc:requirements-coverage -> not a
 #     Phase-5 signal (Phase 5 is signalled by "bdd").
+#   - "evidence" is populated by the tc-evidence indexer as a side effect of
+#     Phase 7's /tc:run -> not its own canonical signal (Phase 7 is signalled by
+#     "runs" + "quality-report", the directories it uniquely and deliberately
+#     produces). Narrowed in Step 7.8 once Phase 7 began writing real files there.
 # Drift between this map and the per-phase plan content is caught by code review.
 PHASE_OWNERSHIP: dict[str, list[str]] = {
     "1": ["project.md", "config.yaml", "methodology.md", "journal"],
@@ -47,7 +51,7 @@ PHASE_OWNERSHIP: dict[str, list[str]] = {
     "4": ["charters", "exploration-notes", "sessions"],
     "5": ["bdd"],
     "6": ["automation-plan", "test-data"],
-    "7": ["quality-report", "evidence", "runs"],
+    "7": ["quality-report", "runs"],
     "8": ["learning"],
     "9": ["visuals"],
     "10.5": ["policy", "audit"],
