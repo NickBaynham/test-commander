@@ -1,0 +1,111 @@
+{
+  "config": {
+    "version": "1.49.0",
+    "reporter": [["json"]]
+  },
+  "suites": [
+    {
+      "title": "sign-in.spec.ts",
+      "file": "tests/e2e/sign-in.spec.ts",
+      "specs": [
+        {
+          "title": "Sign in with valid credentials",
+          "ok": true,
+          "tags": ["@area:sign-in", "@req:REQ-001", "@cs:CS-001-001", "@smoke"],
+          "tests": [
+            {
+              "status": "expected",
+              "annotations": [
+                { "type": "req", "description": "@req:REQ-001" },
+                { "type": "cs", "description": "@cs:CS-001-001" }
+              ],
+              "results": [
+                { "status": "passed", "duration": 842, "retry": 0, "attachments": [] }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Sign in is rejected with an invalid password",
+          "ok": false,
+          "tags": ["@area:sign-in", "@req:REQ-001", "@cs:CS-001-002", "@regression"],
+          "tests": [
+            {
+              "status": "unexpected",
+              "annotations": [
+                { "type": "req", "description": "@req:REQ-001" },
+                { "type": "cs", "description": "@cs:CS-001-002" }
+              ],
+              "results": [
+                {
+                  "status": "failed",
+                  "duration": 1203,
+                  "retry": 0,
+                  "error": {
+                    "message": "expect(received).toHaveText(expected)\n\nExpected: \"Invalid email or password\"\nReceived: \"Something went wrong\""
+                  },
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "evidence/screenshots/CS-001-002-failure.png"
+                    },
+                    {
+                      "name": "video",
+                      "contentType": "video/webm",
+                      "path": "evidence/videos/CS-001-002-failure.webm"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "evidence/traces/CS-001-002-failure.zip"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Session expires after the idle timeout",
+          "ok": true,
+          "tags": ["@area:sign-in", "@req:REQ-001", "@cs:CS-001-003", "@regression"],
+          "tests": [
+            {
+              "status": "flaky",
+              "annotations": [
+                { "type": "req", "description": "@req:REQ-001" },
+                { "type": "cs", "description": "@cs:CS-001-003" }
+              ],
+              "results": [
+                {
+                  "status": "failed",
+                  "duration": 990,
+                  "retry": 0,
+                  "error": { "message": "TimeoutError: locator.click: Timeout 5000ms exceeded" },
+                  "attachments": [
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "evidence/traces/CS-001-003-retry.zip"
+                    }
+                  ]
+                },
+                { "status": "passed", "duration": 871, "retry": 1, "attachments": [] }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-01-15T09:30:00.000Z",
+    "duration": 3906,
+    "expected": 1,
+    "unexpected": 1,
+    "flaky": 1,
+    "skipped": 0
+  }
+}
