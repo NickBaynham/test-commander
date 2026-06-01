@@ -13,7 +13,7 @@ Each command is implemented as a Python helper script bundled inside the plugin 
 
 Phase 7 (Step 7.2). `/tc:run` is end-to-end runnable; `/tc:analyze-results` is registered but not yet shipped:
 
-- `/tc:run` — **shipped (Step 7.2).** Executes the generated suite for the requested run mode (or ingests a recorded Playwright JSON report with `--report`) and writes a per-run record under `<workspace>/runs/<RUN-ID>/` mapping each result to its scenario, candidate, requirement, and spec via `@req:`/`@cs:` provenance and the Phase-6 `automation-map.md`. Real execution is refused under pytest (the hermetic boundary). Upstream is read-only. The evidence-index auto-run wires in Step 7.3 (`--no-index`).
+- `/tc:run` — **shipped (Step 7.2; evidence auto-index wired in Step 7.3).** Executes the generated suite for the requested run mode (or ingests a recorded Playwright JSON report with `--report`) and writes a per-run record under `<workspace>/runs/<RUN-ID>/` mapping each result to its scenario, candidate, requirement, and spec via `@req:`/`@cs:` provenance and the Phase-6 `automation-map.md`. Real execution is refused under pytest (the hermetic boundary). Upstream is read-only. After writing the record it auto-runs the `tc-evidence` indexer (routing artifacts into `evidence/` and rebuilding `evidence/evidence-index.md`); pass `--no-index` to suppress it.
 - `/tc:analyze-results` — behavior arrives in Step 7.4. It will classify each failure against a universal triage rubric (product-defect, test-defect, environment, flaky), detect flaky tests from the pass-on-retry signal, and route confirmed gaps to `requirements/open-questions.md` as deduplicated `[test-analysis]` signals.
 
 When Step 7.4 lands, this SKILL.md is updated to describe the shipped `/tc:analyze-results` behavior and the deferral wording above is removed.
@@ -27,10 +27,10 @@ Executes the generated automated suite for a chosen run mode — `all` (default)
 **Run:**
 
 ```sh
-python3 <plugin-root>/scripts/run_tests.py <project-root> [--mode all|smoke|regression|feature|failed-only|tagged] [--area <slug>] [--tag <tag>] [--report <playwright-json>] [--now <ISO-8601>]
+python3 <plugin-root>/scripts/run_tests.py <project-root> [--mode all|smoke|regression|feature|failed-only|tagged] [--area <slug>] [--tag <tag>] [--report <playwright-json>] [--now <ISO-8601>] [--no-index]
 ```
 
-`<project-root>` defaults to the current working directory. Refuses uninitialized workspaces (exit 2) and refuses the real `npx playwright test` invocation under pytest (exit 2; the message directs the caller to pass `--report`). The evidence-index auto-run wires in Step 7.3.
+`<project-root>` defaults to the current working directory. Refuses uninitialized workspaces (exit 2) and refuses the real `npx playwright test` invocation under pytest (exit 2; the message directs the caller to pass `--report`). After writing the record it auto-runs the `tc-evidence` indexer; `--no-index` suppresses it.
 
 Full spec: [commands/run.md](commands/run.md). Methodology: [methodology/test-execution.md](methodology/test-execution.md).
 

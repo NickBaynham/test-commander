@@ -20,6 +20,7 @@ candidate, requirement, and spec.
     report is ingested).
   - `--now <ISO-8601>` injected clock for a deterministic RUN-ID (defaults to
     the wall clock).
+  - `--no-index` suppress the post-run `tc-evidence` indexing.
 
 ## Outputs
 
@@ -52,6 +53,9 @@ candidate, requirement, and spec.
    `@area:<slug>`, `failed-only` by status, `tagged` by an arbitrary tag).
 5. **Write** the per-run record (`run.md` + `results.json`) under
    `runs/<RUN-ID>/`, results sorted by requirement, candidate, scenario.
+6. **Index evidence** (unless `--no-index`): auto-run the `tc-evidence`
+   indexer, which routes the run's artifacts into the `evidence/` tree per the
+   commit-versus-ignore policy and rebuilds `evidence/evidence-index.md`.
 
 Deterministic: the same report plus the same injected clock produce a
 byte-identical record.
@@ -70,12 +74,12 @@ byte-identical record.
 
 - Helper: `plugins/test-commander/scripts/run_tests.py` (per D18).
 - Run: `python3 <plugin-root>/scripts/run_tests.py <project-root> [--mode ...] [--report ...] [--now ...]`.
-- Exposes `run(project_root, *, mode, now, report, area, tag)` returning a
-  `RunOutcome` (run id, mode, record dir, per-result records).
-- Evidence indexing (routing screenshots / videos / traces into the evidence
-  tree and writing the evidence index) wires in Step 7.3: `/tc:run` will
-  auto-run the `tc-evidence` indexer after writing the record, suppressible
-  with `--no-index`.
+- Exposes `run(project_root, *, mode, now, report, area, tag, no_index)`
+  returning a `RunOutcome` (run id, mode, record dir, per-result records).
+- After writing the record, `run` calls `index_evidence.index_run_evidence`
+  (the `tc-evidence` indexer) to route screenshots / videos / traces into the
+  `evidence/` tree and rebuild `evidence/evidence-index.md`, unless
+  `--no-index` is passed.
 
 ## Definition of Done
 

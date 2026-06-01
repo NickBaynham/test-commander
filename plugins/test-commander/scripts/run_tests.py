@@ -58,6 +58,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from index_evidence import index_run_evidence
+
 WORKSPACE_DIRNAME = ".test-commander"
 PYTEST_ENV_VAR = "PYTEST_CURRENT_TEST"
 
@@ -294,7 +296,9 @@ def _md_cell(value: str | None) -> str:
     return value if value else "_(none)_"
 
 
-def render_run_md(run_id: str, mode: str, now: datetime, records: list[ResultRecord]) -> str:
+def render_run_md(
+    run_id: str, mode: str, now: datetime, records: list[ResultRecord], *, indexed: bool = True
+) -> str:
     passed = sum(1 for r in records if r.status == "passed")
     failed = sum(1 for r in records if r.status == "failed")
     flaky = sum(1 for r in records if r.status == "flaky")
@@ -307,10 +311,13 @@ def render_run_md(run_id: str, mode: str, now: datetime, records: list[ResultRec
         f"- Results: {len(records)} (passed: {passed}, failed: {failed}, flaky: {flaky})"
     )
     lines.append("")
-    lines.append(
-        "> Evidence indexing wires in Step 7.3 (`/tc:run` auto-runs the "
-        "`tc-evidence` indexer; `--no-index` suppresses it)."
-    )
+    if indexed:
+        lines.append(
+            "> Evidence routed to `evidence/` and indexed in "
+            "`evidence/evidence-index.md` by the `tc-evidence` indexer."
+        )
+    else:
+        lines.append("> Evidence indexing suppressed (`--no-index`).")
     lines.append("")
     lines.append("| requirement | candidate | scenario | spec | result | retries |")
     lines.append("| --- | --- | --- | --- | --- | --- |")
@@ -358,6 +365,7 @@ def run(
     report: Path | None = None,
     area: str | None = None,
     tag: str | None = None,
+    no_index: bool = False,
 ) -> RunOutcome:
     project_root = Path(project_root)
     workspace = workspace_dir(project_root)
@@ -367,11 +375,13 @@ def run(
 
     if report is None:
         report_text = _execute_playwright(workspace, mode)
+        source_root = workspace  # the real output dir is wired with the runtime later
     else:
         report = Path(report)
         if not report.is_file():
             raise ReportMissingError(f"report not found: {report}")
         report_text = report.read_text(encoding="utf-8")
+        source_root = report.parent  # attachments resolve relative to the report
 
     automated_by_cs = load_automation_map(workspace)
     records = select(parse_report(report_text, automated_by_cs), mode, area, tag)
@@ -379,11 +389,14 @@ def run(
     run_id = f"RUN-{now:%Y%m%d-%H%M%S}"
     record_dir = workspace / "runs" / run_id
     record_dir.mkdir(parents=True, exist_ok=True)
-    (record_dir / "run.md").write_text(
-        render_run_md(run_id, mode, now, records), encoding="utf-8"
-    )
+    # results.json first: the evidence indexer reads it.
     (record_dir / "results.json").write_text(
         render_results_json(run_id, mode, now, records), encoding="utf-8"
+    )
+    if not no_index:
+        index_run_evidence(project_root, run_id, source_root=source_root)
+    (record_dir / "run.md").write_text(
+        render_run_md(run_id, mode, now, records, indexed=not no_index), encoding="utf-8"
     )
     return RunOutcome(run_id=run_id, mode=mode, record_dir=record_dir, records=records)
 
@@ -418,6 +431,11 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Injected clock (ISO 8601) for a deterministic RUN-ID. Defaults to now.",
     )
+    parser.add_argument(
+        "--no-index",
+        action="store_true",
+        help="Suppress the post-run tc-evidence indexing.",
+    )
     args = parser.parse_args(argv if argv is not None else None)
     project_root = Path(args.project_root).resolve()
     now = datetime.fromisoformat(args.now) if args.now else None
@@ -425,7 +443,13 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         outcome = run(
-            project_root, mode=args.mode, now=now, report=report, area=args.area, tag=args.tag
+            project_root,
+            mode=args.mode,
+            now=now,
+            report=report,
+            area=args.area,
+            tag=args.tag,
+            no_index=args.no_index,
         )
     except RunError as exc:
         print(f"error: {exc}", file=sys.stderr)

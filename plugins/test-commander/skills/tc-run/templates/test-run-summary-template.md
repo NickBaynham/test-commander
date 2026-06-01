@@ -4,7 +4,7 @@
 - Generated: <ISO-8601 timestamp> (injected clock)
 - Results: <N> (passed: <a>, failed: <b>, flaky: <c>)
 
-> Evidence indexing wires in Step 7.3 (`/tc:run` auto-runs the `tc-evidence` indexer; `--no-index` suppresses it).
+> Evidence routed to `evidence/` and indexed in `evidence/evidence-index.md` by the `tc-evidence` indexer (`--no-index` to suppress).
 
 | requirement | candidate | scenario | spec | result | retries |
 | --- | --- | --- | --- | --- | --- |

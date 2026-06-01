@@ -11,15 +11,18 @@ The indexer is implemented as a Python helper script bundled inside the plugin (
 
 ## Status
 
-Phase 7 scaffold (Step 7.1). The indexer is registered but its behavior is not yet shipped:
+Phase 7 (Step 7.3). The indexer is **shipped**:
 
-- evidence indexing — behavior arrives in Step 7.3. It will route screenshots to the committed `evidence/screenshots/` tree, videos and traces to `evidence/{videos,traces}/` (git-ignored by default, with a documented `git-lfs` opt-in), and JSON/HTML reports to a committed location, then write `<workspace>/evidence/evidence-index.md` linking each artifact to its run and scenario. `tc-run` calls it automatically after a run (suppressible with `--no-index`).
-
-When Step 7.3 lands, this SKILL.md is updated to describe the shipped behavior and the deferral wording above is removed.
+- evidence indexing — **shipped (Step 7.3).** `index_run_evidence(project_root, run_id)` routes screenshots to the committed `evidence/screenshots/` tree, videos and traces to `evidence/{videos,traces}/` (git-ignored by default via `evidence/.gitignore`, with a documented `git-lfs` opt-in), and logs/reports to the committed `evidence/logs/` tree, then rebuilds `<workspace>/evidence/evidence-index.md` over every run record, linking each artifact to its run and scenario provenance. `/tc:run` calls it automatically after a run (suppressible with `--no-index`). Deterministic: the index is rebuilt from the `runs/<RUN-ID>/results.json` records, so a re-run over unchanged records is byte-identical.
 
 ## Evidence policy
 
-Screenshots are committed; videos and traces are git-ignored by default with a documented `git-lfs` opt-in; JSON/HTML reports are committed and referenced from the quality report. The policy is config-tunable and enforced by the indexer, not by an author's discipline.
+Screenshots, logs, and reports are committed; videos and traces are git-ignored by default (`evidence/.gitignore`) with a documented `git-lfs` opt-in. The policy is enforced by the indexer, not by an author's discipline. Full detail: [methodology/evidence-management.md](methodology/evidence-management.md).
+
+## Implementation
+
+- Helper: `plugins/test-commander/scripts/index_evidence.py` (per D18).
+- Entry point: `index_run_evidence(project_root, run_id, *, source_root=None)` — the function `/tc:run` auto-runs and the web console (Phase 10) will reuse. A thin CLI (`index_evidence.py <project-root> --run-id <RUN-ID>`) exists for manual / debugging use; there is no `/tc:*` command.
 
 ## See also
 
