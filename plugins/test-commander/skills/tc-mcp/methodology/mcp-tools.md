@@ -9,7 +9,19 @@ through a sample client.
 
 Every tool ships an explicit JSON schema for its arguments. A tool definition is
 a name, a one-line description, an `inputSchema` (JSON Schema for arguments), and
-a handler. The registry validates arguments against the schema before dispatch.
+a handler. The registry validates arguments against the schema before dispatch:
+a missing required argument or an unknown argument returns an MCP error rather
+than reaching a handler.
+
+The shipped tools (`apps/mcp/tcmcp/server.py`):
+
+- `tc_status` — read-only server identity and the seven permission levels.
+- `tc_plan` — read-only dry run: route, plan, and classify a request via
+  `pipeline.preview`, with no execution and no audit entry.
+- `tc_run_command` — governed execution via `pipeline.handle_request`.
+
+`dispatch()` handles the `initialize` / `tools/list` / `tools/call` protocol
+messages and is wrapped by the stdio entry point (`__main__.py`).
 
 ## Dispatch into the pipeline
 
@@ -26,4 +38,5 @@ classifies the actual request and resolves it against the caller's role; a tool
 above `read-only` is refused for a role that lacks the level (default deny), and
 a destructive tool is refused without an admin-level approval.
 
-(Behavior shipped in Step 11.3; this methodology page is the scaffold spec.)
+Shipped in Step 11.3 (`tests/test_mcp_server.py`); the per-level gate hardening
+and destructive-tool security tests land in Step 11.4.

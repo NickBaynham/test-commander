@@ -23,10 +23,10 @@ The seven escalating levels — `read-only`, `safe-write`, `code-write`, `execut
 
 ## Status
 
-Phase 11 (Step 11.2). The Runtime API is shipped; the MCP tools and the per-level gate hardening land across 11.3–11.4:
+Phase 11 (Step 11.3). The Runtime API and the MCP server are shipped; the per-level gate hardening lands in 11.4:
 
 - Runtime API expansion (read + proposal + governed-execution routes) — **shipped (Step 11.2).** The `/api/runtime/` namespace adds `GET /info` (service identity + the seven levels), `POST /plan` (a read-only dry run — routes, plans, and classifies a request, reporting the level and whether the role is allowed, with no execution and no audit entry), and `POST /execute` (governed execution through `governance.pipeline.handle_request`). A route above read-only cannot execute without a plan and (where the level requires it) an approval; the read class is the existing Phase-10 console routes. See [methodology/runtime-api.md](methodology/runtime-api.md).
-- MCP server + schema-first tool definitions (each tool dispatching into the pipeline) — behavior arrives in Step 11.3.
+- MCP server + schema-first tool definitions — **shipped (Step 11.3).** A lightweight registry (`apps/mcp/tcmcp/server.py`) of three schema-first tools: `tc_status` (read-only server identity + the seven levels), `tc_plan` (read-only dry run via `pipeline.preview`), and `tc_run_command` (governed execution via `pipeline.handle_request`). `dispatch()` handles the `initialize` / `tools/list` / `tools/call` protocol messages and is wrapped by the stdio entry point (`__main__.py`); arguments are validated against each tool's JSON schema before dispatch (unknown tool or unknown argument returns an MCP error). `tc_run_command` is gated by the same seven-level policy — a denied request is blocked, a privileged request is held without approval, neither writes an audit entry. See [methodology/mcp-tools.md](methodology/mcp-tools.md).
 - Server-side enforcement of the seven permission levels across API + MCP, with per-level unit tests and destructive-route security tests — behavior arrives in Step 11.4.
 
 See [methodology/runtime-api.md](methodology/runtime-api.md) and [methodology/mcp-tools.md](methodology/mcp-tools.md).

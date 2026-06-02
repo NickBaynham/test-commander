@@ -1,28 +1,24 @@
-# Sample MCP tool calls the server + Runtime API are exercised against.
-# Each: the tool, its arguments, the caller role, the expected permission level,
-# and whether it is an unsafe call the policy must refuse for the given role.
+# Sample MCP tool calls the server is exercised against.
+# Each: the tool, its arguments (role is the caller identity), the permission
+# level the request classifies to, and whether it is an unsafe call the policy
+# must refuse for the given role. Universal vocabulary only (Decision D19).
 - tool: tc_status
   arguments: {}
-  role: Viewer
-  level: read-only
+  expected_level: read-only
   unsafe: false
-- tool: tc_query
-  arguments: {question: "show me the quality report"}
-  role: Viewer
-  level: read-only
+- tool: tc_plan
+  arguments: {request: "what is the current status", role: Viewer}
+  expected_level: read-only
   unsafe: false
 - tool: tc_run_command
-  arguments: {request: "review these requirements", role: "Tester"}
-  role: Tester
-  level: safe-write
+  arguments: {request: "review these requirements", role: Tester}
+  expected_level: safe-write
   unsafe: false
 - tool: tc_run_command
   arguments: {request: "generate playwright tests for sign-in", role: "Automation Engineer"}
-  role: Automation Engineer
-  level: code-write
+  expected_level: code-write
   unsafe: false
 - tool: tc_run_command
-  arguments: {request: "delete all evidence", role: "Viewer"}
-  role: Viewer
-  level: destructive
+  arguments: {request: "delete all evidence", role: Viewer}
+  expected_level: destructive
   unsafe: true
