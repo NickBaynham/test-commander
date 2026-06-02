@@ -3739,6 +3739,8 @@ Six sub-sub-steps mirroring prior sign-offs: cold-user walkthrough (simulate a P
 
 Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. (Populated as 13.1–13.9 land.)
 
+- **Step 13.1 (scaffold).** Mirrored the Phase-12 scaffold shape (skill + repo-root runtime package + workflow skeleton + seeded fixture). The autonomy logic goes in a repo-root `continuous/` package (like `sandbox/`), so `create_test_pr`/`continuous_quality_check` (plugin helpers, D18) will drive it via the `resolve-repo-root` pattern, never importing it at module load. The CI workflow is the first in the project that genuinely triggers on `push`/`pull_request` (the prior two sandbox workflows are `workflow_dispatch`-only) — so two guards from the start: `permissions: contents: read` (least privilege; the agent's PR-opening path is gated and explicit, not the workflow's default token), and `push: paths-ignore: **/*.md` so a docs-only commit does not spin the agent. The read-only analysis is what runs automatically; any generated change must arrive as a gated, labeled PR, never a direct push — encoded by the read-only permission. The impact map (`impact-map.yaml`) is modeled as a Phase-3/5 *workspace* artifact, not a fixture-only construct, so impact analysis reads real project knowledge; the fixture is just a representative instance. No new extensible surface yet (the autonomy-mode config ships its worked example in the customization guide at 13.7, per Convention #6, when the gates that read it are fully wired).
+
 ---
 
 ## Capstone MVP Ordering
@@ -3872,7 +3874,7 @@ Phase 12 complete (2026-06-02) — see Completed.
 
 See `### Phase 13 — Execution outline` for full sub-step detail.
 
-- [ ] 13.1 — Scaffold (`tc-continuous-quality` + CI workflow skeleton + seeded fixture)
+- [x] 13.1 — Scaffold (`tc-continuous-quality` + CI workflow skeleton + seeded fixture)
 - [ ] 13.2 — `/tc:watch-changes` + `/tc:impact-analysis`
 - [ ] 13.3 — `/tc:coverage-gap-analysis`
 - [ ] 13.4 — `/tc:propose-tests` + `/tc:create-test-pr`

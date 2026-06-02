@@ -1,0 +1,26 @@
+diff --git a/src/auth/signin.py b/src/auth/signin.py
+index 1a2b3c4..5d6e7f8 100644
+--- a/src/auth/signin.py
++++ b/src/auth/signin.py
+@@ -10,6 +10,9 @@ def sign_in(username, password):
+     if not username or not password:
+         raise ValueError("missing credentials")
++    if account_locked(username):
++        raise AccountLockedError(username)
+     return authenticate(username, password)
+diff --git a/src/search/query.py b/src/search/query.py
+index aaaabbb..cccdddd 100644
+--- a/src/search/query.py
++++ b/src/search/query.py
+@@ -3,5 +3,7 @@ def search(term):
+-    return index.lookup(term)
++    if not term:
++        return []
++    return index.lookup(term.strip())
+diff --git a/README.md b/README.md
+index 1111111..2222222 100644
+--- a/README.md
++++ b/README.md
+@@ -1 +1 @@
+-# App
++# App (updated)

@@ -1,0 +1,11 @@
+# Existing coverage: feature -> whether it has automated tests. The gap analysis
+# flags an impacted feature that is not automated. Here `search` is the known gap.
+- feature: "sign-in"
+  automated: true
+  source: "traceability/automation-map.md"
+- feature: "search"
+  automated: false
+  source: "traceability/automation-map.md"
+- feature: "checkout"
+  automated: true
+  source: "traceability/automation-map.md"

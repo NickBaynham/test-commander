@@ -1,0 +1,12 @@
+# Impact map: file-path pattern -> impacted features + requirements.
+# Produced from Phase-3 knowledge and Phase-5 traceability. The matcher is
+# longest-prefix: a changed file maps to every entry whose pattern it starts with.
+- pattern: "src/auth/"
+  features: ["sign-in"]
+  requirements: ["REQ-001"]
+- pattern: "src/search/"
+  features: ["search"]
+  requirements: ["REQ-014"]
+- pattern: "src/checkout/"
+  features: ["checkout"]
+  requirements: ["REQ-030"]

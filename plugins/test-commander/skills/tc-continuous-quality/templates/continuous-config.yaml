@@ -1,0 +1,16 @@
+# Continuous-quality configuration template (written into
+# <workspace>/.test-commander/continuous/config.yaml). Universal defaults
+# (Decision D19); a consuming project sets the autonomy mode and the PR label.
+schema: tc-continuous/v1
+
+# Autonomy mode (0-4): the ceiling on what the agent may auto-approve.
+#   0 read-only-advisor      - advise only; auto-approve nothing
+#   1 assisted-testing       - auto-approve safe-write (analysis, proposals)
+#   2 approved-execution     - auto-approve through execute-tests
+#   3 pull-request-automation - auto-approve through code-write; open labeled PRs
+#   4 governed-autonomy      - auto-approve through external-network; open labeled PRs
+# destructive and admin are never auto-approved at any mode.
+autonomy_mode: 0
+
+# The label applied to pull requests opened by the continuous agent.
+pr_label: "test-commander/auto"
