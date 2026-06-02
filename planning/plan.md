@@ -3119,6 +3119,8 @@ Six sub-sub-steps mirroring 8.10: cold-user walkthrough of `visuals.md` (`make u
 
 Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. (Populated as 9.1–9.9 land.)
 
+- **Step 9.1 — scaffold + seeded-visuals fixture + Mermaid CLI.** Mirrored `test_phase_8_scaffolds.py` structure; 7/7 GREEN on the first run after the artifacts landed. **Reconciled a plan-vs-template drift on the visuals output path:** the plan body for 9.2/9.6 mentions `visuals/<name>.md` and `visuals/rendered/<name>.svg`, but the committed workspace template (and `docs/workspace-reference.md`) already ship `visuals/mermaid/`, `visuals/svg/`, `visuals/png/`, `visuals/infographic/`. Per AGENTS.md "if the plan and the code disagree, fix the plan first": the committed template is the contract, so Phase 9 writes Mermaid sources to `visuals/mermaid/<name>.md`, renders to `visuals/svg/` + `visuals/png/`, and infographics to `visuals/infographic/`. **Risk register has no shipped producer** — `risk-register/risk-register.md` is only *read* (by `build_report` and `create_charter`); no helper writes it. So `/tc:diagram-risk`'s source is human-authored, and the 9.8 integration sweep must seed a register (from the fixture) rather than expect an upstream producer to populate it. The fixture defines the register shape (`| RISK-NNN | Area | Severity | Description | Source |`). **Link-checker gotcha:** the faithful `system-model.md` emits `See [entities.md](entities.md)`-style sibling links; the repo-wide `check_links.py` walks fixtures, so the slice must carry minimal stubs for every linked sibling (`documentation-model.md`, `specs-model.md`, `entities.md`, `business-rules.md`) or the chain goes red. Mermaid CLI added to `make install` as a guarded, end-of-chain `mermaid-install` target (skips when `mmdc` present, degrades gracefully when `npm` is absent) so a missing CLI never blocks the plugin install.
+
 ---
 
 ## Phase 10 — Web Console MVP
@@ -3805,7 +3807,7 @@ Phase 8 complete (2026-06-01) — see Completed.
 
 See `### Phase 9 — Execution outline` for full sub-step detail.
 
-- [ ] 9.1 — Skill scaffold (`tc-visualize`) + seeded-visuals fixture + Mermaid CLI in `make install`
+- [x] 9.1 — Skill scaffold (`tc-visualize`) + seeded-visuals fixture + Mermaid CLI in `make install`
 - [ ] 9.2 — `/tc:visualize` + the shared render engine + `/tc:diagram-flow`
 - [ ] 9.3 — Structural diagrams (`/tc:diagram-sequence`, `/tc:diagram-state`, `/tc:diagram-architecture`)
 - [ ] 9.4 — Quality diagrams (`/tc:diagram-risk`, `/tc:diagram-coverage`, `/tc:diagram-traceability`, `/tc:diagram-test-strategy`)

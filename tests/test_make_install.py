@@ -107,6 +107,27 @@ def test_uninstall_tolerates_clean_state():
         assert tolerates, f"uninstall command does not tolerate clean state: {stripped!r}"
 
 
+def test_mermaid_install_in_chain():
+    """Phase 9: the Mermaid CLI is provisioned by `make install`, at the end of
+    the chain so it never blocks the plugin install."""
+    text = _makefile_text()
+    install_lines = [line for line in text.splitlines() if line.startswith("install:")]
+    deps = install_lines[0].split(":", 1)[1].split()
+    assert "mermaid-install" in deps, f"install missing mermaid-install; got {deps}"
+    assert _has_target(text, "mermaid-install"), "missing mermaid-install target"
+    # It comes after the plugin chain so a CLI failure cannot block the install.
+    assert deps.index("mermaid-install") > deps.index("verify-skills")
+
+
+def test_mermaid_install_guarded_and_degrades_gracefully():
+    """Idempotent (skip when mmdc present) and graceful when npm is absent."""
+    body = "\n".join(_target_body(_makefile_text(), "mermaid-install"))
+    assert "mmdc" in body, "mermaid-install must check for the mmdc binary"
+    assert "command -v" in body, "mermaid-install must guard on command -v"
+    assert "@mermaid-js/mermaid-cli" in body, "mermaid-install must name the package"
+    assert "npm" in body, "mermaid-install must handle the npm-present/absent branches"
+
+
 def test_help_lists_new_targets():
     if shutil.which("make") is None:  # pragma: no cover
         pytest.skip("make not on PATH")

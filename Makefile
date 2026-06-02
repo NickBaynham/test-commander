@@ -1,11 +1,13 @@
 .PHONY: help install uninstall lint test build run verify \
-        pdm-install validate-manifests marketplace-add plugin-install verify-skills
+        pdm-install validate-manifests marketplace-add plugin-install verify-skills \
+        mermaid-install
 
 help:
 	@echo "Test Commander - Make targets"
 	@echo ""
 	@echo "  make install     Install Python deps, validate manifests, register the local"
-	@echo "                   marketplace, install the plugin, and verify skills. Idempotent."
+	@echo "                   marketplace, install the plugin, verify skills, and provision"
+	@echo "                   the Mermaid CLI for /tc:render-visuals. Idempotent."
 	@echo "  make uninstall   Remove the plugin and unregister the marketplace. Tolerates"
 	@echo "                   already-clean state."
 	@echo "  make lint        Run the ruff linter."
@@ -14,7 +16,7 @@ help:
 	@echo "  make run         Placeholder; docker compose stack starts in Phase 10+."
 	@echo "  make verify      Run lint, test, the skill verifier, and the Markdown link checker."
 
-install: pdm-install validate-manifests marketplace-add plugin-install verify-skills
+install: pdm-install validate-manifests marketplace-add plugin-install verify-skills mermaid-install
 
 uninstall:
 	-claude plugin uninstall test-commander
@@ -43,6 +45,17 @@ plugin-install:
 
 verify-skills:
 	python3 scripts/verify_skills.py
+
+mermaid-install:
+	@if command -v mmdc >/dev/null 2>&1; then \
+		echo "mermaid CLI (mmdc) already present; nothing to install"; \
+	elif command -v npm >/dev/null 2>&1; then \
+		echo "installing @mermaid-js/mermaid-cli (provides mmdc for /tc:render-visuals)"; \
+		npm install -g @mermaid-js/mermaid-cli || \
+			echo "mermaid CLI install failed; /tc:render-visuals degrades gracefully"; \
+	else \
+		echo "npm not found; skipping mermaid CLI (/tc:render-visuals degrades gracefully)"; \
+	fi
 
 lint:
 	pdm run ruff check .
