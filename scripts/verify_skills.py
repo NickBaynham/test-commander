@@ -59,7 +59,7 @@ CATALOG: dict[str, float] = {
 # the Phase 8 learning loop (tc-learning), the Phase 9 visual documentation
 # skill (tc-visualize), the Phase 10 web console (tc-web), and the Phase 10.5
 # governance pipeline (tc-governance) are all shipped.
-DEFAULT_PHASE_CAP: float = 12
+DEFAULT_PHASE_CAP: float = 13
 
 KEBAB_CASE = re.compile(r"[a-z][a-z0-9-]*")
 FRONTMATTER_BLOCK = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
