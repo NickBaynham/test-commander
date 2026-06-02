@@ -15,6 +15,8 @@ phase is <= the cap are required to be PRESENT. The default cap is
 bumped as later phases ship.
 """
 
+from __future__ import annotations
+
 import argparse
 import re
 import sys

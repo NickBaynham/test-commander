@@ -44,7 +44,7 @@ plugin-install:
 	fi
 
 verify-skills:
-	python3 scripts/verify_skills.py
+	pdm run python scripts/verify_skills.py
 
 mermaid-install:
 	@if command -v mmdc >/dev/null 2>&1; then \
@@ -75,7 +75,7 @@ run:
 	docker compose up --build
 
 verify: lint test verify-skills
-	python3 scripts/check_links.py
+	pdm run python scripts/check_links.py
 
 # Phase 10 web console frontend test lanes (Node-managed; not part of `verify`).
 # The backend is covered by the Python `make test` gate; these cover the

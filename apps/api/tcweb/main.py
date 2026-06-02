@@ -16,6 +16,7 @@ from fastapi import FastAPI
 
 from tcweb import config
 from tcweb.routes import router
+from tcweb.runtime_api import runtime_router
 
 API_TITLE = "Test Commander Web Console"
 API_VERSION = "0.10.0"
@@ -39,6 +40,7 @@ def create_app(project_root: Path | None = None, governance_adapter: Any = None)
         return {"status": "ok", "service": "tc-web", "version": API_VERSION}
 
     app.include_router(router)
+    app.include_router(runtime_router)
     return app
 
 

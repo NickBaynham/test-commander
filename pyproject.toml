@@ -52,7 +52,7 @@ quote-style = "double"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-pythonpath = ["scripts", "plugins/test-commander/scripts", "apps/api", "runtime"]
+pythonpath = ["scripts", "plugins/test-commander/scripts", "apps/api", "apps/mcp", "runtime"]
 # fixtures/ holds illustrative consuming-project assets (Markdown, YAML, JSON,
 # example Python source and example test files). They are inputs to Test
 # Commander helpers, not Test Commander's own tests, so pytest must not

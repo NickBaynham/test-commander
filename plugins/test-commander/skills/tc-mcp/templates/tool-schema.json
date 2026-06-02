@@ -1,0 +1,21 @@
+{
+  "name": "tc_<verb>",
+  "description": "One line describing what the tool does and the level it can reach.",
+  "max_level": "read-only",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "request": {
+        "type": "string",
+        "description": "The natural-language request, routed and planned server-side."
+      },
+      "role": {
+        "type": "string",
+        "description": "The caller's role; resolved against policy/permissions.yaml.",
+        "default": "Viewer"
+      }
+    },
+    "required": [],
+    "additionalProperties": false
+  }
+}

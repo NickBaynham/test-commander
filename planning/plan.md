@@ -3576,6 +3576,8 @@ Six sub-sub-steps mirroring prior sign-offs: cold-user walkthrough (exercise the
 
 Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. (Populated as 11.1–11.7 land.)
 
+- **Step 11.1 (scaffold).** Mirrored the Step 10.5.1 scaffold-test shape (frontmatter parse, subdir presence, package presence, fixture with at least one unsafe entry, catalog regex). The MCP server is deliberately a lightweight schema-first registry, not the heavy `mcp` SDK — `apps/mcp/tcmcp/server.py` is plain functions (`health()`, `tools()`) the stdio transport will wrap at 11.3, which keeps the test suite hermetic and in-process and honors the "be simple / minimal deps" rule. Adding `apps/mcp` to the pytest `pythonpath` is required before any `from tcmcp import ...` test import resolves. One pre-existing blocker surfaced (not introduced by Phase 11): the `make verify` chain crashed because its `verify-skills`/`check-links` recipes ran bare `python3` (system 3.9.6 on this machine) and `scripts/verify_skills.py` used `float | None` without `from __future__ import annotations`. Root-caused and fixed two ways (Makefile recipes now use `pdm run python`; the script got the future import for standalone portability) so it cannot recur regardless of which `python3` is on PATH. Lesson: dev tooling invoked from the Makefile must run under the project interpreter, never bare `python3` — the system interpreter drifts. No new extensible surface shipped in this sub-step (the scaffold advertises the seven existing permission levels; it adds none).
+
 ---
 
 ## Phase 12 — Sandboxed Testing Environment
@@ -3848,7 +3850,7 @@ Phase 10.5 complete (2026-06-01) — see Completed.
 
 See `### Phase 11 — Execution outline` for full sub-step detail.
 
-- [ ] 11.1 — Scaffold (`tc-mcp` + `apps/mcp/` + Runtime API expansion skeleton)
+- [x] 11.1 — Scaffold (`tc-mcp` + `apps/mcp/` + Runtime API expansion skeleton)
 - [ ] 11.2 — Runtime API expansion (through the 10.5 pipeline)
 - [ ] 11.3 — MCP server + tool definitions
 - [ ] 11.4 — Permission gates (server-side enforcement, unit-tested)
