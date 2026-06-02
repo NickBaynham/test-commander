@@ -38,5 +38,7 @@ classifies the actual request and resolves it against the caller's role; a tool
 above `read-only` is refused for a role that lacks the level (default deny), and
 a destructive tool is refused without an admin-level approval.
 
-Shipped in Step 11.3 (`tests/test_mcp_server.py`); the per-level gate hardening
-and destructive-tool security tests land in Step 11.4.
+Shipped in Step 11.3 (`tests/test_mcp_server.py`). The per-level gate matrix and
+the destructive-tool security tests are in Step 11.4
+(`tests/test_permission_gates.py`), which also hardened the approval gate so an
+approval with no approver is not an approval.

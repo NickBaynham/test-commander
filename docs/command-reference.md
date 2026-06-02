@@ -138,6 +138,15 @@ The web console is a team-facing, **read-only and proposal-only** viewer over th
 
 `tc-governance` ships no `/tc:*` commands; it is the controlled-execution pipeline the console invokes through `POST /api/execute` (intent → command planner → permission policy → approval gate → bounded execution → output validation → audit log). Default deny: nothing above `read-only` runs without passing the policy engine and, where required, an approval gate, and the agent never sees the raw user prompt. Roles and approval policy are configured in `<workspace>/policy/permissions.yaml` and `approvals.yaml`. See [controlled-agent-execution.md](controlled-agent-execution.md), [security-and-permissions.md](security-and-permissions.md), [runtime-approval-flow.md](runtime-approval-flow.md), [agent-adapters.md](agent-adapters.md), and the tester guide [user-guide/governance.md](user-guide/governance.md).
 
+## Phase 11 runtime integrations (shipped — no `/tc:*` commands)
+
+`tc-mcp` ships no `/tc:*` commands; it exposes Test Commander to other tools and agents two ways, both governed by the Phase-10.5 pipeline (no direct-execution backdoor):
+
+- the **Runtime API** (`apps/api`) — the Phase-10 read-only console API expanded with the `/api/runtime/` namespace: `GET /info` (the seven permission levels), `POST /plan` (a read-only dry run), `POST /execute` (governed execution). See [runtime-api.md](runtime-api.md).
+- the **MCP server** (`apps/mcp`) — a schema-first Model Context Protocol server (`python -m tcmcp`, stdio) with three tools: `tc_status`, `tc_plan`, and `tc_run_command`. See [mcp-server.md](mcp-server.md).
+
+The seven permission levels are enforced server-side on both front-ends; a destructive action is refused for an unauthorized role, and an approval with no approver is held. Integration walkthrough: [user-guide/integrating.md](user-guide/integrating.md).
+
 ## Planned commands (not yet implemented)
 
 These will gain per-command pages as their phases ship.

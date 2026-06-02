@@ -25,6 +25,7 @@ This README documents the plugin's contents. For the project overview, architect
 | `tc-visualize` | Phase 9 shipped | Owns `/tc:visualize`, the eight `/tc:diagram-*` commands, `/tc:generate-infographic`, and `/tc:render-visuals` — diagrams and infographics generated from committed artifacts. |
 | `tc-web` | Phase 10 shipped | Owns `/tc:web-init`, `/tc:web-start`, `/tc:web-sync`, `/tc:web-index-artifacts`, `/tc:web-export` — the read-only, proposal-only web console (Next.js + FastAPI, brought up by `make run`). |
 | `tc-governance` | Phase 10.5 shipped | The controlled-execution pipeline (intent → plan → policy → approval → bounded execution → validation → audit) behind the console's `/api/execute`. Owns the policy/approval/bounded-prompt templates and the audit schema; no `/tc:*` commands. |
+| `tc-mcp` | Phase 11 shipped | Exposes the workspace through the expanded Runtime API (`apps/api`: the `/api/runtime/` namespace) and a schema-first MCP server (`apps/mcp`: `tc_status`, `tc_plan`, `tc_run_command`). Both are alternative front-ends to the governance pipeline with the seven permission levels enforced server-side; no `/tc:*` commands. |
 
 ## What arrives later
 
@@ -33,7 +34,7 @@ Each Test Commander skill is created by the phase that needs it. Until that phas
 | Skill | Phase | Owns |
 | --- | --- | --- |
 | `tc-run`, `tc-quality-report`, `tc-evidence` | 7 | Execution, evidence, quality report |
-| `tc-mcp`, `tc-sandbox`, `tc-continuous-quality` | 11–13 | API/MCP, sandboxes, continuous quality |
+| `tc-sandbox`, `tc-continuous-quality` | 12–13 | Sandboxes, continuous quality |
 
 ## Install
 

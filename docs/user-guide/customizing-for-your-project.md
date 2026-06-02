@@ -737,6 +737,19 @@ action classifier themselves are the fixed governance contract — a project tun
 [governance.md](governance.md) and
 [../security-and-permissions.md](../security-and-permissions.md).
 
+### Phase 11 — what landed (no new extensible surface)
+
+Phase 11 ships the [Runtime API](../runtime-api.md) and the
+[MCP server](../mcp-server.md) — two new front-ends to the *same* governance
+pipeline. They add **no new `<workspace>/config.yaml`, tag, or policy surface**:
+both are governed by the existing `policy/permissions.yaml` and
+`policy/approvals.yaml` above, so customizing those two files customizes the API
+and the MCP server at the same time. The only Phase-11 configuration is
+deployment-level, not a project-domain extension point: `TC_WORKSPACE` (the
+served project root) and the operator's choice of governance adapter (the
+deterministic mock by default; the real Claude adapter is an explicit server-side
+choice). See [integrating.md](integrating.md).
+
 ## Hook 2: project documents under `documents/uploaded/`
 
 The Phase 2 helpers read every Markdown file in `.test-commander/documents/uploaded/` that matches their convention — `REQ-\d+` markers for requirements, `US-\d+` for stories, `AC-\d+` for acceptance criteria. Drop your real product requirements there as Markdown files. No tool configuration is needed; the helpers find and parse them.

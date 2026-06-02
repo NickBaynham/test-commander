@@ -40,7 +40,11 @@ Every action the runtime can take is classified into exactly one level. The poli
 | `destructive` | Required |
 | `admin` | Required + Admin role |
 
-Approval is per-action. Approving once does not pre-approve future actions of the same shape.
+Approval is per-action. Approving once does not pre-approve future actions of the same shape. **An approval with no approver is not an approval:** a privileged action sent with `approve: true` but no `approver` is held, not executed — the approver is recorded for accountability and an approval record is written under `audit/approvals/`.
+
+## Enforcement on every front-end
+
+The same pipeline enforces these rules wherever a request enters — the web console, the [Runtime API](runtime-api.md) (`/api/runtime/execute`, `/api/execute`), and the [MCP server](mcp-server.md) (`tc_run_command`). The permission level is **classified server-side** from the request; a client cannot raise its own privilege by supplying a `level`. A destructive action is refused for a role that lacks `destructive`, and an `admin` action requires the `Admin` role. Both front-ends inherit the gate because both call the same pipeline; there is no bypass.
 
 ## Output validation
 
@@ -107,3 +111,6 @@ Individual approval records live alongside at `.test-commander/audit/approvals/<
 - [Controlled agent execution](controlled-agent-execution.md)
 - [Runtime approval flow](runtime-approval-flow.md)
 - [Chat command governance](chat-command-governance.md)
+- [Runtime API reference](runtime-api.md)
+- [MCP server reference](mcp-server.md)
+- [Integrating with Test Commander](user-guide/integrating.md)
