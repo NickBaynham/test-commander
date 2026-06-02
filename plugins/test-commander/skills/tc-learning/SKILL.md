@@ -13,22 +13,32 @@ The loop has three stages: **capture** (`/tc:learn` and the three `/tc:learn-fro
 
 ## Status
 
-Phase 8 scaffold (Step 8.1). The six commands are registered but their behavior is not yet shipped:
+Phase 8 (Step 8.2). `/tc:learn` is end-to-end runnable; the other five commands are registered but not yet shipped:
 
-- `/tc:learn` — behavior arrives in Step 8.2. It will append a candidate lesson (the `tc-lesson/v1` schema) to `learning/lessons-inbox.md` from a freeform `--note` or by aggregating cross-workspace signals, with `path:line` provenance and a stable `LESSON-NNN` id.
+- `/tc:learn` — **shipped (Step 8.2).** Appends a candidate lesson (the `tc-lesson/v1` schema) to `learning/lessons-inbox.md` from a freeform `--note`, with `path:line` provenance, a monotonic `LESSON-NNN` id, and `(source, origin, summary)` dedup. Owns the shared `append_lessons` inbox engine the `/tc:learn-from-*` commands reuse.
 - `/tc:learn-from-failures` — behavior arrives in Step 8.3. It will derive candidate lessons from the Phase-7 `runs/<RUN-ID>/analysis.md` triage (recurring `product-defect` and `flaky` patterns).
 - `/tc:learn-from-exploration` — behavior arrives in Step 8.4. It will derive candidate lessons from the Phase-4 `exploration-notes/` and `sessions/` (recurring anomalies and coverage gaps).
 - `/tc:learn-from-feedback` — behavior arrives in Step 8.5. It will derive candidate lessons from resolved human feedback (`requirements/open-questions.md` and an optional `documents/uploaded/feedback.md`).
 - `/tc:review-lessons` — behavior arrives in Step 8.6. It will classify every inbox candidate into `accepted` / `rejected` / `needs-human-review`, move it to the matching `learning/` file, and clear the inbox.
 - `/tc:promote-lessons` — behavior arrives in Step 8.7. It will propose promotions by default and, only with `--apply` (the human-approval gate), move accepted lessons into `learning/promoted-guidance.md` — never the shipped methodology, never third-party skills.
 
-When Steps 8.2–8.7 land, this SKILL.md is updated to describe the shipped behavior and the deferral wording above is removed.
+When Steps 8.3–8.7 land, this SKILL.md is updated to describe their shipped behavior and the deferral wording above is removed.
 
 ## Commands
 
 ### `/tc:learn`
 
-Appends a candidate lesson to the lessons inbox. Full behavior is documented in the per-command page once Step 8.2 ships the helper.
+Appends a candidate lesson (the `tc-lesson/v1` schema) to `learning/lessons-inbox.md` from a freeform `--note`. Allocates a monotonic `LESSON-NNN` id, carries `path:line` provenance, and deduplicates by `(source, origin, summary)`. Deterministic via an injected clock (`--now`). This command owns the shared `append_lessons` engine (id allocation + dedup + inbox append) that every `/tc:learn-from-*` command reuses.
+
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/capture_lesson.py <project-root> --note "..." [--origin <path:line>] [--category <name>] [--severity <low|medium|high>] [--now <ISO-8601>]
+```
+
+`<project-root>` defaults to the current working directory. Refuses uninitialized workspaces (exit 2).
+
+Full spec: [commands/learn.md](commands/learn.md). Methodology: [methodology/learning-loop.md](methodology/learning-loop.md).
 
 ### `/tc:learn-from-failures`
 
