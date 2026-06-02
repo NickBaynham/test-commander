@@ -239,9 +239,9 @@ Append-only narrative journal. `/tc:journal append "..."` writes one H2 timestam
 
 One directory per run, `runs/<RUN-ID>/` (RUN-ID `RUN-<YYYYMMDD>-<HHMMSS>` from the injected clock). `/tc:run` writes `run.md` (the human summary) and `results.json` (the machine-readable record — each result's status, retry count, error, provenance, and attachments); `/tc:analyze-results` adds `analysis.md` (the failure triage). These records are the source of truth the evidence indexer, the quality report, and the gate all read.
 
-### `policy/` and `audit/` — Phase 10.5
+### `policy/` and `audit/` — Phase 10.5 (shipped)
 
-Controlled-execution governance. `policy/permissions.yaml` maps roles to permission levels. `policy/approvals.yaml` says which actions require approval. `audit/actions.jsonl` is the append-only canonical action log; `audit/approvals/` holds individual approval records.
+Controlled-execution governance. `policy/permissions.yaml` maps roles to permission levels (default deny; the five default roles ship in `governance.policy`, overridable here). `policy/approvals.yaml` says which levels require approval (`require_approval: [<level>, …]`). `audit/actions.jsonl` is the append-only canonical action log — one entry per executed action, written by `governance.audit`; `audit/approvals/` holds individual approval records. The whole governed pipeline (intent → plan → policy → approval → bounded execution → validation → audit) is the only path to execution; see [controlled-agent-execution.md](controlled-agent-execution.md).
 
 ## What gets committed
 

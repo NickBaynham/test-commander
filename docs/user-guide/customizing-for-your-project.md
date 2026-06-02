@@ -685,6 +685,58 @@ extension point. A project tunes what the console shows only by changing the
 underlying artifacts it reads. The stack ports and the served workspace are set
 through `TC_WORKSPACE` and the compose file, not a schema.
 
+### Phase 10.5 governance (`policy/permissions.yaml`, `policy/approvals.yaml`)
+
+Phase 10.5 ships the genuinely-extensible governance surface: which roles may do
+what, and which actions require human approval. Both live under
+`<workspace>/policy/` and are read by the runtime; the shipped defaults are the
+universal baseline (Decision D19), overridable per deployment.
+
+**`policy/permissions.yaml`** — role → allowed permission levels (default deny):
+
+```yaml
+# Grant your "QA Lead" role through execute-tests, but not destructive/admin.
+Viewer:
+  - read-only
+QA Lead:
+  - read-only
+  - safe-write
+  - code-write
+  - execute-tests
+Admin:
+  - read-only
+  - safe-write
+  - code-write
+  - execute-tests
+  - external-network
+  - destructive
+  - admin
+```
+
+A role absent from the file, or a level absent from a role's list, is denied —
+there is no implicit grant. The five default roles (Viewer → Tester → Automation
+Engineer → Maintainer → Admin) apply when the file is absent.
+
+**`policy/approvals.yaml`** — which levels require an approval card:
+
+```yaml
+# A stricter deployment: require approval even for safe-write.
+require_approval:
+  - safe-write
+  - code-write
+  - execute-tests
+  - external-network
+  - destructive
+  - admin
+```
+
+When the file is absent, the five privileged levels (`code-write` and above)
+require approval and `safe-write` does not. The seven permission levels and the
+action classifier themselves are the fixed governance contract — a project tunes
+*who* and *what-needs-approval*, not the levels. See
+[governance.md](governance.md) and
+[../security-and-permissions.md](../security-and-permissions.md).
+
 ## Hook 2: project documents under `documents/uploaded/`
 
 The Phase 2 helpers read every Markdown file in `.test-commander/documents/uploaded/` that matches their convention — `REQ-\d+` markers for requirements, `US-\d+` for stories, `AC-\d+` for acceptance criteria. Drop your real product requirements there as Markdown files. No tool configuration is needed; the helpers find and parse them.

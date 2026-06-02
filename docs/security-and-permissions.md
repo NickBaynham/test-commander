@@ -81,21 +81,20 @@ Append-only at `.test-commander/audit/actions.jsonl`. One JSON object per action
 
 ```
 {
-  "id": "uuid",
   "user": "role:identity",
   "timestamp": "ISO-8601",
   "request": "original user request (redacted)",
   "intent": "mapped TC workflow",
   "command": "command as planned",
-  "permission_level": "code-write",
-  "approval_status": "approved | denied | bypassed | n/a",
+  "level": "code-write",
+  "approval_status": "approved | not-required",
   "approver": "identity or null",
   "files_read": ["..."],
   "files_changed": ["..."],
-  "artifacts_created": ["..."],
-  "tests_run": ["..."],
+  "artifacts": ["..."],
+  "tests_run": false,
   "target_urls": ["..."],
-  "status": "success | failed | violated_policy",
+  "status": "succeeded | failed",
   "summary": "one-line outcome",
   "evidence": ["paths or links"]
 }
