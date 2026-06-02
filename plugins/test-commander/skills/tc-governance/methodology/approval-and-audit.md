@@ -22,8 +22,17 @@ bounded execution.
 
 ## Audit journal
 
-(Shipped in Step 10.5.9.) The append-only `audit/actions.jsonl` records every
-action end to end.
+`governance.audit` writes one line to the append-only
+`<workspace>/audit/actions.jsonl` for every action the pipeline executes, with
+the full field set: `user`, `timestamp`, `request`, `intent`, `command`,
+`approval_status`, `approver`, `level`, `files_read`, `files_changed`,
+`artifacts`, `tests_run`, `target_urls`, `status`, `summary`, `evidence`.
+`read_entries(project)` parses the journal; a missing or empty journal returns
+`[]`.
+
+Because the only path to execution is the pipeline (and the adapter refuses an
+unplanned call), an empty journal is proof that nothing executed outside the
+gates: a direct adapter call with no plan is refused and writes no entry.
 
 ## See also
 

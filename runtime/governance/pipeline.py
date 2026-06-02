@@ -1,24 +1,25 @@
-"""The governance pipeline orchestrator (built across 10.5.3-10.5.10).
+"""The governance pipeline orchestrator (Phase 10.5).
 
 `handle_request` is the single entry point every request flows through:
 
     intent -> plan -> permission policy -> approval gate -> bounded execution
       -> output validation -> audit log
 
-Built component-by-component. As of Step 10.5.6 the **policy** and **approval**
-gates are live: an unsafe request is blocked before the agent, and a privileged
-action that is not approved is held (no execution, no change). Bounded execution
-(10.5.7), output validation (10.5.8), and audit (10.5.9) land next, so an
-*approved* action is not yet executable and the later security tests stay xfail.
+Default deny: an unsafe request is blocked before the agent; a privileged action
+that is not approved is held (no execution, no change); an approved action is
+executed in bounds, its diff validated against the plan, and the whole action is
+written to the append-only audit journal. There is no execution path that
+bypasses these gates.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from governance import approval, executor, intent, planner, policy, validation
+from governance import approval, audit, executor, intent, planner, policy, validation
 
 
 @dataclass
@@ -45,7 +46,10 @@ def handle_request(
     approve: bool = False,
     approver: str | None = None,
     user: str = "anon",
+    now: datetime | None = None,
 ) -> PipelineResult:
+    now = now or datetime.now()
+
     # Route to a known command (or read-only); plan it deterministically.
     command = intent.route(request)
     the_plan = planner.plan(command)
@@ -56,53 +60,55 @@ def handle_request(
         return PipelineResult(
             blocked=True,
             reason=f"permission denied: {level} not allowed for {role} (default deny)",
-            level=level,
-            intent=command,
-            plan=the_plan,
+            level=level, intent=command, plan=the_plan,
         )
 
-    # Approval gate. A privileged action that is not approved is held: no
-    # execution, no change.
+    # Approval gate. A privileged action that is not approved is held.
     needs_approval = approval.requires_approval(the_plan, project_root)
     if needs_approval and not approve:
         return PipelineResult(
-            blocked=False,
-            reason="approval required",
-            level=level,
-            intent=command,
-            plan=the_plan,
-            requires_approval=True,
-            approved=False,
-            executed=False,
+            reason="approval required", level=level, intent=command, plan=the_plan,
+            requires_approval=True, approved=False, executed=False,
         )
 
-    # Approved (or approval not required). Record the approval decision.
     if needs_approval and approve and approver:
-        approval.record(project_root, the_plan, approved=True, approver=approver, now=_now())
+        approval.record(project_root, the_plan, approved=True, approver=approver, now=now)
 
     # A read-only request is answered without invoking the agent.
     if level == "read-only":
         return PipelineResult(
-            level=level, intent=command, plan=the_plan, requires_approval=False,
-            approved=False, executed=False, reason="read-only",
+            level=level, intent=command, plan=the_plan, executed=False, reason="read-only",
         )
 
-    # Bounded execution through the adapter (output validation lands in 10.5.8;
-    # the audit entry in 10.5.9 — until then validation is None and the
-    # approve-diff-matches security test stays xfail).
+    # Bounded execution -> output validation -> audit.
     result = executor.run(the_plan, adapter, project_root)
     verdict = validation.validate(the_plan, result, project_root)
     if not verdict.ok:
         result.status = "failed"
+    entry = audit.record(
+        project_root,
+        {
+            "user": user,
+            "request": request,
+            "intent": command,
+            "command": the_plan.command,
+            "approval_status": "approved" if needs_approval else "not-required",
+            "approver": approver,
+            "level": level,
+            "files_read": list(the_plan.reads),
+            "files_changed": list(result.files_changed),
+            "artifacts": list(result.artifacts_created),
+            "tests_run": level == "execute-tests",
+            "target_urls": [the_plan.target_environment] if the_plan.target_environment else [],
+            "status": result.status,
+            "summary": result.summary,
+            "evidence": [],
+        },
+        now=now,
+    )
     return PipelineResult(
         level=level, intent=command, plan=the_plan,
         requires_approval=needs_approval, approved=needs_approval, executed=True,
-        result=result, validation=verdict,
+        result=result, validation=verdict, audit_entry=entry,
         reason="" if verdict.ok else "; ".join(verdict.violations),
     )
-
-
-def _now():  # pragma: no cover - replaced by an injected clock in 10.5.9
-    from datetime import datetime
-
-    return datetime.now()

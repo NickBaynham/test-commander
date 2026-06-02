@@ -96,7 +96,6 @@ def test_approved_action_diff_matches_plan(tmp_path: Path):
     )
 
 
-@pytest.mark.xfail(reason="no-plan bypass refusal + audit land in 10.5.9", strict=True)
 def test_no_plan_direct_adapter_call_is_refused(tmp_path: Path):
     from agent_adapters.base import UnplannedExecutionError
     from agent_adapters.mock_agent import MockAgentAdapter
