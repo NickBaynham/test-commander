@@ -645,6 +645,20 @@ tc-quality-report:
   assert the verdict flips (FAIL → PASS, and FAIL → WARN); if the helper ignored
   the config, the verdict would stay FAIL and both assertions would fail.
 
+### Phase 8 — what landed (no new extensible surface)
+
+Phase 8 ships the governed learning loop (`tc-learning`: `/tc:learn`, the three
+`/tc:learn-from-*`, `/tc:review-lessons`, `/tc:promote-lessons`). It adds **no new
+`config.yaml` surface** — the `tc-lesson/v1` taxonomy, the review rubric, and the
+promotion gate are the universal governance contract (Decision D19). The one
+place a project tunes the loop is *where the lessons come from*: the artifacts
+under `documents/uploaded/feedback.md` and the resolved `requirements/open-questions.md`
+entries the capture commands read. Promotion is governed by a fixed `--apply`
+human gate, not a config key, and the loop writes only under `learning/` — never
+the shipped methodology or any third-party skill (Open Question Q6), so there is
+nothing to misconfigure. Project-specific guidance enters through
+`learning/promoted-guidance.md` (what you promote), not through a schema.
+
 ## Hook 2: project documents under `documents/uploaded/`
 
 The Phase 2 helpers read every Markdown file in `.test-commander/documents/uploaded/` that matches their convention — `REQ-\d+` markers for requirements, `US-\d+` for stories, `AC-\d+` for acceptance criteria. Drop your real product requirements there as Markdown files. No tool configuration is needed; the helpers find and parse them.

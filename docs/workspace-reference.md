@@ -214,9 +214,9 @@ Known and suspected risks, with the artifact that surfaced each one and the miti
 
 Artifacts routed by the `tc-evidence` indexer (auto-run by `/tc:run`; `--no-index` to suppress). Screenshots (`screenshots/`) and logs/reports (`logs/`) are committed; videos (`videos/`) and traces (`traces/`) are git-ignored by default via `evidence/.gitignore` (`videos/*` / `traces/*`, keeping each dir's `README.md`), with a documented `git-lfs` opt-in (Decision D5 / Open Question Q5). `evidence-index.md` lists every artifact across all run records with its run and scenario provenance; it is rebuilt from the `runs/*/results.json` records, so a re-run over unchanged records is byte-identical.
 
-### `learning/` — Phase 8
+### `learning/` — Phase 8 (shipped)
 
-Governed learning loop: `lessons-inbox.md` receives candidate lessons; `/tc:review-lessons` classifies them; `/tc:promote-lessons` moves accepted lessons into project guidance. Test Commander never silently rewrites methodology — every promotion is visible in `git diff`.
+The governed learning loop. The four capture commands (`/tc:learn` + the three `/tc:learn-from-*`) append `tc-lesson/v1` candidates to `lessons-inbox.md` (with `path:line` provenance and a monotonic `LESSON-NNN` id). `/tc:review-lessons` sorts each candidate into `accepted-lessons.md`, `rejected-lessons.md`, or `needs-human-review.md` (updating its `status`) and clears the inbox. `/tc:promote-lessons` proposes by default — writing `promotion-proposal.md` — and, only with `--apply` (the human-approval gate), moves accepted lessons into `promoted-guidance.md` (`status: promoted`) and renders `core-promotion-proposal.md` for any `core: true` lesson. The loop writes **only** under `learning/`; it never rewrites Test Commander's shipped methodology and never modifies third-party installed skills (Open Question Q6). Every applied promotion is a visible `git diff`.
 
 ### `visuals/` — Phase 9
 

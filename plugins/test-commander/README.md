@@ -21,6 +21,7 @@ This README documents the plugin's contents. For the project overview, architect
 | `tc-run` | Phase 7 shipped | Owns `/tc:run` (with the internal evidence-index sub-mode) and `/tc:analyze-results`. |
 | `tc-evidence` | Phase 7 shipped | The internal evidence indexer (no `/tc:*` command; invoked by `/tc:run`). |
 | `tc-quality-report` | Phase 7 shipped | Owns `/tc:report` and `/tc:quality-gate`. |
+| `tc-learning` | Phase 8 shipped | Owns `/tc:learn`, `/tc:learn-from-failures`, `/tc:learn-from-exploration`, `/tc:learn-from-feedback`, `/tc:review-lessons`, `/tc:promote-lessons` — the governed learning loop. |
 
 ## What arrives later
 

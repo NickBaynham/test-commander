@@ -159,9 +159,10 @@ schema (`tc-quality-report`)" section of
 
 ## Beyond Phase 7
 
-Phase 8 turns the workspace into a governed learning loop: lessons from
-failures, exploration, and feedback are reviewed and promoted into project
-guidance — nothing silently rewritten.
+Phase 8 (shipped) turns the workspace into a governed learning loop: lessons
+from failures, exploration, and feedback are reviewed and promoted into project
+guidance — nothing silently rewritten. Walkthrough:
+[learning-loop.md](learning-loop.md).
 
 ## See also
 

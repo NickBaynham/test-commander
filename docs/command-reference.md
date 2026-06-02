@@ -91,18 +91,25 @@ The Phase 6 commands generate and structurally validate TypeScript — they neve
 
 `/tc:run` and `/tc:report` take an injected clock (`--now`) for byte-stable artifacts. For the methodology, see [test-execution.md](../plugins/test-commander/skills/tc-run/methodology/test-execution.md), [failure-triage.md](../plugins/test-commander/skills/tc-run/methodology/failure-triage.md), [evidence-management.md](../plugins/test-commander/skills/tc-evidence/methodology/evidence-management.md), [quality-reporting.md](../plugins/test-commander/skills/tc-quality-report/methodology/quality-reporting.md), and [quality-gates.md](../plugins/test-commander/skills/tc-quality-report/methodology/quality-gates.md). End-to-end walkthroughs: [user-guide/running-tests.md](user-guide/running-tests.md) and [user-guide/quality-report.md](user-guide/quality-report.md).
 
+## Phase 8 commands (shipped)
+
+| Command | Skill | Per-command page |
+| --- | --- | --- |
+| `/tc:learn` | `tc-learning` | [learn.md](../plugins/test-commander/skills/tc-learning/commands/learn.md) |
+| `/tc:learn-from-failures` | `tc-learning` | [learn-from-failures.md](../plugins/test-commander/skills/tc-learning/commands/learn-from-failures.md) |
+| `/tc:learn-from-exploration` | `tc-learning` | [learn-from-exploration.md](../plugins/test-commander/skills/tc-learning/commands/learn-from-exploration.md) |
+| `/tc:learn-from-feedback` | `tc-learning` | [learn-from-feedback.md](../plugins/test-commander/skills/tc-learning/commands/learn-from-feedback.md) |
+| `/tc:review-lessons` | `tc-learning` | [review-lessons.md](../plugins/test-commander/skills/tc-learning/commands/review-lessons.md) |
+| `/tc:promote-lessons` | `tc-learning` | [promote-lessons.md](../plugins/test-commander/skills/tc-learning/commands/promote-lessons.md) |
+
+The four capture commands append `tc-lesson/v1` candidates to `learning/lessons-inbox.md` through one shared engine (monotonic `LESSON-NNN` ids, `(source, origin, summary)` dedup, `path:line` provenance): `/tc:learn` from a freeform `--note`, `/tc:learn-from-failures` from the Phase-7 `runs/<RUN-ID>/analysis.md` triage, `/tc:learn-from-exploration` from `exploration-notes/` anomalies and coverage gaps, and `/tc:learn-from-feedback` from resolved open questions and uploaded feedback. `/tc:review-lessons` classifies each candidate into `accepted` / `rejected` / `needs-human-review` (rubric: `severity: high` → needs-human-review; a summary already accepted → rejected; otherwise accepted) and clears the inbox. `/tc:promote-lessons` proposes by default and, only with `--apply` (the human-approval gate), moves accepted lessons into `learning/promoted-guidance.md` (`status: promoted`) and renders a `core-promotion-proposal.md` for any `core: true` lesson. The loop writes **only** under `learning/` — it never rewrites Test Commander's shipped methodology or any third-party skill (Open Question Q6). For the methodology, see [learning-loop.md](../plugins/test-commander/skills/tc-learning/methodology/learning-loop.md), [lesson-taxonomy.md](../plugins/test-commander/skills/tc-learning/methodology/lesson-taxonomy.md), and [improvement-governance.md](../plugins/test-commander/skills/tc-learning/methodology/improvement-governance.md). End-to-end walkthrough: [user-guide/learning-loop.md](user-guide/learning-loop.md).
+
 ## Planned commands (not yet implemented)
 
 These will gain per-command pages as their phases ship.
 
 | Command | Skill | Phase |
 | --- | --- | --- |
-| `/tc:learn` | `tc-learning` | 8 |
-| `/tc:learn-from-failures` | `tc-learning` | 8 |
-| `/tc:learn-from-exploration` | `tc-learning` | 8 |
-| `/tc:learn-from-feedback` | `tc-learning` | 8 |
-| `/tc:review-lessons` | `tc-learning` | 8 |
-| `/tc:promote-lessons` | `tc-learning` | 8 |
 | `/tc:visualize`, `/tc:diagram-*` | `tc-visualize` | 9 |
 | `/tc:generate-infographic` | `tc-visualize` | 9 |
 | `/tc:render-visuals` | `tc-visualize` | 9 |
