@@ -157,19 +157,26 @@ def _render_block(lesson: Lesson, lesson_id: str, now: datetime) -> str:
 def append_lessons(workspace: Path, lessons: list[Lesson], now: datetime) -> int:
     """Allocate ids, dedup by (source, origin, summary), append new blocks.
 
-    The shared engine every capture command reuses. Returns the count appended.
+    The shared engine every capture command reuses. Dedup and id allocation key
+    on **all** lessons the workspace already knows -- the inbox plus the review
+    buckets (accepted / rejected / needs-human-review) and promoted guidance --
+    so a lesson that has already been reviewed or promoted is never re-captured
+    after the inbox is cleared. Returns the count appended.
     """
-    inbox = workspace / "learning" / "lessons-inbox.md"
-    inbox.parent.mkdir(parents=True, exist_ok=True)
+    learning = workspace / "learning"
+    inbox = learning / "lessons-inbox.md"
+    learning.mkdir(parents=True, exist_ok=True)
     existing = inbox.read_text(encoding="utf-8") if inbox.is_file() else ""
     if not existing.strip() or STUB_MARKER in existing:
         existing = INBOX_HEADER
 
+    # The dedup + id corpus spans every learning/ file, not just the inbox.
+    corpus = "\n".join(p.read_text(encoding="utf-8") for p in sorted(learning.glob("*.md")))
     seen = {
         (d.get("source", ""), d.get("origin", ""), d.get("summary", ""))
-        for d in parse_inbox(existing)
+        for d in parse_inbox(corpus)
     }
-    next_id = _next_id(existing)
+    next_id = _next_id(corpus)
     new_blocks: list[str] = []
     for lesson in lessons:
         if lesson.dedup_key() in seen:
