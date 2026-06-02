@@ -104,10 +104,17 @@ def handle_request(
     if needs_approval:
         approval.record(project_root, the_plan, approved=True, approver=approver, now=now)
 
-    # A read-only request is answered without invoking the agent.
-    if level == "read-only":
+    # No executable workflow -> nothing runs. The router maps a request with no
+    # known /tc:* command to the read-only plan; that holds even when the request
+    # *classified* above read-only (a dangerous unrouted request like "delete all
+    # evidence"). Such a request never executes and writes no audit entry — there
+    # is no command to run. Keying this off the plan (not the classified level)
+    # closes a gap where a privileged-classified, unrouted request would "execute"
+    # a no-op without an approval gate.
+    if the_plan.command == "read-only":
+        reason = "read-only" if level == "read-only" else "no executable workflow for this request"
         return PipelineResult(
-            level=level, intent=command, plan=the_plan, executed=False, reason="read-only",
+            level=level, intent=command, plan=the_plan, executed=False, reason=reason,
         )
 
     # Bounded execution -> output validation -> audit.

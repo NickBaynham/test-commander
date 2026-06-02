@@ -112,15 +112,32 @@ def test_admin_refused_for_non_admin(tmp_path: Path):
     assert body["blocked"] is True
 
 
-def test_destructive_runs_for_maintainer_with_approval(tmp_path: Path):
+def test_privileged_action_runs_for_maintainer_with_approval(tmp_path: Path):
+    """A real privileged command (external-network /tc:explore) runs with approval."""
+    project = seed_project(tmp_path)
+    body = api_execute(
+        project, request="explore the staging site", role="Maintainer",
+        approve=True, approver="lead", user="bob",
+    )
+    assert body["level"] == "external-network"
+    assert body["executed"] is True
+    assert len(audit.read_entries(project)) == 1
+
+
+def test_destructive_request_has_no_executable_workflow(tmp_path: Path):
+    """A Maintainer is allowed `destructive`, but no /tc:* command deletes evidence,
+    so the request maps to no executable workflow: it is not blocked, but nothing
+    runs and nothing is audited (a privileged-classified, unrouted request never
+    executes a no-op without a real plan)."""
     project = seed_project(tmp_path)
     body = api_execute(
         project, request="delete all evidence", role="Maintainer",
-        approve=True, approver="lead", user="bob",
+        approve=True, approver="lead",
     )
     assert body["level"] == "destructive"
-    assert body["executed"] is True
-    assert len(audit.read_entries(project)) == 1
+    assert body["blocked"] is False
+    assert body["executed"] is False
+    assert audit.read_entries(project) == []
 
 
 # ---------------------------------------------------------------------------
