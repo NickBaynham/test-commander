@@ -59,6 +59,25 @@ listing each artifact the generator read. This is the cited-sources contract.
   `comprises` edge to each entity in the system model's Entities section. Entities
   are sorted; no relationship the model does not state is drawn.
 
+## Quality diagrams (per-kind derivation)
+
+- **`/tc:diagram-risk`** — `flowchart` with one subgraph per severity level
+  (`critical` → `high` → `medium` → `low`, only levels present). Each node is a
+  recorded risk (`RISK-NNN: <area>`) from the register. No severity or risk is
+  invented.
+- **`/tc:diagram-coverage`** — `flowchart`. Each requirement links to the
+  downstream artifact-type nodes (`Test ideas`, `BDD`, `Automation`) it actually
+  has in the requirements map; a `_(none)_` cell yields no edge, so an uncovered
+  requirement stands alone.
+- **`/tc:diagram-traceability`** — `flowchart` (`LR`). The full chain per test-map
+  row: `requirement → candidate scenario → result`, where result nodes
+  (`Passed`/`Failed`/`Flaky`/`Pending`) are shared across rows. Resolved results
+  are shown; an unresolved row renders `Pending` — never an invented outcome.
+- **`/tc:diagram-test-strategy`** — `flowchart`. A `Requirements (N)` node (the
+  inventory total) feeds the automation decision buckets (`Automate`/`Consider`/
+  `Manual`, only those present in the plan), each linking to its ranked
+  scenarios.
+
 ## See also
 
 - [Visual documentation methodology](visual-documentation.md)
