@@ -62,6 +62,22 @@ so it terminates cleanly in tests and one-shot clients.
 card** — a suggested `/tc:*` command plus a rationale — and **never executes**.
 The card always carries `executed: false`; execution is Phase 10.5.
 
+## Chat (read-only)
+
+`/api/chat` (`tcweb.chat`) answers a question from the index with deterministic
+keyword routing (requirements, runs, failures, flaky tests, risks, open
+questions) — there is no model call in the MVP. When the question is an *action*
+request (it contains an action verb such as "generate", "automate", "run") the
+answer carries a **proposal card** for the matching command; a pure question
+gets a plain answer with no card. Every response carries `executed: false`, and
+an explicit execute attempt ("run the tests now") is answered with a proposal
+plus a note that the console cannot run commands — the user reviews and runs it
+themselves. The chat never mutates the workspace; a test hits a batch of turns
+(questions, action requests, execute attempts) and asserts the workspace is
+byte-identical afterward. The frontend chat panel (`apps/web/app/chat/`) is the
+one place the console takes free-text input; it POSTs to `/api/chat` and renders
+the answer and any proposal card.
+
 ## See also
 
 - [tc-web skill](../SKILL.md)

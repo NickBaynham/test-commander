@@ -8,6 +8,7 @@ const LINKS: { href: string; label: string }[] = [
   { href: "/requirements", label: "Requirements" },
   { href: "/runs", label: "Test Runs" },
   { href: "/evidence", label: "Evidence" },
+  { href: "/chat", label: "Chat" },
   { href: "/settings", label: "Settings" },
 ];
 

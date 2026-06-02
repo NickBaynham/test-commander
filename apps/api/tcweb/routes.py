@@ -13,7 +13,7 @@ from pathlib import Path
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 
-from tcweb import config, indexer, proposals, queries, sse
+from tcweb import chat, config, indexer, proposals, queries, sse
 
 router = APIRouter(prefix="/api")
 
@@ -128,3 +128,13 @@ def get_events(request: Request, max_events: int | None = None) -> StreamingResp
 def post_proposal(payload: dict) -> dict:
     """Return a command proposal card. Never executes."""
     return proposals.propose(payload.get("intent", "")).to_dict()
+
+
+@router.post("/chat")
+def post_chat(payload: dict, request: Request) -> dict:
+    """Answer a question from the index; attach a proposal card. Never executes."""
+    conn = _index_conn(_project_root(request))
+    try:
+        return chat.answer(payload.get("question", ""), conn)
+    finally:
+        conn.close()

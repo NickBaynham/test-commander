@@ -25,6 +25,8 @@ Phase 10 (Step 10.1 — scaffold). The five commands ship across Steps 10.2-10.6
 - `/tc:web-index-artifacts` — **shipped (Step 10.2).** Rebuilds the SQLite index (requirements, runs, run results, evidence, journal, traceability, quality facts) from the workspace into `.test-commander/.web/index.db`. Drops and repopulates every table, so the index is always reconstructible; never mutates a workspace artifact. Refuses an uninitialized workspace (exit 2). Full spec: [commands/web-index-artifacts.md](commands/web-index-artifacts.md).
 - `/tc:web-export` — export the current view as a shareable static bundle. Behavior arrives in Phase 10 Step 10.6.
 
+The console also ships a **read-only chat** (Step 10.5): `/api/chat` answers questions from the index and surfaces command proposal cards, and the `apps/web/app/chat/` panel renders them. The chat never executes a command or mutates the workspace — an execute request is answered with a proposal and a note to run it yourself (execution is Phase 10.5 governance).
+
 ## See also
 
 - [Plugin README](../../README.md)
