@@ -39,7 +39,7 @@ Phase 10.5 (Step 10.5.2). The pipeline components ship across Steps 10.5.2-10.5.
 - Bounded executor (structured instruction wrapping) — **shipped (Step 10.5.7).** Wraps an approved plan into a `BoundedInstruction` (derived only from the plan, never the raw request) and runs it through the adapter — the only path to execution. See [methodology/agent-adapters.md](methodology/agent-adapters.md).
 - Output validation + secret safety — **shipped (Step 10.5.8).** After execution, verifies the diff matches the plan (in-scope writes, no secret file, expected outputs produced) — a violation fails the run. Redacts secret values and flags env-var-print attempts. See [methodology/output-validation.md](methodology/output-validation.md).
 - Audit journal — **shipped (Step 10.5.9).** Writes one append-only `audit/actions.jsonl` entry (full field set) per executed action; a no-plan bypass is refused and writes nothing. All four security tests are GREEN. See [methodology/approval-and-audit.md](methodology/approval-and-audit.md).
-- `ClaudeCodeCliAdapter` + console wiring. Behavior arrives in Phase 10.5 Step 10.5.10.
+- `ClaudeCodeCliAdapter` + console wiring — **shipped (Step 10.5.10).** The real Claude adapter implements the same interface, gated identically (refuses unplanned calls; real shell-out refused under pytest). The web console's single `/api/execute` route runs an approved request through the pipeline; no other UI path executes. See [methodology/agent-adapters.md](methodology/agent-adapters.md).
 
 ## See also
 

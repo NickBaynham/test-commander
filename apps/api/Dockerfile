@@ -7,6 +7,9 @@ WORKDIR /srv
 RUN pip install --no-cache-dir "fastapi>=0.115" "uvicorn[standard]>=0.30" "pyyaml>=6.0"
 
 COPY apps/api/tcweb ./tcweb
+# The governance pipeline + agent adapters (Phase 10.5) the /api/execute route uses.
+COPY runtime/governance ./governance
+COPY runtime/agent_adapters ./agent_adapters
 
 # The consuming project's workspace is mounted at /workspace.
 ENV TC_WORKSPACE=/workspace

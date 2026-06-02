@@ -138,3 +138,33 @@ def post_chat(payload: dict, request: Request) -> dict:
         return chat.answer(payload.get("question", ""), conn)
     finally:
         conn.close()
+
+
+@router.post("/execute")
+def post_execute(payload: dict, request: Request) -> dict:
+    """Run an approved request through the governance pipeline.
+
+    The ONLY execution path in the console. Every action flows through
+    intent -> plan -> policy -> approval -> bounded execution -> validation ->
+    audit; nothing executes without it.
+    """
+    from governance import pipeline
+
+    res = pipeline.handle_request(
+        payload.get("request", ""),
+        role=payload.get("role", "Viewer"),
+        project_root=_project_root(request),
+        adapter=request.app.state.governance_adapter,
+        approve=bool(payload.get("approve", False)),
+        approver=payload.get("approver"),
+        user=payload.get("user", "anon"),
+    )
+    return {
+        "blocked": res.blocked,
+        "executed": res.executed,
+        "requires_approval": res.requires_approval,
+        "approved": res.approved,
+        "level": res.level,
+        "command": res.intent,
+        "reason": res.reason,
+    }

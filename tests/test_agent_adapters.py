@@ -16,7 +16,7 @@ import pytest
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "runtime"))
 
-from agent_adapters import anthropic_api, claude_code_cli  # noqa: E402
+from agent_adapters import anthropic_api  # noqa: E402
 from agent_adapters.base import (  # noqa: E402
     AgentAdapter,
     BoundedInstruction,
@@ -84,7 +84,8 @@ def test_mock_stream_events_is_deterministic(tmp_path: Path):
     assert first and all(isinstance(e, str) for e in first)
 
 
-def test_real_backend_stubs_refuse_cleanly(tmp_path: Path):
-    for adapter in (claude_code_cli.ClaudeCodeCliAdapter(), anthropic_api.AnthropicApiAdapter()):
-        with pytest.raises(NotImplementedError):
-            adapter.execute_command(make_instruction(tmp_path))
+def test_anthropic_stub_refuses_cleanly(tmp_path: Path):
+    # The Anthropic backend stays a stub (Pattern C, deferred); the Claude
+    # adapter is a real gated backend tested in test_claude_adapter_and_console.
+    with pytest.raises(NotImplementedError):
+        anthropic_api.AnthropicApiAdapter().execute_command(make_instruction(tmp_path))
