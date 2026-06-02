@@ -1,11 +1,15 @@
 # Test Commander continuous quality workflow (Phase 13).
 #
-# Runs the continuous-quality check on a change: read-only analysis (watch ->
+# Runs the continuous-quality check on a change: the read-only analysis (watch ->
 # impact -> coverage-gap -> propose) runs automatically; any generated change
-# arrives as a clearly-labeled, gated pull request, never a direct push. The
-# configured autonomy mode is a ceiling - nothing above it executes without
-# explicit human approval. The full check wiring lands in Step 13.6; this is the
-# skeleton. Inputs are passed through env (never interpolated into run: directly).
+# arrives only as a clearly-labeled, gated pull request, never a direct push (the
+# token is read-only). The configured autonomy mode is a ceiling - nothing above
+# it executes without explicit human approval. Inputs are passed through env
+# (never interpolated into run: directly).
+#
+# MVP note: this workflow is the template a consuming project runs against its own
+# .test-commander/ workspace. On a repo with no workspace (e.g. this plugin repo)
+# the check step guards on the workspace and skips cleanly, so CI stays green.
 name: test-commander-continuous-quality
 
 on:
@@ -28,7 +32,25 @@ permissions:
 jobs:
   continuous-quality:
     runs-on: ubuntu-latest
+    env:
+      AUTONOMY_MODE: ${{ inputs.autonomy_mode || '0' }}
     steps:
       - uses: actions/checkout@v4
-      - name: Placeholder
-        run: echo "Continuous-quality check (read-only analysis + gated PRs) lands in Step 13.6."
+        with:
+          fetch-depth: 2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run continuous-quality check
+        run: |
+          if [ ! -d .test-commander ]; then
+            echo "no .test-commander workspace here; skipping (this is the consuming-project template)"
+            exit 0
+          fi
+          python -m pip install --quiet pyyaml
+          git diff HEAD~1 HEAD > /tmp/tc-change.diff || true
+          python plugins/test-commander/scripts/continuous_quality_check.py . \
+            --diff /tmp/tc-change.diff --mode "$AUTONOMY_MODE"
