@@ -1,0 +1,40 @@
+{
+  "generated": "2026-06-01T09:30:00",
+  "mode": "all",
+  "results": [
+    {
+      "attachments": [],
+      "candidate": "CS-001-001",
+      "error": null,
+      "requirement": "REQ-001",
+      "retries": 0,
+      "scenario": "Sign in with valid credentials",
+      "spec": "tests/e2e/sign-in.spec.ts",
+      "status": "passed",
+      "tags": ["@area:sign-in", "@req:REQ-001", "@cs:CS-001-001"]
+    },
+    {
+      "attachments": ["evidence/screenshots/CS-001-002-failure.png"],
+      "candidate": "CS-001-002",
+      "error": "expected sign-in to be rejected; dashboard rendered instead",
+      "requirement": "REQ-001",
+      "retries": 0,
+      "scenario": "Sign in is rejected with an invalid password",
+      "spec": "tests/e2e/sign-in.spec.ts",
+      "status": "failed",
+      "tags": ["@area:sign-in", "@req:REQ-001", "@cs:CS-001-002"]
+    },
+    {
+      "attachments": [],
+      "candidate": "CS-001-003",
+      "error": null,
+      "requirement": "REQ-001",
+      "retries": 1,
+      "scenario": "Expired session routes the holder back to sign-in",
+      "spec": "tests/e2e/sign-in.spec.ts",
+      "status": "flaky",
+      "tags": ["@area:sign-in", "@req:REQ-001", "@cs:CS-001-003"]
+    }
+  ],
+  "run_id": "RUN-20260601-093000"
+}

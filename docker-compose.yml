@@ -1,3 +1,26 @@
-# Test Commander local stack.
-# Populated as runtimes ship — Playwright environment in Phase 6, web/API in Phase 10+.
-services: {}
+# Test Commander local stack (Pattern A, local-first - Decision D15).
+# Phase 10 adds the read-only web console: api (FastAPI) + web (Next.js).
+# TC_WORKSPACE is the consuming-project root that holds .test-commander/;
+# it defaults to the current directory.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "8100:8100"
+    environment:
+      TC_WORKSPACE: /workspace
+    volumes:
+      - "${TC_WORKSPACE:-.}:/workspace:ro"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "3100:3100"
+    environment:
+      TC_API_BASE: http://api:8100
+    depends_on:
+      - api

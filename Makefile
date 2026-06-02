@@ -70,7 +70,9 @@ build:
 	@echo "there is no repo-level compile step."
 
 run:
-	@echo "Nothing to run yet. docker compose stack arrives in Phase 10+."
+	@echo "Starting the Test Commander web console (api + web) via docker compose."
+	@echo "Set TC_WORKSPACE to the project root holding .test-commander/ (default: cwd)."
+	docker compose up --build
 
 verify: lint test verify-skills
 	python3 scripts/check_links.py

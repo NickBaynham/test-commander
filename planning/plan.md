@@ -3225,6 +3225,8 @@ Six sub-sub-steps mirroring prior sign-offs, adapted for the runtime: cold-user 
 
 Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. (Populated as 10.1–10.9 land.)
 
+- **Step 10.1 — scaffold (`tc-web` + `apps/web` + `apps/api` + `make run`).** 11/11 GREEN. **Reconciled the DB choice: SQLite, not Postgres.** The Runtime Topology table mentions Postgres for the viewer, but the Phase 10 execution outline says SQLite ("the DB is a derived index"), and Pattern A (local-first MVP, D15) wants no extra service. Per AGENTS.md the execution outline is operative — the index is a single rebuildable SQLite file under `.test-commander/.web/index.db` (git-ignored), so the compose stack is just `api` + `web`, no `db` service. **Backend package named `tcweb`, not `app`:** `app` is a generic name and `apps/api` is on the pytest pythonpath; a `tcweb` package avoids any import clash and reads clearly (`tcweb.main:app`). The backend is exercised by the *existing* pytest gate via the new `apps/api` pythonpath entry — no second test runner — and FastAPI/uvicorn/httpx live in a `web` dependency-group that `dev` includes, so `pdm install` (and thus `make verify`) has them without changing the install command. **The frontend stays out of `make verify`** (Next.js build + vitest + Playwright are heavy and Node-managed); a Python scaffold test asserts the `apps/web` tree + `package.json` deps instead, per the plan's "documented, not enforced if heavy" allowance — the real frontend e2e runs under `make run`/docker in 10.8. Mirrored `test_phase_9_scaffolds.py`; the only new wrinkle was the FastAPI `TestClient` health-route assertion.
+
 ---
 
 ## Phase 10.5 — Controlled Agent Execution and Policy-Governed Chat
@@ -3818,7 +3820,7 @@ Phase 9 complete (2026-06-01) — see Completed.
 
 See `### Phase 10 — Execution outline` for full sub-step detail.
 
-- [ ] 10.1 — Scaffold (`tc-web` + `apps/web` + `apps/api` + `make run`)
+- [x] 10.1 — Scaffold (`tc-web` + `apps/web` + `apps/api` + `make run`)
 - [ ] 10.2 — Backend: artifact indexer + `/tc:web-index-artifacts`
 - [ ] 10.3 — Backend: read APIs + SSE event stream + `/tc:web-sync`
 - [ ] 10.4 — Frontend: the MVP pages + `/tc:web-init` + `/tc:web-start`

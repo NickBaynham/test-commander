@@ -34,3 +34,12 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Phase 10 web console build artifacts
+apps/web/node_modules/
+apps/web/.next/
+apps/web/out/
+apps/web/playwright-report/
+apps/web/test-results/
+# Derived SQLite index (rebuildable from the workspace)
+.test-commander/.web/
