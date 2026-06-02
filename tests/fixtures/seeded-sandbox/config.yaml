@@ -1,0 +1,12 @@
+schema: tc-sandbox/v1
+provider: docker-compose
+environment_label: "Test Commander Sandbox (ephemeral)"
+target:
+  base_url: "https://sandbox.example.com"
+allowed_domains:
+  - example.com
+  - "*.example.com"
+block_private_ranges: true
+approvals_required:
+  - external-network
+  - destructive

@@ -1,0 +1,27 @@
+# Sandbox configuration template (written by /tc:sandbox-init into
+# <workspace>/.test-commander/sandbox/config.yaml). Universal defaults
+# (Decision D19); a consuming project edits the target and allow-list.
+schema: tc-sandbox/v1
+
+# Which provider backs the sandbox. MVP default: docker-compose-local.
+provider: docker-compose
+
+# A clear, visible label so an ephemeral environment is never mistaken for prod.
+environment_label: "Test Commander Sandbox (ephemeral)"
+
+# The application under test.
+target:
+  base_url: "https://sandbox.example.com"
+
+# Safe-by-default targeting. Only these hosts may be targeted.
+allowed_domains:
+  - example.com
+  - "*.example.com"
+
+# Block private/loopback/link-local ranges (RFC 1918, 127/8, 169.254/16).
+block_private_ranges: true
+
+# Permission levels that require an approval before the sandbox acts.
+approvals_required:
+  - external-network
+  - destructive

@@ -3653,6 +3653,8 @@ Six sub-sub-steps mirroring prior sign-offs: cold-user walkthrough (launch a san
 
 Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. (Populated as 12.1–12.7 land.)
 
+- **Step 12.1 (scaffold).** Mirrored the Phase-11 scaffold shape. The architectural call that shaped the phase: the provider abstraction lives at the repo root (`sandbox/`, like `runtime/` and `apps/`), NOT inside the plugin — so the six `/tc:sandbox-*` plugin helpers (D18, copied into the installed cache) must follow the `web_start.py` pattern: self-contained, computing the repo root from `__file__` and driving the runtime via the workspace + a shell-out/dry-run, never `import sandbox` at module load (the installed cache has no repo root). That keeps the helpers shippable and the tests hermetic (a real launch is refused under pytest; tests drive `dry_run`). `import sandbox.providers...` needs the *repo root* on `sys.path`, not `sandbox/` — the scaffold test inserts `REPO` itself rather than adding a pytest `pythonpath` entry (adding `sandbox` would expose its contents as top-level, the wrong thing). The GitHub Actions workflow is `workflow_dispatch`-only with `dry_run` defaulting true, so the scaffolded workflow can never auto-run or spend. The repo's security hook fires on any `.github/workflows/*.yml` write — the skeleton uses a static `echo` with no `${{ github.event.* }}` interpolation in `run:`, so it is injection-safe by construction. No new extensible surface yet (the config schema ships its first worked example in the customization guide at 12.5, when the guards that read it land).
+
 ---
 
 ## Phase 13 — Continuous Quality Agent Mode
@@ -3860,7 +3862,7 @@ Phase 11 complete (2026-06-02) — see Completed.
 
 See `### Phase 12 — Execution outline` for full sub-step detail.
 
-- [ ] 12.1 — Scaffold (`tc-sandbox` + `sandbox/providers/` + `.github/workflows/` skeleton)
+- [x] 12.1 — Scaffold (`tc-sandbox` + `sandbox/providers/` + `.github/workflows/` skeleton)
 - [ ] 12.2 — Provider abstraction + docker-compose provider + stubs
 - [ ] 12.3 — The six `/tc:sandbox-*` commands
 - [ ] 12.4 — GitHub Actions workflows + safety guards

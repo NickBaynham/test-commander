@@ -1,0 +1,17 @@
+# Candidate sandbox targets. Each is flagged `unsafe` when the safety guards must
+# refuse it: a private/loopback/link-local range, or a host not on the allow-list.
+- url: "https://sandbox.example.com/app"
+  unsafe: false
+  why: "allow-listed host"
+- url: "https://app.example.com/dashboard"
+  unsafe: false
+  why: "wildcard allow-listed host"
+- url: "http://192.168.1.10:8080"
+  unsafe: true
+  why: "RFC 1918 private range (blocked by default)"
+- url: "http://127.0.0.1:3000"
+  unsafe: true
+  why: "loopback (blocked by default)"
+- url: "https://evil.test/login"
+  unsafe: true
+  why: "host not on the allow-list"

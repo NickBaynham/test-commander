@@ -1,0 +1,31 @@
+# Test Commander sandbox workflow (Phase 12).
+#
+# Launches an on-demand, team-accessible Test Commander sandbox against a target
+# application, then tears it down. Manual-dispatch only (no automatic push/PR
+# trigger) so it never runs - or spends - unless an operator asks for it. The
+# safety guards and the full launch -> publish -> teardown sequence land in Step
+# 12.4; this is the skeleton.
+name: test-commander-sandbox
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: "The application under test (must be on the allow-list)."
+        required: true
+      provider:
+        description: "Sandbox provider."
+        required: false
+        default: docker-compose
+      dry_run:
+        description: "Plan only; do not spend real cloud."
+        required: false
+        default: "true"
+
+jobs:
+  sandbox:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Placeholder
+        run: echo "Sandbox build -> publish -> teardown lands in Step 12.4 (dry run by default)."
