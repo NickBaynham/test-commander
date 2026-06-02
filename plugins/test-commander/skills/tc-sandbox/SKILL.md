@@ -20,7 +20,7 @@ Every backend implements one `SandboxProvider` interface (`sandbox/providers/bas
 
 ## Status
 
-Phase 12 (Step 12.3). The provider abstraction and the six commands are shipped; the workflows + safety guards land in 12.4:
+Phase 12 (Step 12.4). The provider abstraction, the six commands, the workflows, and the safety guards are all shipped:
 
 - Provider abstraction + the docker-compose-local provider + the refusing stubs — **shipped (Step 12.2).** `sandbox/providers/` ships the `DockerComposeProvider` (the MVP default — lifecycle calls plan deterministically in dry-run; a real launch shells out and is refused under pytest), the `ContainerHostProvider`/`SpritesProvider` refusing stubs (Q8 default), a `MockSandboxProvider` for hermetic testing, and `get_provider(name)` (default deny on an unknown name). See [methodology/provider-abstraction.md](methodology/provider-abstraction.md).
 - The six `/tc:sandbox-*` commands — **shipped (Step 12.3).** Self-contained plugin helpers (D18) that manage `<workspace>/.test-commander/sandbox/{config.yaml,state.json}` and drive the provider:
@@ -30,7 +30,7 @@ Phase 12 (Step 12.3). The provider abstraction and the six commands are shipped;
   - `/tc:sandbox-sync` — push the committed workspace into the sandbox. [commands/sandbox-sync.md](commands/sandbox-sync.md)
   - `/tc:sandbox-stop` — tear down; idempotent. [commands/sandbox-stop.md](commands/sandbox-stop.md)
   - `/tc:sandbox-export` — write a shareable bundle (endpoints, labels, status). [commands/sandbox-export.md](commands/sandbox-export.md)
-- The GitHub Actions workflows + the safety guards (allowed domains, blocked private ranges, approvals) — behavior arrives in Step 12.4.
+- The GitHub Actions workflow + the safety guards — **shipped (Step 12.4).** `.github/workflows/test-commander-sandbox.yml` (manual `workflow_dispatch` only; `dry_run` defaults true) sequences a safety check → build → publish → teardown (teardown always runs). `sandbox/safety.py` enforces the allow-list and blocks private/loopback/link-local ranges by default (`check_target`); `sandbox/governance.py` (`run_in_sandbox`) runs the Phase-10.5 pipeline inside the sandbox, so a sandbox cannot execute above its approved level. See [methodology/sandbox-safety.md](methodology/sandbox-safety.md).
 
 See [methodology/provider-abstraction.md](methodology/provider-abstraction.md) and [methodology/sandbox-safety.md](methodology/sandbox-safety.md).
 

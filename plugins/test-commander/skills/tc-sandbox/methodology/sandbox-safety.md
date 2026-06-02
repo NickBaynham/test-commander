@@ -27,4 +27,7 @@ need them.
 
 CI exercises all of this as a dry run with a mocked provider — no real spend.
 
-(Behavior shipped in Step 12.4; this methodology page is the scaffold spec.)
+Shipped in Step 12.4: `sandbox/safety.py` (`check_target`, `is_private_host`,
+`host_allowed`) and `sandbox/governance.py` (`run_in_sandbox`), with the
+`.github/workflows/test-commander-sandbox.yml` workflow sequencing
+safety → build → publish → teardown (`tests/test_sandbox_safety.py`).

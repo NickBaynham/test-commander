@@ -750,6 +750,35 @@ served project root) and the operator's choice of governance adapter (the
 deterministic mock by default; the real Claude adapter is an explicit server-side
 choice). See [integrating.md](integrating.md).
 
+### Phase 12 sandbox (`.test-commander/sandbox/config.yaml`)
+
+Phase 12 ships a genuinely-extensible surface: the sandbox config that
+`/tc:sandbox-init` writes and the safety guards read. A consuming project edits
+it to point the sandbox at *their* application and lock down targeting:
+
+```yaml
+# .test-commander/sandbox/config.yaml
+schema: tc-sandbox/v1
+provider: docker-compose            # or a configured container host
+environment_label: "Acme QA Sandbox (ephemeral)"
+target:
+  base_url: "https://qa.acme.example"
+allowed_domains:                    # only these hosts may be targeted
+  - acme.example
+  - "*.acme.example"
+block_private_ranges: true          # refuse 10/8, 172.16/12, 192.168/16, 127/8, 169.254/16
+approvals_required:                 # levels that need an approval before the sandbox acts
+  - external-network
+  - destructive
+```
+
+A target whose host is not on `allowed_domains` is refused, and a private/
+loopback/link-local address is refused while `block_private_ranges` is true — so
+a sandbox can never be aimed at an internal network. The seven permission levels
+and the approval semantics are the fixed governance contract (the sandbox runs
+the same Phase-10.5 pipeline); a project tunes the *target* and the *allow-list*,
+not the levels. See [sandbox.md](sandbox.md).
+
 ## Hook 2: project documents under `documents/uploaded/`
 
 The Phase 2 helpers read every Markdown file in `.test-commander/documents/uploaded/` that matches their convention — `REQ-\d+` markers for requirements, `US-\d+` for stories, `AC-\d+` for acceptance criteria. Drop your real product requirements there as Markdown files. No tool configuration is needed; the helpers find and parse them.
