@@ -92,15 +92,16 @@ def handle_request(
             level=level, intent=command, plan=the_plan,
         )
 
-    # Approval gate. A privileged action that is not approved is held.
+    # Approval gate. A privileged action is held unless it is both approved AND
+    # attributed: an approval with no approver is not an approval (no bypass).
     needs_approval = approval.requires_approval(the_plan, project_root)
-    if needs_approval and not approve:
+    if needs_approval and not (approve and approver):
         return PipelineResult(
             reason="approval required", level=level, intent=command, plan=the_plan,
             requires_approval=True, approved=False, executed=False,
         )
 
-    if needs_approval and approve and approver:
+    if needs_approval:
         approval.record(project_root, the_plan, approved=True, approver=approver, now=now)
 
     # A read-only request is answered without invoking the agent.
