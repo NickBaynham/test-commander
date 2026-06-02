@@ -43,6 +43,25 @@ The indexer (`tcweb.indexer`) parses the real producer formats into tables:
 A rebuild is deterministic: the same workspace yields the same row counts. The
 indexer never writes a workspace artifact — only the derived DB.
 
+## Read APIs, SSE, and proposals
+
+The FastAPI router (`apps/api/tcweb/routes.py`) serves one read route per page —
+`/api/dashboard`, `/api/requirements`, `/api/runs` (+ `/api/runs/results`),
+`/api/journal`, `/api/evidence`, `/api/traceability`, `/api/quality-report`,
+`/api/sessions`. Each opens the index read-only (rebuilding it once if absent)
+and returns plain dicts; page payloads name the artifact(s) they were rendered
+from. Hitting every read route leaves the workspace byte-identical.
+
+`/api/events` is a Server-Sent-Events stream (`tcweb.sse`): it emits a
+`connected` frame, then a `changed` frame whenever a workspace snapshot
+(path + mtime + size, excluding `.web/`) differs — so open pages refresh on a
+journal append or any artifact change. The generator is bounded by `max_events`
+so it terminates cleanly in tests and one-shot clients.
+
+`/api/proposals` (`tcweb.proposals`) maps a freeform intent to a **proposal
+card** — a suggested `/tc:*` command plus a rationale — and **never executes**.
+The card always carries `executed: false`; execution is Phase 10.5.
+
 ## See also
 
 - [tc-web skill](../SKILL.md)
