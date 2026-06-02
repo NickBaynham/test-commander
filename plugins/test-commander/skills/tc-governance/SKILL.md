@@ -33,7 +33,7 @@ Phase 10.5 (Step 10.5.2). The pipeline components ship across Steps 10.5.2-10.5.
 
 - Agent adapter abstraction (`AgentAdapter` + mock + stubs) — **shipped (Step 10.5.2).** The `AgentAdapter` interface, the `MockAgentAdapter` (deterministic; refuses unplanned calls via `UnplannedExecutionError`), and the refusing `ClaudeCodeCliAdapter`/`AnthropicApiAdapter` stubs. See [methodology/agent-adapters.md](methodology/agent-adapters.md).
 - Permission policy engine (7 levels, role-aware) — **shipped (Step 10.5.3).** Classifies every request into one of the seven levels and resolves it against the role's allowed levels (default deny); overridable via `policy/permissions.yaml`. The pipeline blocks before the agent when denied. See [methodology/permission-policy.md](methodology/permission-policy.md).
-- Intent router (NL/button → known workflow). Behavior arrives in Phase 10.5 Step 10.5.4.
+- Intent router (NL/button → known workflow) — **shipped (Step 10.5.4).** Maps requests to the closed set of known `/tc:*` workflows or the read-only path; cannot synthesize a command outside the set. See [methodology/intent-and-planning.md](methodology/intent-and-planning.md).
 - Command planner (displayable plan). Behavior arrives in Phase 10.5 Step 10.5.5.
 - Approval gate (card + record). Behavior arrives in Phase 10.5 Step 10.5.6.
 - Bounded executor (structured instruction wrapping). Behavior arrives in Phase 10.5 Step 10.5.7.
