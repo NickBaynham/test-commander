@@ -139,8 +139,13 @@ def test_plan_todo_phase_11_collapsed():
 
 def test_status_line_marks_phase_11_complete():
     text = README.read_text(encoding="utf-8")
-    assert re.search(r"Phase 11 complete \(\d{4}-\d{2}-\d{2}\)", text), (
-        "README status line must mark Phase 11 complete"
+    # The rolling status line names the latest complete phase; Phase 11 or any
+    # later phase being marked complete satisfies "Phase 11 has closed" (do not
+    # pin a monotonically-advancing status line to a specific phase number).
+    pattern = r"Phase (\d+(?:\.\d+)?) complete \(\d{4}-\d{2}-\d{2}\)"
+    completed = [float(m) for m in re.findall(pattern, text)]
+    assert completed and max(completed) >= 11, (
+        "README status line must mark Phase 11 (or a later phase) complete"
     )
 
 

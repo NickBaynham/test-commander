@@ -6,7 +6,7 @@ If you are the parent project's global agent and have already loaded `~/projects
 
 ## Project identity (one paragraph)
 
-Test Commander is an AI-assisted testing system and quality intelligence center, shipped as a Claude Code plugin plus a small Python runtime. It turns requirements, exploration, BDD, automation, evidence, reporting, and continuous learning into one visible workflow. It is **product-domain-agnostic** (Decision D19): the shipped rubric, tag taxonomy, methodology, fixtures, and examples use universal English and software-engineering vocabulary only — domain vocabulary enters only through `<workspace>/config.yaml` extensions, the consuming project's uploaded documents, Phase 3 knowledge ingestion, and project-defined tag namespaces. The project ships phase by phase; as of the most recent tag, Phases 0–11 are complete (annotated `phase-0` … `phase-11` tags on origin).
+Test Commander is an AI-assisted testing system and quality intelligence center, shipped as a Claude Code plugin plus a small Python runtime. It turns requirements, exploration, BDD, automation, evidence, reporting, and continuous learning into one visible workflow. It is **product-domain-agnostic** (Decision D19): the shipped rubric, tag taxonomy, methodology, fixtures, and examples use universal English and software-engineering vocabulary only — domain vocabulary enters only through `<workspace>/config.yaml` extensions, the consuming project's uploaded documents, Phase 3 knowledge ingestion, and project-defined tag namespaces. The project ships phase by phase; as of the most recent tag, Phases 0–12 are complete (annotated `phase-0` … `phase-12` tags on origin).
 
 ## Source of truth
 
