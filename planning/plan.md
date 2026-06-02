@@ -2994,6 +2994,8 @@ Six sub-sub-steps. Mirrors the Phase 7 sign-off (7.9) exactly. Test-first: the s
 
 Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. (Populated as 8.1–8.10 land.)
 
+- **Step 8.1 (scaffold) closed cleanly; one parametrized scaffold test covers the one skill + the learning fixture, mirroring the Phase 7 consolidation.** Reused the `test_phase_7_scaffolds.py` skeleton (strict-PyYAML frontmatter parse from the start) and adapted the fixture assertions to the Phase-8 shape — a lessons inbox of `tc-lesson/v1` candidates plus the upstream artifacts the capture commands read. **The fixture composes upstream outputs from three different prior phases** (a Phase-7 `analysis.md`, a Phase-4 exploration note, a resolved-feedback `open-questions.md`), reusing the universal sign-in/session narrative so the 8.3–8.5 capture tests and the 8.9 integration compose without translation — the Phase-7 "fixture is an upstream output, not a clean input" lesson extended to *three* upstreams at once. **The `tc-lesson/v1` schema is baked into the fixture now** so 8.2–8.7 share a stable contract: `id` (LESSON-NNN, monotonic), `source`, `origin` (`path:line`), `category` (the six-name universal taxonomy), `severity`, `status` (`candidate` → `accepted`/`rejected`/`needs-human-review` → `promoted`), `captured_at`, and a `summary` that is the third element of the `(source, origin, summary)` dedup key. **One candidate per review classification, marked with `# knowledge: <classification>`** (the Phase 5/6 flawed-fixture convention) — `accepted` (clean + provenanced + known category), `rejected` (a duplicate with no new evidence), `needs-human-review` (high severity + ambiguous scope) — so the 8.6 review test can assert the classifier sorts each into the right bucket on its own merits. **No CATALOG edit needed:** `tc-learning: 8` was pre-seeded in `verify_skills.py`, so 8.1 relies only on the cap staying at 7 (`UNEXPECTED — ahead of schedule`, warn/exit-0; cap bumps to 8 in 8.9). **Ruff caught a SIM300 Yoda condition** (`CLASSIFICATIONS <= seen` → `seen >= CLASSIFICATIONS`) — the lint stage backstop again. 8 RED → 8 GREEN; `make verify` clean (723 tests, up from 715; link checker 220 files). **No new extensible `config.yaml` surface** — the configurable keys, if any, arrive with their helpers in 8.2–8.7 (Per-Phase Convention #6). **Future-implementer hint:** 8.2 authors `capture_lesson.py` with `append_lessons(workspace, lessons, now)` — the shared inbox-append + `(source, origin, summary)` dedup + `LESSON-NNN` monotonic-id engine that 8.3–8.5's `learn_from_*` helpers import (the sibling-import pattern, like `generate_bdd`→`review_features`).
+
 ---
 
 ## Phase 9 — Visual Documentation and Infographics
@@ -3429,7 +3431,7 @@ Phase 7 complete (2026-06-01) — see Completed.
 
 See `### Phase 8 — Execution outline` for full sub-step detail.
 
-- [ ] 8.1 — Skill scaffold (`tc-learning`) and seeded-learning fixture
+- [x] 8.1 — Skill scaffold (`tc-learning`) and seeded-learning fixture
 - [ ] 8.2 — `/tc:learn` + the `tc-lesson/v1` schema (shared inbox-append + dedup engine)
 - [ ] 8.3 — `/tc:learn-from-failures` (reads Phase-7 `runs/*/analysis.md`)
 - [ ] 8.4 — `/tc:learn-from-exploration` (reads Phase-4 exploration-notes/sessions)
