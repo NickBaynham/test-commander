@@ -36,7 +36,18 @@ project configures for its own backend.
 Configure the target and the allow-list in `.test-commander/sandbox/config.yaml`
 — see [customizing-for-your-project.md](customizing-for-your-project.md).
 
+## MVP limitations
+
+The Phase-12 sandbox is an MVP: docker-compose-local is the only
+fully-implemented provider, live status is read from persisted state (not queried
+from the backend), and the CI workflow's build/publish/teardown steps are
+demonstrative placeholders. The full list is in
+[sandboxed-environments.md](../sandboxed-environments.md#mvp-limitations-honest).
+
 ## See also
 
+- [Sandboxed environments (architecture)](../sandboxed-environments.md)
+- [GitHub Actions sandbox](../github-actions-sandbox.md)
+- [No-code tester workflow](../no-code-tester-workflow.md)
 - [tc-sandbox skill](../../plugins/test-commander/skills/tc-sandbox/SKILL.md)
 - [Security and permissions](../security-and-permissions.md)

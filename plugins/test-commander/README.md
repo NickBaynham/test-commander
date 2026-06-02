@@ -26,6 +26,7 @@ This README documents the plugin's contents. For the project overview, architect
 | `tc-web` | Phase 10 shipped | Owns `/tc:web-init`, `/tc:web-start`, `/tc:web-sync`, `/tc:web-index-artifacts`, `/tc:web-export` — the read-only, proposal-only web console (Next.js + FastAPI, brought up by `make run`). |
 | `tc-governance` | Phase 10.5 shipped | The controlled-execution pipeline (intent → plan → policy → approval → bounded execution → validation → audit) behind the console's `/api/execute`. Owns the policy/approval/bounded-prompt templates and the audit schema; no `/tc:*` commands. |
 | `tc-mcp` | Phase 11 shipped | Exposes the workspace through the expanded Runtime API (`apps/api`: the `/api/runtime/` namespace) and a schema-first MCP server (`apps/mcp`: `tc_status`, `tc_plan`, `tc_run_command`). Both are alternative front-ends to the governance pipeline with the seven permission levels enforced server-side; no `/tc:*` commands. |
+| `tc-sandbox` | Phase 12 shipped | Owns `/tc:sandbox-init`, `/tc:sandbox-launch`, `/tc:sandbox-status`, `/tc:sandbox-sync`, `/tc:sandbox-stop`, `/tc:sandbox-export` — on-demand Test Commander environments launched from GitHub Actions via the `sandbox/providers/` abstraction (docker-compose-local MVP). Governed by the Phase-10.5 pipeline; safe-by-default targeting. |
 
 ## What arrives later
 
@@ -34,7 +35,7 @@ Each Test Commander skill is created by the phase that needs it. Until that phas
 | Skill | Phase | Owns |
 | --- | --- | --- |
 | `tc-run`, `tc-quality-report`, `tc-evidence` | 7 | Execution, evidence, quality report |
-| `tc-sandbox`, `tc-continuous-quality` | 12–13 | Sandboxes, continuous quality |
+| `tc-continuous-quality` | 13 | Continuous quality |
 
 ## Install
 

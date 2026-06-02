@@ -147,11 +147,23 @@ The web console is a team-facing, **read-only and proposal-only** viewer over th
 
 The seven permission levels are enforced server-side on both front-ends; a destructive action is refused for an unauthorized role, and an approval with no approver is held. Integration walkthrough: [user-guide/integrating.md](user-guide/integrating.md).
 
+## Phase 12 commands (shipped)
+
+| Command | Skill | Per-command page |
+| --- | --- | --- |
+| `/tc:sandbox-init` | `tc-sandbox` | [sandbox-init.md](../plugins/test-commander/skills/tc-sandbox/commands/sandbox-init.md) |
+| `/tc:sandbox-launch` | `tc-sandbox` | [sandbox-launch.md](../plugins/test-commander/skills/tc-sandbox/commands/sandbox-launch.md) |
+| `/tc:sandbox-status` | `tc-sandbox` | [sandbox-status.md](../plugins/test-commander/skills/tc-sandbox/commands/sandbox-status.md) |
+| `/tc:sandbox-sync` | `tc-sandbox` | [sandbox-sync.md](../plugins/test-commander/skills/tc-sandbox/commands/sandbox-sync.md) |
+| `/tc:sandbox-stop` | `tc-sandbox` | [sandbox-stop.md](../plugins/test-commander/skills/tc-sandbox/commands/sandbox-stop.md) |
+| `/tc:sandbox-export` | `tc-sandbox` | [sandbox-export.md](../plugins/test-commander/skills/tc-sandbox/commands/sandbox-export.md) |
+
+A sandbox is an on-demand, team-accessible Test Commander environment launched from GitHub Actions and governed exactly as the local runtime is — the Phase-10.5 pipeline runs inside it, so a sandbox cannot execute above its approved level. Targeting is safe-by-default (allow-listed hosts, blocked private ranges). The provider abstraction (`sandbox/providers/`) backs the commands; the MVP default is docker-compose-local. Architecture: [sandboxed-environments.md](sandboxed-environments.md); workflow: [github-actions-sandbox.md](github-actions-sandbox.md); walkthrough: [user-guide/sandbox.md](user-guide/sandbox.md).
+
 ## Planned commands (not yet implemented)
 
 These will gain per-command pages as their phases ship.
 
 | Command | Skill | Phase |
 | --- | --- | --- |
-| `/tc:sandbox-*` | `tc-sandbox` | 12 |
 | `/tc:watch-changes`, continuous-quality | `tc-continuous-quality` | 13 |
