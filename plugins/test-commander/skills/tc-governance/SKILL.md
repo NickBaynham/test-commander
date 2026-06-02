@@ -29,9 +29,9 @@ Seven levels — `read-only`, `safe-write`, `code-write`, `execute-tests`, `exte
 
 ## Status
 
-Phase 10.5 (Step 10.5.1 — scaffold). The pipeline components ship across Steps 10.5.2-10.5.10; until each lands, its behavior is documented in the methodology once that step ships:
+Phase 10.5 (Step 10.5.2). The pipeline components ship across Steps 10.5.2-10.5.10; until each lands, its behavior is documented in the methodology once that step ships:
 
-- Agent adapter abstraction (`AgentAdapter` + mock + stubs). Behavior arrives in Phase 10.5 Step 10.5.2.
+- Agent adapter abstraction (`AgentAdapter` + mock + stubs) — **shipped (Step 10.5.2).** The `AgentAdapter` interface, the `MockAgentAdapter` (deterministic; refuses unplanned calls via `UnplannedExecutionError`), and the refusing `ClaudeCodeCliAdapter`/`AnthropicApiAdapter` stubs. See [methodology/agent-adapters.md](methodology/agent-adapters.md).
 - Permission policy engine (7 levels, role-aware). Behavior arrives in Phase 10.5 Step 10.5.3.
 - Intent router (NL/button → known workflow). Behavior arrives in Phase 10.5 Step 10.5.4.
 - Command planner (displayable plan). Behavior arrives in Phase 10.5 Step 10.5.5.
