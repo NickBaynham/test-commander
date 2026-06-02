@@ -18,7 +18,7 @@ Phase 8 (Step 8.2). `/tc:learn` is end-to-end runnable; the other five commands 
 - `/tc:learn` — **shipped (Step 8.2).** Appends a candidate lesson (the `tc-lesson/v1` schema) to `learning/lessons-inbox.md` from a freeform `--note`, with `path:line` provenance, a monotonic `LESSON-NNN` id, and `(source, origin, summary)` dedup. Owns the shared `append_lessons` inbox engine the `/tc:learn-from-*` commands reuse.
 - `/tc:learn-from-failures` — **shipped (Step 8.3).** Derives candidate lessons from the Phase-7 `runs/<RUN-ID>/analysis.md` triage, mapping each classification to a lesson category (`product-defect` → `product-defect-pattern`, `flaky` → `flaky-pattern`, `test-defect` → `anti-pattern`, `environment` → `process`), with `runs/.../analysis.md:<line>` provenance, via the shared `append_lessons` engine.
 - `/tc:learn-from-exploration` — **shipped (Step 8.4).** Derives candidate lessons from the Phase-4 `exploration-notes/` and `sessions/`: each recorded anomaly becomes an `anti-pattern` candidate (carrying its severity) and each coverage gap a `coverage-gap` candidate, with `exploration-notes/<file>:<line>` provenance, via the shared `append_lessons` engine.
-- `/tc:learn-from-feedback` — behavior arrives in Step 8.5. It will derive candidate lessons from resolved human feedback (`requirements/open-questions.md` and an optional `documents/uploaded/feedback.md`).
+- `/tc:learn-from-feedback` — **shipped (Step 8.5).** Derives candidate lessons from resolved human feedback — `requirements/open-questions.md` entries carrying a `_Resolved:` marker (`process`) and an optional `documents/uploaded/feedback.md` (`heuristic`) — with `path:line` provenance, via the shared `append_lessons` engine. No feedback is a no-op (exit 0), not an error.
 - `/tc:review-lessons` — behavior arrives in Step 8.6. It will classify every inbox candidate into `accepted` / `rejected` / `needs-human-review`, move it to the matching `learning/` file, and clear the inbox.
 - `/tc:promote-lessons` — behavior arrives in Step 8.7. It will propose promotions by default and, only with `--apply` (the human-approval gate), move accepted lessons into `learning/promoted-guidance.md` — never the shipped methodology, never third-party skills.
 
@@ -70,7 +70,17 @@ Full spec: [commands/learn-from-exploration.md](commands/learn-from-exploration.
 
 ### `/tc:learn-from-feedback`
 
-Derives candidate lessons from resolved human feedback. Full behavior is documented in the per-command page once Step 8.5 ships the helper.
+Reads `requirements/open-questions.md` for entries carrying a `_Resolved:` marker (→ `process` candidates) and an optional `documents/uploaded/feedback.md` (→ `heuristic` candidates), appending each as a `tc-lesson/v1` candidate with `path:line` provenance via the shared `append_lessons` engine. **No feedback is a no-op** (exit 0), not an error. Deterministic; dedups on re-run. Design reference: `superpowers:receiving-code-review`.
+
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/learn_from_feedback.py <project-root> [--now <ISO-8601>]
+```
+
+`<project-root>` defaults to the current working directory. Refuses uninitialized workspaces (exit 2).
+
+Full spec: [commands/learn-from-feedback.md](commands/learn-from-feedback.md).
 
 ### `/tc:review-lessons`
 
