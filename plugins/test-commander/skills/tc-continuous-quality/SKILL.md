@@ -28,10 +28,10 @@ No mode ever auto-approves `destructive` or `admin`; those always require explic
 
 ## Status
 
-Phase 13 (Step 13.2). Change detection and impact analysis are shipped; the rest lands across 13.3–13.6:
+Phase 13 (Step 13.3). Change detection, impact analysis, and coverage-gap analysis are shipped; the rest lands across 13.4–13.6:
 
 - `/tc:watch-changes` + `/tc:impact-analysis` — **shipped (Step 13.2).** `/tc:watch-changes` parses a PR/push diff into changed files (`continuous/changes.json`); `/tc:impact-analysis` maps them to impacted features and requirements via `product-knowledge/impact-map.yaml` (Phase-3/5 derived), deterministically and with provenance, never inventing impact. Both are self-contained helpers sharing `cq_support.py`. See [commands/watch-changes.md](commands/watch-changes.md) and [commands/impact-analysis.md](commands/impact-analysis.md).
-- `/tc:coverage-gap-analysis` (impacted set vs existing coverage) — behavior arrives in Step 13.3.
+- `/tc:coverage-gap-analysis` — **shipped (Step 13.3).** Checks the impacted set against `traceability/coverage.yaml`: an impacted feature that is not automated, or has no coverage record, is a gap surfaced with provenance. Read-only, deterministic, never invents coverage. See [commands/coverage-gap-analysis.md](commands/coverage-gap-analysis.md).
 - `/tc:propose-tests` + `/tc:create-test-pr` (proposals + a gated, labeled PR) — behavior arrives in Step 13.4.
 - `/tc:continuous-quality-check` + the five autonomy-mode gates (the orchestrator) — behavior arrives in Step 13.5.
 - The continuous-quality CI workflow — behavior arrives in Step 13.6.

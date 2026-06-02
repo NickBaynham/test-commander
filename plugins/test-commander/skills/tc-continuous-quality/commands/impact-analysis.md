@@ -46,5 +46,6 @@ impact: a file matching no pattern contributes nothing.
 ## See also
 
 - [/tc:watch-changes](watch-changes.md)
+- [/tc:coverage-gap-analysis](coverage-gap-analysis.md)
 - [Impact analysis](../methodology/impact-analysis.md)
 - [tc-continuous-quality skill](../SKILL.md)

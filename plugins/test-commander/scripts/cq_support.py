@@ -84,6 +84,25 @@ def load_impact_map(project_root: Path) -> list[dict]:
     return yaml.safe_load(path.read_text(encoding="utf-8")) or []
 
 
+def load_coverage(project_root: Path) -> dict[str, dict]:
+    """Existing coverage keyed by feature (from traceability/coverage.yaml)."""
+    path = workspace(project_root) / "traceability" / "coverage.yaml"
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"coverage map missing: {path} (run Phase-5 traceability, or seed it)"
+        )
+    rows = yaml.safe_load(path.read_text(encoding="utf-8")) or []
+    return {row["feature"]: row for row in rows}
+
+
+def load_impacted_features(project_root: Path) -> list[str]:
+    """Impacted features from the persisted impact.json (from /tc:impact-analysis)."""
+    path = cq_dir(project_root) / "impact.json"
+    if not path.is_file():
+        return []
+    return list(json.loads(path.read_text(encoding="utf-8")).get("features", []))
+
+
 def impacted(changed_files: list[str], impact_map: list[dict]) -> dict:
     """Map changed files -> impacted features + requirements, with provenance.
 
