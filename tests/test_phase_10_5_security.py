@@ -48,7 +48,6 @@ def workspace_snapshot(project: Path) -> dict:
     }
 
 
-@pytest.mark.xfail(reason="permission policy engine lands in 10.5.3", strict=True)
 def test_unsafe_request_blocked_before_agent(tmp_path: Path):
     from agent_adapters.mock_agent import MockAgentAdapter
     from governance import pipeline
