@@ -65,13 +65,19 @@ Each `Recommendation` carries `command`, `explanation`, `phase` (owning phase), 
 - **Why.** Capture candidate lessons from the round of work. Lessons land in `lessons-inbox.md` for human review before promotion.
 - **Priority.** 9.
 
-### R10 — Update the quality report
-- **Trigger.** `phase_status["1"]` through `phase_status["8"]` are all `in_progress`.
+### R10 — Generate the visual documentation set
+- **Trigger.** `phase_status["1"]` through `phase_status["8"]` are all `in_progress` and `phase_status["9"]` is `not_started`.
+- **Recommends.** `/tc:visualize` (Phase 9).
+- **Why.** The MVP artifacts exist; turn them into diffable diagrams and a quality infographic. Each visual cites its sources and never invents a node, edge, or metric.
+- **Priority.** 10.
+
+### R11 — Update the quality report
+- **Trigger.** `phase_status["1"]` through `phase_status["8"]` are all `in_progress` (the fallback once visuals are generated).
 - **Recommends.** `/tc:report` (Phase 7).
 - **Why.** All MVP phases have content. Keep the live quality report fresh and assess release readiness with `/tc:quality-gate`.
-- **Priority.** 10.
+- **Priority.** 11.
 
 ## Out of scope (Step 1.5)
 
-- Phase 9 (visuals) and Phase 10.5 (controlled execution / governance) do not have R-rules yet. Visuals are optional; governance is invoked through the web console rather than a `/tc:*` command. They can be added once those phases land.
+- Phase 10.5 (controlled execution / governance) does not have an R-rule yet — governance is invoked through the web console rather than a `/tc:*` command. It can be added once that phase lands. (Phase 9 gained R10 in Step 9.8.)
 - "Already-done" detection. A recommendation can in principle become stale if the user did the work without recording it (e.g., manually edited files that match the template by coincidence). The engine trusts the snapshot.

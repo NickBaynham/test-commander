@@ -49,13 +49,14 @@ CATALOG: dict[str, float] = {
     "tc-continuous-quality": 13,
 }
 
-# Bumped as phases land. Through Phase 8 — tc-core (Phase 1), tc-requirements
+# Bumped as phases land. Through Phase 9 — tc-core (Phase 1), tc-requirements
 # (Phase 2), tc-knowledge (Phase 3), tc-explore (Phase 4), tc-bdd +
 # tc-traceability (Phase 5), the four Phase 6 automation skills
 # (tc-build-framework, tc-automation-plan, tc-automate, tc-test-data), the three
 # Phase 7 execution/reporting skills (tc-run, tc-quality-report, tc-evidence),
-# and the Phase 8 learning loop (tc-learning) are all shipped.
-DEFAULT_PHASE_CAP: float = 8
+# the Phase 8 learning loop (tc-learning), and the Phase 9 visual documentation
+# skill (tc-visualize) are all shipped.
+DEFAULT_PHASE_CAP: float = 9
 
 KEBAB_CASE = re.compile(r"[a-z][a-z0-9-]*")
 FRONTMATTER_BLOCK = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)

@@ -138,6 +138,21 @@ _RULES: list[tuple[str, Callable[[WorkspaceSnapshot], bool], str, str, str, int]
         lambda s: s.exists and all(
             s.phase_status.get(p) == "in_progress"
             for p in ("1", "2", "3", "4", "5", "6", "7", "8")
+        ) and s.phase_status.get("9") == "not_started",
+        "/tc:visualize",
+        (
+            "Generate the visual documentation set — diagrams and a quality "
+            "infographic — from your committed artifacts. Each visual cites its "
+            "sources and never invents a node, edge, or metric."
+        ),
+        "9",
+        10,
+    ),
+    (
+        "R11",
+        lambda s: s.exists and all(
+            s.phase_status.get(p) == "in_progress"
+            for p in ("1", "2", "3", "4", "5", "6", "7", "8")
         ),
         "/tc:report",
         (
@@ -145,7 +160,7 @@ _RULES: list[tuple[str, Callable[[WorkspaceSnapshot], bool], str, str, str, int]
             "assess release readiness with /tc:quality-gate."
         ),
         "7",
-        10,
+        11,
     ),
 ]
 

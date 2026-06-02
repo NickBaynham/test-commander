@@ -21,6 +21,7 @@ PHASE_CANONICAL = {
     6: "automation-plan/README.md",
     7: "quality-report/current-quality-report.md",
     8: "learning/lessons-inbox.md",
+    9: "visuals/mermaid/README.md",
 }
 
 
@@ -110,12 +111,21 @@ def test_r9_recommends_learn_after_phase_7(tmp_path):
     assert rec.phase == "8"
 
 
-# R10 — all of phases 1-8 in_progress -> /tc:report
-def test_r10_recommends_report_when_mvp_complete(tmp_path):
+# R10 — phases 1-8 in_progress, Phase 9 not_started -> /tc:visualize
+def test_r10_recommends_visualize_after_phase_8(tmp_path):
     _through_phase(tmp_path, 8)
     rec = next_step.next_step_for(tmp_path)
-    assert rec.command == "/tc:report"
+    assert rec.command == "/tc:visualize"
+    assert rec.phase == "9"
     assert rec.priority == 10
+
+
+# R11 — all of phases 1-9 in_progress -> /tc:report
+def test_r11_recommends_report_when_mvp_complete(tmp_path):
+    _through_phase(tmp_path, 9)
+    rec = next_step.next_step_for(tmp_path)
+    assert rec.command == "/tc:report"
+    assert rec.priority == 11
 
 
 # --- regression: cross-phase writes must not skip phases (Phase 2 Step 2.9) ---
