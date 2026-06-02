@@ -22,7 +22,7 @@ Phase 10 (Step 10.1 — scaffold). The five commands ship across Steps 10.2-10.6
 - `/tc:web-init` — provision the console config in the workspace. Behavior arrives in Phase 10 Step 10.4.
 - `/tc:web-start` — bring the stack up (`docker compose`). Behavior arrives in Phase 10 Step 10.4.
 - `/tc:web-sync` — reconcile the SQLite index with the workspace. Behavior arrives in Phase 10 Step 10.3.
-- `/tc:web-index-artifacts` — (re)build the artifact index. Behavior arrives in Phase 10 Step 10.2.
+- `/tc:web-index-artifacts` — **shipped (Step 10.2).** Rebuilds the SQLite index (requirements, runs, run results, evidence, journal, traceability, quality facts) from the workspace into `.test-commander/.web/index.db`. Drops and repopulates every table, so the index is always reconstructible; never mutates a workspace artifact. Refuses an uninitialized workspace (exit 2). Full spec: [commands/web-index-artifacts.md](commands/web-index-artifacts.md).
 - `/tc:web-export` — export the current view as a shareable static bundle. Behavior arrives in Phase 10 Step 10.6.
 
 ## See also
