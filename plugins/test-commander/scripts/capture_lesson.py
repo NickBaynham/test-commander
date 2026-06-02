@@ -126,6 +126,12 @@ def _next_id(existing_text: str) -> int:
     return (max(ids) + 1) if ids else 1
 
 
+def _yaml_str(value: str) -> str:
+    """Double-quote a free-text scalar so an embedded ``: `` or ``#`` cannot
+    break the YAML frontmatter (the Phase 4 Step 4.8 embedded-key-value guard)."""
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
 def _render_block(lesson: Lesson, lesson_id: str, now: datetime) -> str:
     return (
         "---\n"
@@ -137,7 +143,7 @@ def _render_block(lesson: Lesson, lesson_id: str, now: datetime) -> str:
         f"severity: {lesson.severity}\n"
         "status: candidate\n"
         f"captured_at: {now.isoformat()}\n"
-        f"summary: {lesson.summary}\n"
+        f"summary: {_yaml_str(lesson.summary)}\n"
         "---\n\n"
         f"{lesson.body.rstrip()}\n"
     )

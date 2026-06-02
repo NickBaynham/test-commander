@@ -16,7 +16,7 @@ The loop has three stages: **capture** (`/tc:learn` and the three `/tc:learn-fro
 Phase 8 (Step 8.2). `/tc:learn` is end-to-end runnable; the other five commands are registered but not yet shipped:
 
 - `/tc:learn` — **shipped (Step 8.2).** Appends a candidate lesson (the `tc-lesson/v1` schema) to `learning/lessons-inbox.md` from a freeform `--note`, with `path:line` provenance, a monotonic `LESSON-NNN` id, and `(source, origin, summary)` dedup. Owns the shared `append_lessons` inbox engine the `/tc:learn-from-*` commands reuse.
-- `/tc:learn-from-failures` — behavior arrives in Step 8.3. It will derive candidate lessons from the Phase-7 `runs/<RUN-ID>/analysis.md` triage (recurring `product-defect` and `flaky` patterns).
+- `/tc:learn-from-failures` — **shipped (Step 8.3).** Derives candidate lessons from the Phase-7 `runs/<RUN-ID>/analysis.md` triage, mapping each classification to a lesson category (`product-defect` → `product-defect-pattern`, `flaky` → `flaky-pattern`, `test-defect` → `anti-pattern`, `environment` → `process`), with `runs/.../analysis.md:<line>` provenance, via the shared `append_lessons` engine.
 - `/tc:learn-from-exploration` — behavior arrives in Step 8.4. It will derive candidate lessons from the Phase-4 `exploration-notes/` and `sessions/` (recurring anomalies and coverage gaps).
 - `/tc:learn-from-feedback` — behavior arrives in Step 8.5. It will derive candidate lessons from resolved human feedback (`requirements/open-questions.md` and an optional `documents/uploaded/feedback.md`).
 - `/tc:review-lessons` — behavior arrives in Step 8.6. It will classify every inbox candidate into `accepted` / `rejected` / `needs-human-review`, move it to the matching `learning/` file, and clear the inbox.
@@ -42,7 +42,17 @@ Full spec: [commands/learn.md](commands/learn.md). Methodology: [methodology/lea
 
 ### `/tc:learn-from-failures`
 
-Derives candidate lessons from the latest test-run triage. Full behavior is documented in the per-command page once Step 8.3 ships the helper.
+Reads every `runs/<RUN-ID>/analysis.md` (the Phase-7 `/tc:analyze-results` triage) and turns each triaged non-passed row into a `tc-lesson/v1` candidate — `product-defect` → `product-defect-pattern`, `flaky` → `flaky-pattern`, `test-defect` → `anti-pattern`, `environment` → `process` — each with `runs/<RUN-ID>/analysis.md:<line>` provenance, appended via the shared `append_lessons` engine. Deterministic; dedups on re-run. Design reference: `superpowers:systematic-debugging`.
+
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/learn_from_failures.py <project-root> [--run-id <RUN-ID>] [--now <ISO-8601>]
+```
+
+`<project-root>` defaults to the current working directory. Refuses uninitialized workspaces (exit 2) and the absence of any `runs/<RUN-ID>/analysis.md` (exit 2; the precondition error directs the user at `/tc:analyze-results`).
+
+Full spec: [commands/learn-from-failures.md](commands/learn-from-failures.md).
 
 ### `/tc:learn-from-exploration`
 
