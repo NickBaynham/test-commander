@@ -20,9 +20,9 @@ Every backend implements one `SandboxProvider` interface (`sandbox/providers/bas
 
 ## Status
 
-Phase 12 (Step 12.1 — scaffold). The skill, the `sandbox/providers/` abstraction skeleton, the workflow skeleton, and the seeded-sandbox fixture are in place; the behavior lands across 12.2–12.4:
+Phase 12 (Step 12.2). The provider abstraction is shipped; the commands and the safety guards land across 12.3–12.4:
 
-- Provider abstraction + the docker-compose-local provider + the refusing stubs — behavior arrives in Step 12.2.
+- Provider abstraction + the docker-compose-local provider + the refusing stubs — **shipped (Step 12.2).** `sandbox/providers/` ships the `DockerComposeProvider` (the MVP default — lifecycle calls plan deterministically in dry-run; a real launch shells out and is refused under pytest), the `ContainerHostProvider`/`SpritesProvider` refusing stubs (Q8 default), a `MockSandboxProvider` for hermetic testing, and `get_provider(name)` (default deny on an unknown name). See [methodology/provider-abstraction.md](methodology/provider-abstraction.md).
 - The six `/tc:sandbox-*` commands against the provider abstraction — behavior arrives in Step 12.3.
 - The GitHub Actions workflows + the safety guards (allowed domains, blocked private ranges, approvals) — behavior arrives in Step 12.4.
 

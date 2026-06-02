@@ -30,6 +30,8 @@ a cloud or to docker directly — they drive a `SandboxProvider`
 
 Every lifecycle call accepts `dry_run`. Under pytest, and by default in CI, the
 provider plans the action and returns the resulting state without spending real
-cloud or launching a real container — no real spend in tests.
+cloud or launching a real container — no real spend in tests. A real (non-dry)
+call shells out and is refused under pytest (`SandboxLaunchRefusedError`).
 
-(Behavior shipped in Step 12.2; this methodology page is the scaffold spec.)
+Resolve a provider by name with `get_provider(name)` (default deny: an unknown
+name raises). Shipped in Step 12.2 (`tests/test_sandbox_providers.py`).
