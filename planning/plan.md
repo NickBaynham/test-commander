@@ -2905,6 +2905,95 @@ Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Conventio
 
 - All six commands work, governance flow enforced, principle "learns continuously, improves deliberately" reflected in code paths, user guide complete.
 
+### Phase 8 — Execution outline
+
+Ten sub-steps. TDD throughout: every implementation step lands its tests red before turning them green. 8.1 scaffolds the one skill (`tc-learning`) + the seeded-learning fixture; 8.2 ships `/tc:learn` (the `tc-lesson/v1` schema + the inbox-append discipline every capture command reuses); 8.3–8.5 implement the three `/tc:learn-from-*` capture commands; 8.6 ships `/tc:review-lessons` (the classifier); 8.7 ships `/tc:promote-lessons` (the governed promotion); 8.8 is the documentation pass; 8.9 is the testing finalization (cap bump + integration smoke); 8.10 is the sign-off with a `phase-8` tag.
+
+**Three disciplines Phase 8 introduces (read before 8.1).**
+
+- **Governed promotion — Test Commander never silently rewrites itself (Q6).** `/tc:promote-lessons` is the only command that changes *guidance*, and it does so under a human-approval gate: by default it writes a **proposal** (what *would* be promoted) and applies it to the workspace's own `learning/promoted-guidance.md` only with an explicit `--apply` (the human's approval). Every applied promotion is a visible `git diff`. It writes **only** into the workspace `learning/` tree — never into the shipped plugin methodology and never into third-party installed skills (Q6 default). A lesson flagged core-relevant renders an `improvement-proposal` artifact (a proposal for a human to take upstream as a plugin PR), never an edit to shipped files.
+- **Lessons are provenance-anchored and deduplicated.** Every captured lesson carries `path:line` evidence pointing at the committed artifact it came from (the same discipline as every Phase 2–7 artifact) and a stable `LESSON-NNN` id; the inbox dedups by `(source, origin, summary)` so re-running a capture command never spams `lessons-inbox.md`. The `tc-lesson/v1` frontmatter schema (authored in 8.2) is the contract every capture command emits and the review/promote commands consume.
+- **Deterministic capture from committed artifacts + injected-clock IDs.** The `/tc:learn-from-*` commands derive candidate lessons from existing committed artifacts (`runs/*/analysis.md`, `exploration-notes/`, resolved `requirements/open-questions.md`), so they are byte-deterministic; the only non-determinism is the `captured_at` timestamp and the `LESSON-NNN` counter, both fed by an **injected clock** (the Phase-7 `--now` pattern) so tests stay byte-stable.
+
+#### 8.1 — Skill scaffold (`tc-learning`) and seeded-learning fixture
+
+- **Deliverables.** `SKILL.md` for `tc-learning` (strict-PyYAML frontmatter with no embedded `key: value` substring per the Phase 4 Step 4.8 lesson; body lists all six commands; deferral wording until each sub-step ships behavior). Empty `commands/`/`methodology/`/`templates/` dirs (`.gitkeep`). `tests/fixtures/seeded-learning/` containing the upstream artifacts the capture commands read — a Phase-7 `runs/<RUN-ID>/analysis.md` (a `product-defect` + a `flaky` row), an exploration note with a seeded anomaly, a resolved-feedback `open-questions.md` excerpt — plus a `lessons-inbox.md` pre-seeded with one candidate lesson per review-classification (one clearly-acceptable, one clearly-rejectable, one ambiguous → needs-human-review), each carrying valid `tc-lesson/v1` frontmatter and a `# knowledge: <classification>` marker (the Phase 5/6 flawed-fixture convention). `README.md` documents the lesson schema, the classification catalog, the governance flow, and the D19 framing.
+- **Tests first.** A parametrized scaffold test (mirroring `test_phase_7_scaffolds.py`) — asserts the skill dir + `SKILL.md` (strict-PyYAML parse from the start), the three sub-dirs, the body references all six commands, and the fixture: the upstream artifacts parse and the seeded `lessons-inbox.md` carries one candidate per classification with valid `tc-lesson/v1` frontmatter.
+- **Definition of done.** Skill scaffolded; fixture present; scaffold tests green; `verify_skills.py` reports `tc-learning` `UNEXPECTED (phase 8) — ahead of schedule` under `DEFAULT_PHASE_CAP=7` (cap bumps to 8 in 8.9). Confirm `CATALOG` carries `tc-learning: 8` (add if absent).
+
+#### 8.2 — `/tc:learn` + the `tc-lesson/v1` schema (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/capture_lesson.py`. The foundational capture command: appends a candidate lesson to `<workspace>/learning/lessons-inbox.md` from a freeform observation (`--note "..."`) or by aggregating cross-workspace signals, each rendered as a `tc-lesson/v1` block (`id: LESSON-NNN`, `source`, `origin` `path:line`, `category`, `severity`, `status: candidate`, `captured_at` from the injected clock). Exposes `append_lessons(workspace, lessons, now)` — the shared inbox-append + dedup engine (dedup by `(source, origin, summary)`, the Phase-2 open-questions contract) that **every `/tc:learn-from-*` command reuses**. `LESSON-NNN` ids are allocated by scanning the existing inbox for the max id (monotonic, stable). **Injected-clock determinism**: tests pass a fixed `now` → byte-stable inbox.
+- **Umbrella methodology + templates.** `methodology/learning-loop.md` (the capture → review → promote loop, the governance gate, the never-silently-rewrite principle, the Claude judgment layer) and `methodology/lesson-taxonomy.md` (the universal category catalog: `product-defect-pattern`, `flaky-pattern`, `coverage-gap`, `process`, `heuristic`, `anti-pattern`); `templates/lesson-template.md`.
+- **Command file + SKILL.md update.** `commands/learn.md`; `tc-learning/SKILL.md` surfaces the shipped `/tc:learn` (deferral wording for it removed; the other five remain).
+- **Tests first.** `tests/test_capture_lesson.py` — uninitialized refused; `--note` appends one valid `tc-lesson/v1` candidate to `lessons-inbox.md`; the id allocator is monotonic; the injected clock makes the inbox byte-stable; a duplicate `(source, origin, summary)` is not re-appended; `append_lessons` is the shared engine (identity assert).
+- **Definition of done.** `/tc:learn` appends valid candidates with provenance; the schema + dedup + id-allocation engine is shared; SKILL.md updated.
+
+#### 8.3 — `/tc:learn-from-failures` (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/learn_from_failures.py` (mirrors `capture_lesson.py`; design reference `superpowers:systematic-debugging`). Reads `<workspace>/runs/<RUN-ID>/analysis.md` (the Phase-7 triage), turns recurring `product-defect` and `flaky` classifications into candidate lessons (`category: product-defect-pattern` / `flaky-pattern`, `origin` pointing at the analysis row), and calls the shared `append_lessons`. Aggregates across all run records by default (`--run-id` for one). Deterministic via the injected clock.
+- **Methodology + template.** A `failure-learning.md` subsection (or reuse `learning-loop.md`) with one worked example per failure category; reuses `lesson-template.md`.
+- **Command file + SKILL.md update.** `commands/learn-from-failures.md`; `tc-learning/SKILL.md`.
+- **Tests first.** `tests/test_learn_from_failures.py` — uninitialized refused; no analysis refused pointing at `/tc:analyze-results`; the seeded analysis → a `product-defect-pattern` and a `flaky-pattern` candidate, each with resolvable `origin` provenance; dedup on re-run; deterministic.
+- **Definition of done.** Failure-derived candidates captured with provenance; dedup holds; SKILL.md updated.
+
+#### 8.4 — `/tc:learn-from-exploration` (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/learn_from_exploration.py` (mirrors 8.3). Reads `<workspace>/exploration-notes/` + `sessions/` (Phase 4), turns recurring anomaly categories and coverage gaps into candidate lessons (`category: coverage-gap` / `anti-pattern`), and calls `append_lessons`. Deterministic.
+- **Methodology + template.** An exploration-learning subsection; reuses `lesson-template.md`.
+- **Command file + SKILL.md update.** `commands/learn-from-exploration.md`; `tc-learning/SKILL.md`.
+- **Tests first.** `tests/test_learn_from_exploration.py` — uninitialized refused; no exploration notes refused pointing at `/tc:explore`; seeded notes → candidate lessons with anomaly-category provenance; dedup; deterministic.
+- **Definition of done.** Exploration-derived candidates captured; dedup holds; SKILL.md updated.
+
+#### 8.5 — `/tc:learn-from-feedback` (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/learn_from_feedback.py` (mirrors 8.3; design reference `superpowers:receiving-code-review`). Reads resolved human feedback — `requirements/open-questions.md` entries marked resolved, plus an optional `documents/uploaded/feedback.md` — and turns each into a `category: process` / `heuristic` candidate lesson, calling `append_lessons`. Deterministic.
+- **Methodology + template.** A feedback-learning subsection; reuses `lesson-template.md`.
+- **Command file + SKILL.md update.** `commands/learn-from-feedback.md`; `tc-learning/SKILL.md`.
+- **Tests first.** `tests/test_learn_from_feedback.py` — uninitialized refused; no feedback → an empty-but-not-error result; seeded resolved feedback → candidate lessons with `open-questions.md` provenance; dedup; deterministic.
+- **Definition of done.** Feedback-derived candidates captured; dedup holds; SKILL.md updated. By end of 8.5 all four capture commands emit the same `tc-lesson/v1` schema through the one shared engine.
+
+#### 8.6 — `/tc:review-lessons` (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/review_lessons.py` (mirrors the `review_*` rubric pattern). Reads `learning/lessons-inbox.md`, classifies each candidate against a universal governance rubric into **accepted** / **rejected** / **needs-human-review**, moves each to `learning/{accepted-lessons,rejected-lessons,needs-human-review}.md` (updating its `status`), and clears the inbox of the reviewed candidates. Mechanical signals decide the confident buckets (e.g. duplicate-of-accepted → rejected; missing provenance or `severity: high` + ambiguous category → needs-human-review; clean + provenanced + known category → accepted); Claude adds the judgment layer. **Idempotent**: a re-run over an already-reviewed inbox is a no-op.
+- **Methodology + template.** `methodology/improvement-governance.md` (the four-bucket lifecycle, the accept/reject/needs-human-review rubric with one worked example each, the never-silently-rewrite gate, the Claude judgment layer); `templates/improvement-proposal-template.md`.
+- **Command file + SKILL.md update.** `commands/review-lessons.md`; `tc-learning/SKILL.md`.
+- **Tests first.** `tests/test_review_lessons.py` — uninitialized refused; no inbox candidates refused pointing at `/tc:learn`; the seeded one-per-classification inbox → each lands in its correct file with `status` updated and the inbox cleared; idempotent re-run; deterministic.
+- **Definition of done.** Candidates classified into the three buckets; statuses updated; inbox cleared; idempotent; SKILL.md updated.
+
+#### 8.7 — `/tc:promote-lessons` (governed promotion) (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/promote_lessons.py`. Reads `learning/accepted-lessons.md` and, **by default, writes a proposal** (`learning/promotion-proposal.md` — what *would* be promoted) without changing guidance; with `--apply` (the human-approval gate) it moves accepted lessons into `<workspace>/learning/promoted-guidance.md` (the workspace's own guidance corpus), updates each lesson's `status: promoted`, and — for lessons flagged core-relevant — renders a `core-promotion` artifact proposing an upstream change to Test Commander's shipped methodology (never applied here; a human takes it upstream as a plugin PR). Writes **only** under `learning/` — never the shipped plugin methodology, never third-party skills (Q6). Every applied promotion is a visible `git diff`. **Idempotent**: an already-promoted lesson is not re-promoted.
+- **Methodology + templates.** `methodology/commander-doctrine.md`, `methodology/anti-patterns.md`, `methodology/heuristics.md` (the shipped universal-doctrine corpus the promoted guidance *extends*, read-only references — promotion never edits these); `templates/core-promotion-template.md`.
+- **Command file + SKILL.md update.** `commands/promote-lessons.md`. By end of 8.7 `tc-learning/SKILL.md` describes all six commands with no deferral wording.
+- **Tests first.** `tests/test_promote_lessons.py` — uninitialized refused; no accepted lessons refused pointing at `/tc:review-lessons`; **default run writes a proposal and does not touch `promoted-guidance.md`** (the governance gate); `--apply` moves accepted lessons into `promoted-guidance.md` with `status: promoted` and a visible diff; a core-relevant lesson renders a `core-promotion` proposal artifact; the shipped methodology files are byte-identical before/after (never rewritten); idempotent re-run; deterministic.
+- **Definition of done.** Promotion proposes by default and applies only under `--apply`; writes only under `learning/`; shipped methodology untouched; idempotent; all six SKILL.md commands free of deferral wording.
+
+#### 8.8 — Documentation pass *(dedicated step)*
+
+- **Deliverables.** Author `docs/user-guide/learning-loop.md` (end-to-end: `/tc:learn` + the three `/tc:learn-from-*` → `/tc:review-lessons` → `/tc:promote-lessons --apply`, with verbatim output from the seeded chain; explains the lesson schema, the four-bucket governance lifecycle, the human-approval gate, and the never-silently-rewrite principle). Update `docs/command-reference.md` (Phase 8 shipped section) and `docs/workspace-reference.md` (the `learning/` lifecycle files + `promoted-guidance.md` + the governance flow). Customization-guide "Phase 8 schema (`tc-learning`)" section (any `tc-learning.*` config — e.g. review-rubric thresholds / extra categories) with three project-shape worked examples + "Phase 8 — what landed" (or record "no new extensible surface" explicitly if the loop ships none). Status-line refresh across the six locations + a "Beyond Phase 7" footer in `running-tests.md`/`quality-report.md`. Final deferral-wording sweep across the SKILL.md, the methodology, and `docs/`.
+- **Definition of done.** Docs accurate against the implementation; all cross-links resolve; link checker green; customization guide reflects the shipped schema (or records no new surface).
+
+#### 8.9 — Testing finalization *(dedicated step)*
+
+- **Deliverables.** Bump `DEFAULT_PHASE_CAP` 7 → 8 (CATALOG entry present from 8.1). `tests/test_phase_8_integration.py` (in-process, full Phase 2 → … → 8 sweep in natural order, injected clock): assert the capture commands append `tc-lesson/v1` candidates from the upstream artifacts; `/tc:review-lessons` sorts them into the three buckets and clears the inbox; `/tc:promote-lessons` proposes by default and applies under `--apply` into `promoted-guidance.md`; the write boundary holds (the shipped plugin methodology and every prior-phase workspace dir byte-identical — the learning loop writes **only** under `learning/`); `/tc:next` advances past `/tc:learn`. Byte-stable re-run with a fixed clock. **No `PHASE_OWNERSHIP` change expected** (Phase 8 uniquely produces `learning/`, already its signal) — confirm and record.
+- **Definition of done.** Integration smoke passes; cap bump reflected; full `make verify` chain green; `verify_skills.py` reports all fourteen shipped skills `PRESENT` with `UNEXPECTED=0`.
+
+#### 8.10 — Sign-off
+
+Six sub-sub-steps. Mirrors the Phase 7 sign-off (7.9) exactly. Test-first: the sign-off test in 8.10.5 lands red before the plan/CHANGELOG edits in 8.10.3 turn it green. The final sub-step (8.10.6) captures evidence and pushes the `phase-8` annotated tag.
+
+- **8.10.1 — Cold-user walkthrough** of `learning-loop.md` from a clean `make install` (the `claude plugin validate` strict-YAML gate over the now-fourteen SKILL.md), against a fresh tmp consuming project with Phase 2 → 7 state pre-populated, then the six Phase 8 commands in workflow order. Capture to `/tmp/tc-phase8-walkthrough.log`. Keep the `make uninstall` + `make install` preamble exactly as-is.
+- **8.10.2 — Per-step DoD audit** for 8.1–8.9: every helper, command page, methodology, template, SKILL.md update on disk; the governance gate enforced; the shipped methodology never rewritten; the SKILL.md free of deferral wording; the customization guide carries the Phase 8 schema (or records no new surface). Lesson-capture audit: every sub-step 8.1–8.9 has an entry in `Phase 8 — Lessons learned (running)`.
+- **8.10.3 — Plan + CHANGELOG closing.** Collapse `### Phase 8` To Do to the marker line; add `### Phase 8 — Continuous learning and self-improvement (YYYY-MM-DD)` to `## Completed`; flip the CHANGELOG heading from `(in progress)` to `(complete YYYY-MM-DD)`.
+- **8.10.4 — Documentation final pass.** "Phase 8 in progress" → "Phase 8 complete (YYYY-MM-DD); Phase 9 starts next" across the six surfaces. All cross-links resolve.
+- **8.10.5 — Pre-flight sign-off test.** `tests/test_phase_8_signoff.py` (RED before 8.10.3, GREEN after): every Phase-8 helper/command page/methodology/template on disk; `CATALOG["tc-learning"] == 8` and `DEFAULT_PHASE_CAP >= 8` (`>=`, never `==`); the one SKILL.md describes all six commands with no deferral wording AND parses under strict PyYAML; the customization Phase-8 block (or the explicit "no new surface" record); a lessons entry per sub-step 8.1–8.9; CHANGELOG marked complete with a date; plan Completed has a Phase 8 subsection; plan To Do collapsed; pytest test-def floor (`>= 700` — re-derive from the actual def count at close, per the Step 7.9 lesson that the plan's count estimates are collected-count, not def-count).
+- **8.10.6 — Final DoD evaluation.** `make verify` clean; replay the walkthrough; commit; push; annotated `phase-8` tag pushed to origin (a **new** tag — confirm it does not already exist before creating, per the Phase 7 sign-off discipline).
+
+#### Phase 8 — Lessons learned (running)
+
+Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. (Populated as 8.1–8.10 land.)
+
 ---
 
 ## Phase 9 — Visual Documentation and Infographics
@@ -3337,10 +3426,19 @@ Phase 6 complete (2026-05-29) — see Completed.
 Phase 7 complete (2026-06-01) — see Completed.
 
 ### Phase 8
-- [ ] Author `/tc:learn`, `/tc:learn-from-failures`, `/tc:learn-from-exploration`, `/tc:learn-from-feedback`, `/tc:review-lessons`, `/tc:promote-lessons`
-- [ ] Author methodology and templates
-- [ ] Author `docs/user-guide/learning-loop.md`
-- [ ] Confirm review and test gates green
+
+See `### Phase 8 — Execution outline` for full sub-step detail.
+
+- [ ] 8.1 — Skill scaffold (`tc-learning`) and seeded-learning fixture
+- [ ] 8.2 — `/tc:learn` + the `tc-lesson/v1` schema (shared inbox-append + dedup engine)
+- [ ] 8.3 — `/tc:learn-from-failures` (reads Phase-7 `runs/*/analysis.md`)
+- [ ] 8.4 — `/tc:learn-from-exploration` (reads Phase-4 exploration-notes/sessions)
+- [ ] 8.5 — `/tc:learn-from-feedback` (reads resolved open-questions / feedback)
+- [ ] 8.6 — `/tc:review-lessons` (classify inbox → accepted/rejected/needs-human-review)
+- [ ] 8.7 — `/tc:promote-lessons` (governed promotion; `--apply` human gate; never rewrites shipped methodology)
+- [ ] 8.8 — Documentation pass (`learning-loop.md`, references, customization Phase 8 schema)
+- [ ] 8.9 — Testing finalization (cap bump 7 → 8 + integration smoke)
+- [ ] 8.10 — Sign-off (cold-user walkthrough, DoD audit, plan/CHANGELOG close, pre-flight test, `phase-8` tag)
 
 ### Phase 9
 - [ ] Author all `/tc:diagram-*`, `/tc:visualize`, `/tc:generate-infographic`, `/tc:render-visuals`
