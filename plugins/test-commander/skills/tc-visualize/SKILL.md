@@ -18,7 +18,7 @@ Generated Mermaid sources land under `<workspace>/visuals/mermaid/<name>.md`; re
 
 ## Status
 
-Phase 9 (Step 9.2). The remaining commands ship across Steps 9.3-9.6; until each lands, its behavior is documented in the per-command page once that step ships:
+Phase 9 (Step 9.6). All eleven commands are end-to-end runnable:
 
 - `/tc:visualize` — **shipped (Step 9.2).** The umbrella that regenerates the full visual set. Runs every registered generator, skipping any whose source is a missing stub so one absent source never blocks the rest. Owns the shared render engine (`render_diagram`, `render_flowchart`, `render_diagram_doc`, `write_visual`, `read_source`, `mermaid_id`, `Node`/`Edge`) every `/tc:diagram-*` reuses. Writes only under `visuals/`. Full spec: [commands/visualize.md](commands/visualize.md).
 - `/tc:diagram-flow` — **shipped (Step 9.2).** A user-journey flow `flowchart` built from `product-knowledge/user-journeys.md` (the journey index) and `system-model.md` (the entities): a `User` actor, one node per journey, and a `System` node, written to `visuals/mermaid/flow.md` with a `> Sources:` footer. Refuses a missing source (exit 2) pointing at `/tc:learn-from-docs`. Full spec: [commands/diagram-flow.md](commands/diagram-flow.md).
@@ -30,7 +30,7 @@ Phase 9 (Step 9.2). The remaining commands ship across Steps 9.3-9.6; until each
 - `/tc:diagram-traceability` — **shipped (Step 9.4).** A `flowchart` of the full chain (requirement → scenario → result, resolved or `pending`) from `traceability/test-map.md`, written to `visuals/mermaid/traceability.md`. Refuses a missing source pointing at `/tc:traceability-map`. Full spec: [commands/diagram-traceability.md](commands/diagram-traceability.md).
 - `/tc:diagram-test-strategy` — **shipped (Step 9.4).** A `flowchart` of requirements feeding the automation decision buckets, from `requirements/requirements-inventory.md` + `automation-plan/*.md`, written to `visuals/mermaid/test-strategy.md`. Refuses a missing source pointing at `/tc:automation-plan`. Full spec: [commands/diagram-test-strategy.md](commands/diagram-test-strategy.md).
 - `/tc:generate-infographic` — **shipped (Step 9.5).** Aggregates the quality report's headline facts into an infographic brief (`visuals/infographic/quality-brief.md`) and a structured spec (`quality-spec.md`), measured facts only, each citing the report. Refuses a missing report pointing at `/tc:report`. Full spec: [commands/generate-infographic.md](commands/generate-infographic.md).
-- `/tc:render-visuals` — renders every `visuals/mermaid/*.md` to SVG/PNG via the Mermaid CLI. Behavior arrives in Phase 9 Step 9.6.
+- `/tc:render-visuals` — **shipped (Step 9.6).** Walks `visuals/mermaid/*.md`, extracts each Mermaid block, and renders it to `visuals/svg/<name>.svg` + `visuals/png/<name>.png` via the Mermaid CLI. The only command that shells out — refused under pytest, and graceful when the CLI is absent. Refuses (exit 2) only when there are no Mermaid sources, pointing at `/tc:visualize`. Full spec: [commands/render-visuals.md](commands/render-visuals.md).
 
 ## See also
 

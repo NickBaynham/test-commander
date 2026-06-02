@@ -34,6 +34,21 @@ Rendering to SVG/PNG is a separate step owned by `/tc:render-visuals`, the only
 command that shells out (to the Mermaid CLI). It is refused under pytest, so the
 suite asserts the Mermaid *source*, never a rendered binary.
 
+### Rendering (`/tc:render-visuals`)
+
+`/tc:render-visuals` walks `visuals/mermaid/*.md`, extracts each Mermaid block,
+and renders it to `visuals/svg/<name>.svg` and `visuals/png/<name>.png` via the
+Mermaid CLI (`mmdc`, provisioned by `make install`). Two guards keep it safe:
+
+- **Refused under pytest.** The real `mmdc` invocation checks
+  `PYTEST_CURRENT_TEST` and refuses, so the test suite asserts the extraction and
+  the planned output paths, never a rendered binary (the hermetic-boundary
+  pattern shared with `run_tests.py`).
+- **Graceful when the CLI is absent.** If `mmdc` is not on PATH, the command
+  reports the missing CLI and exits 0 without rendering — a missing CLI never
+  breaks a workflow. It refuses (exit 2) only when there are no Mermaid sources
+  to render, directing the user at `/tc:visualize`.
+
 ## The Claude judgment layer
 
 The helpers extract and lay out exactly what the sources contain. Interpretation
