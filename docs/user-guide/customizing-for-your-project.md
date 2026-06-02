@@ -779,6 +779,34 @@ and the approval semantics are the fixed governance contract (the sandbox runs
 the same Phase-10.5 pipeline); a project tunes the *target* and the *allow-list*,
 not the levels. See [sandbox.md](sandbox.md).
 
+### Phase 13 continuous quality (`.test-commander/continuous/config.yaml`)
+
+Phase 13 ships the autonomy-mode surface: how much the continuous quality agent
+may do on its own. A consuming project sets the mode and the PR label:
+
+```yaml
+# .test-commander/continuous/config.yaml
+schema: tc-continuous/v1
+autonomy_mode: 0          # 0 advisor, 1 assisted, 2 approved-execution,
+                          # 3 PR-automation, 4 governed-autonomy
+pr_label: "acme/auto-tests"
+```
+
+The mode is a **ceiling** on what auto-approves in the Phase-10.5 pipeline
+(cumulative: advisor → safe-write → execute-tests → code-write →
+external-network); `destructive` and `admin` never auto-approve at any mode, and
+only modes 3–4 may open pull requests. A team starts at mode 0 (advice only) and
+raises it deliberately. The autonomy progression and the approval semantics are
+the fixed governance contract; a project tunes the *mode* and the *PR label*, not
+what each level means. See [continuous-quality.md](continuous-quality.md) and
+[../autonomy-levels.md](../autonomy-levels.md).
+
+In addition, continuous mode reads two workspace artifacts your earlier phases
+produce — the impact map (`product-knowledge/impact-map.yaml`: file-path pattern
+→ impacted features) and the coverage map (`traceability/coverage.yaml`: feature
+→ automated?). These are *your* project's knowledge; the shipped fixtures are
+only illustrative.
+
 ## Hook 2: project documents under `documents/uploaded/`
 
 The Phase 2 helpers read every Markdown file in `.test-commander/documents/uploaded/` that matches their convention — `REQ-\d+` markers for requirements, `US-\d+` for stories, `AC-\d+` for acceptance criteria. Drop your real product requirements there as Markdown files. No tool configuration is needed; the helpers find and parse them.

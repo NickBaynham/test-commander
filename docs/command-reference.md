@@ -160,10 +160,19 @@ The seven permission levels are enforced server-side on both front-ends; a destr
 
 A sandbox is an on-demand, team-accessible Test Commander environment launched from GitHub Actions and governed exactly as the local runtime is — the Phase-10.5 pipeline runs inside it, so a sandbox cannot execute above its approved level. Targeting is safe-by-default (allow-listed hosts, blocked private ranges). The provider abstraction (`sandbox/providers/`) backs the commands; the MVP default is docker-compose-local. Architecture: [sandboxed-environments.md](sandboxed-environments.md); workflow: [github-actions-sandbox.md](github-actions-sandbox.md); walkthrough: [user-guide/sandbox.md](user-guide/sandbox.md).
 
-## Planned commands (not yet implemented)
+## Phase 13 commands (shipped)
 
-These will gain per-command pages as their phases ship.
-
-| Command | Skill | Phase |
+| Command | Skill | Per-command page |
 | --- | --- | --- |
-| `/tc:watch-changes`, continuous-quality | `tc-continuous-quality` | 13 |
+| `/tc:watch-changes` | `tc-continuous-quality` | [watch-changes.md](../plugins/test-commander/skills/tc-continuous-quality/commands/watch-changes.md) |
+| `/tc:impact-analysis` | `tc-continuous-quality` | [impact-analysis.md](../plugins/test-commander/skills/tc-continuous-quality/commands/impact-analysis.md) |
+| `/tc:coverage-gap-analysis` | `tc-continuous-quality` | [coverage-gap-analysis.md](../plugins/test-commander/skills/tc-continuous-quality/commands/coverage-gap-analysis.md) |
+| `/tc:propose-tests` | `tc-continuous-quality` | [propose-tests.md](../plugins/test-commander/skills/tc-continuous-quality/commands/propose-tests.md) |
+| `/tc:create-test-pr` | `tc-continuous-quality` | [create-test-pr.md](../plugins/test-commander/skills/tc-continuous-quality/commands/create-test-pr.md) |
+| `/tc:continuous-quality-check` | `tc-continuous-quality` | [continuous-quality-check.md](../plugins/test-commander/skills/tc-continuous-quality/commands/continuous-quality-check.md) |
+
+Continuous quality mode watches application changes, maps them to impacted features, finds coverage gaps, proposes tests, and opens clearly-labeled PRs when the configured autonomy mode allows it. It runs the watch → analyze → propose → PR loop through the same Phase-10.5 pipeline; the autonomy mode (0–4) is a ceiling on what auto-approves, and `destructive`/`admin` never auto-approve. Architecture: [continuous-quality-agent.md](continuous-quality-agent.md); autonomy: [autonomy-levels.md](autonomy-levels.md); walkthrough: [user-guide/continuous-quality.md](user-guide/continuous-quality.md).
+
+## All phases shipped
+
+Phases 0–13 are complete. Test Commander ships the full workflow from workspace initialization through requirements, knowledge, exploration, BDD, automation, execution, learning, visualization, the web console, governance, the Runtime API + MCP server, sandboxes, and continuous quality.

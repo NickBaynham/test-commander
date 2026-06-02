@@ -27,15 +27,11 @@ This README documents the plugin's contents. For the project overview, architect
 | `tc-governance` | Phase 10.5 shipped | The controlled-execution pipeline (intent → plan → policy → approval → bounded execution → validation → audit) behind the console's `/api/execute`. Owns the policy/approval/bounded-prompt templates and the audit schema; no `/tc:*` commands. |
 | `tc-mcp` | Phase 11 shipped | Exposes the workspace through the expanded Runtime API (`apps/api`: the `/api/runtime/` namespace) and a schema-first MCP server (`apps/mcp`: `tc_status`, `tc_plan`, `tc_run_command`). Both are alternative front-ends to the governance pipeline with the seven permission levels enforced server-side; no `/tc:*` commands. |
 | `tc-sandbox` | Phase 12 shipped | Owns `/tc:sandbox-init`, `/tc:sandbox-launch`, `/tc:sandbox-status`, `/tc:sandbox-sync`, `/tc:sandbox-stop`, `/tc:sandbox-export` — on-demand Test Commander environments launched from GitHub Actions via the `sandbox/providers/` abstraction (docker-compose-local MVP). Governed by the Phase-10.5 pipeline; safe-by-default targeting. |
+| `tc-continuous-quality` | Phase 13 shipped | Owns `/tc:watch-changes`, `/tc:impact-analysis`, `/tc:coverage-gap-analysis`, `/tc:propose-tests`, `/tc:create-test-pr`, `/tc:continuous-quality-check` — continuous quality mode (watch → analyze → propose → PR) with five autonomy modes gating what auto-approves in the Phase-10.5 pipeline. |
 
 ## What arrives later
 
-Each Test Commander skill is created by the phase that needs it. Until that phase ships, the skill does not exist. See [planning/plan.md](../../planning/plan.md) for the full roadmap.
-
-| Skill | Phase | Owns |
-| --- | --- | --- |
-| `tc-run`, `tc-quality-report`, `tc-evidence` | 7 | Execution, evidence, quality report |
-| `tc-continuous-quality` | 13 | Continuous quality |
+All phases (0–13) are shipped — every skill above exists. See [planning/plan.md](../../planning/plan.md) for the full roadmap and history.
 
 ## Install
 
