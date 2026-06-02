@@ -137,8 +137,11 @@ def write_json(path: Path, data: dict) -> Path:
 
 
 def resolve_repo_root() -> Path:
-    """Add the repo root to sys.path so continuous/ and governance/ are importable."""
+    """Add the repo root + runtime/ to sys.path so the continuous/ autonomy
+    package and the governance pipeline (under runtime/) are importable when a
+    command runs from the repo."""
     repo_root = Path(__file__).resolve().parents[3]
-    if str(repo_root) not in sys.path:
-        sys.path.insert(0, str(repo_root))
+    for path in (repo_root, repo_root / "runtime"):
+        if str(path) not in sys.path:
+            sys.path.insert(0, str(path))
     return repo_root

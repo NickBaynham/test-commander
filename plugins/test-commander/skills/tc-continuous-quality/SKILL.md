@@ -28,11 +28,11 @@ No mode ever auto-approves `destructive` or `admin`; those always require explic
 
 ## Status
 
-Phase 13 (Step 13.3). Change detection, impact analysis, and coverage-gap analysis are shipped; the rest lands across 13.4–13.6:
+Phase 13 (Step 13.4). Change detection, impact analysis, coverage-gap analysis, the proposals, and the gated PR are shipped; the orchestrator + CI land in 13.5–13.6:
 
 - `/tc:watch-changes` + `/tc:impact-analysis` — **shipped (Step 13.2).** `/tc:watch-changes` parses a PR/push diff into changed files (`continuous/changes.json`); `/tc:impact-analysis` maps them to impacted features and requirements via `product-knowledge/impact-map.yaml` (Phase-3/5 derived), deterministically and with provenance, never inventing impact. Both are self-contained helpers sharing `cq_support.py`. See [commands/watch-changes.md](commands/watch-changes.md) and [commands/impact-analysis.md](commands/impact-analysis.md).
 - `/tc:coverage-gap-analysis` — **shipped (Step 13.3).** Checks the impacted set against `traceability/coverage.yaml`: an impacted feature that is not automated, or has no coverage record, is a gap surfaced with provenance. Read-only, deterministic, never invents coverage. See [commands/coverage-gap-analysis.md](commands/coverage-gap-analysis.md).
-- `/tc:propose-tests` + `/tc:create-test-pr` (proposals + a gated, labeled PR) — behavior arrives in Step 13.4.
+- `/tc:propose-tests` + `/tc:create-test-pr` — **shipped (Step 13.4).** `/tc:propose-tests` writes one proposal per gap (a BDD scenario + an automation proposal; safe-write, never opens a PR). `/tc:create-test-pr` opens a clearly-labeled PR through the Phase-10.5 pipeline, gated by the autonomy mode: a below-threshold mode (0–2) cannot open a PR; mode 3+ runs the code-write generation through the pipeline (auto-approved by the autonomy gate, recorded in the audit log). The gate primitives `auto_approves`/`can_open_pr` live in `continuous/autonomy.py`. See [commands/propose-tests.md](commands/propose-tests.md) and [commands/create-test-pr.md](commands/create-test-pr.md).
 - `/tc:continuous-quality-check` + the five autonomy-mode gates (the orchestrator) — behavior arrives in Step 13.5.
 - The continuous-quality CI workflow — behavior arrives in Step 13.6.
 

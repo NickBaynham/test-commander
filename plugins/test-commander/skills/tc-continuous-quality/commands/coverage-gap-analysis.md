@@ -47,4 +47,5 @@ record is a gap, not assumed covered.
 ## See also
 
 - [/tc:impact-analysis](impact-analysis.md)
+- [/tc:propose-tests](propose-tests.md)
 - [tc-continuous-quality skill](../SKILL.md)
