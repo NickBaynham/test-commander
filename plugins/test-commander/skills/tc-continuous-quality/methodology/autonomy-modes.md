@@ -29,4 +29,5 @@ Opening a pull request requires both a sufficient mode (3+) and that the mode
 auto-approves the PR's level; a PR opened by the agent is clearly labeled so it is
 never mistaken for a human change.
 
-(Behavior shipped in Step 13.5; this methodology page is the scaffold spec.)
+Shipped in `continuous/autonomy.py` (`auto_approves`, `can_open_pr`, `mode_name`),
+exercised end to end by the orchestrator (`tests/test_cq_check_gates.py`).

@@ -28,4 +28,5 @@ Phase-5/6 generators as proposals). `/tc:create-test-pr` opens a clearly-labeled
 pull request — but only through the Phase-10.5 pipeline and only when the
 configured autonomy mode allows it.
 
-(Behavior shipped across Steps 13.2–13.4; this methodology page is the scaffold spec.)
+Shipped across Steps 13.2–13.5; the orchestrator (`/tc:continuous-quality-check`)
+runs the whole watch → analyze → propose → PR loop under the configured mode.
