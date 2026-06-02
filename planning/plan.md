@@ -3049,6 +3049,76 @@ Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Conventio
 
 - All commands work, visuals are renderable, quality report links work, user guide complete.
 
+### Phase 9 — Execution outline
+
+Nine sub-steps. TDD throughout. 9.1 scaffolds `tc-visualize` + the seeded fixture and adds the Mermaid CLI to `make install` (guarded); 9.2 ships `/tc:visualize` + the shared Mermaid-render engine and the first diagram type; 9.3–9.4 ship the eight `/tc:diagram-*` generators in two homogeneous groups; 9.5 ships `/tc:generate-infographic`; 9.6 ships `/tc:render-visuals` (Mermaid CLI → SVG/PNG, refused under pytest); 9.7 docs; 9.8 testing finalization (cap bump 8 → 9); 9.9 sign-off with a `phase-9` tag.
+
+**Two disciplines Phase 9 introduces (read before 9.1).**
+
+- **Generate-and-cite, never invent.** Every diagram is rendered *only* from committed workspace artifacts (the traceability maps, the requirements inventory, the risk register, the quality report, the system model), and every generated `.md` Mermaid file carries a `> Sources:` line listing the `path` of each artifact it drew from. A diagram never fabricates a node, edge, or metric that is not present in a source. The "sources cited" check is a mechanical test, not a reviewer's discipline.
+- **Mermaid text is the source of truth; rendering is a separate, refused-under-pytest step.** `/tc:diagram-*` and `/tc:generate-infographic` emit deterministic Mermaid/Markdown only — byte-stable, diffable, no binaries. `/tc:render-visuals` is the *only* command that shells out (to the Mermaid CLI to produce SVG/PNG), and it is **refused under pytest** via the `PYTEST_CURRENT_TEST` guard (the Phase-6/7 hermetic-boundary pattern), so the suite asserts the Mermaid *source* structure, never a rendered binary.
+
+#### 9.1 — Skill scaffold (`tc-visualize`) + Mermaid CLI in `make install`
+
+- **Deliverables.** `tc-visualize/SKILL.md` (strict-PyYAML frontmatter; body lists all eleven commands; deferral wording). Empty `commands/`/`methodology/`/`templates/` dirs. `tests/fixtures/seeded-visuals/` — a populated workspace slice (a `traceability/test-map.md`, a `requirements-inventory.md`, a `risk-register.md`, a `quality-report/current-quality-report.md`, a `product-knowledge/system-model.md`) so every diagram type has a real source. Add the Mermaid CLI (`@mermaid-js/mermaid-cli`) to `make install` **idempotently and guarded** (only when absent; the render step degrades gracefully when it is missing). `README.md` documents the per-diagram source map and the D19 framing.
+- **Tests first.** A parametrized scaffold test (mirroring `test_phase_8_scaffolds.py`) — skill dir + SKILL.md strict parse + the three sub-dirs + the fixture's source artifacts present and parseable.
+- **Definition of done.** Skill scaffolded; fixture present; `verify_skills.py` reports `tc-visualize UNEXPECTED (phase 9) — ahead of schedule` under `DEFAULT_PHASE_CAP=8`; `CATALOG["tc-visualize"] == 9`; `make install` Mermaid step is idempotent.
+
+#### 9.2 — `/tc:visualize` + the shared render engine + `/tc:diagram-flow` (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/visualize.py`. `/tc:visualize` is the umbrella that regenerates the full visual set; it exposes `render_diagram(workspace, kind, sources, nodes, edges)` — the shared Mermaid-emitter + `> Sources:` citation footer + deterministic node/edge sort that every `/tc:diagram-*` reuses. Ships the first concrete generator, `/tc:diagram-flow` (a user-journey/flow diagram from `product-knowledge/user-journeys.md` + `system-model.md`), writing `visuals/<name>.md` (Mermaid in a fenced block + the sources line).
+- **Methodology + templates.** `methodology/visual-documentation.md` (the generate-and-cite rule, the Mermaid-is-source rule, the Claude judgment layer), `methodology/diagram-standards.md`; `templates/flow-diagram-template.md`.
+- **Command files + SKILL.md update.** `commands/visualize.md`, `commands/diagram-flow.md`; SKILL.md surfaces both.
+- **Tests first.** `tests/test_visualize.py` — uninitialized refused; a missing source refused (points at the producing command); the seeded fixture → a valid Mermaid `flowchart` with every node traceable to a source and a `> Sources:` footer listing the artifact paths; byte-stable re-run; `/tc:visualize` regenerates the set deterministically.
+- **Definition of done.** The shared engine + the flow diagram ship; sources cited; deterministic; SKILL.md updated.
+
+#### 9.3 — Structural diagrams: `/tc:diagram-sequence`, `/tc:diagram-state`, `/tc:diagram-architecture` (TDD)
+
+- **Helpers.** Three generators mirroring 9.2's `render_diagram` engine: sequence (from a user journey / API call sequence), state (from session lifecycle), architecture (from `product-knowledge/system-model.md`). Each emits the matching Mermaid kind (`sequenceDiagram`, `stateDiagram-v2`, `flowchart`/`graph`) with a sources footer.
+- **Methodology + templates + command pages + SKILL.md.** One template + one command page per command; methodology subsection per kind.
+- **Tests first.** `tests/test_diagrams_structural.py` — each command refuses a missing source, emits valid Mermaid of the right kind with cited sources, and is byte-stable.
+- **Definition of done.** Three structural diagram commands ship; sources cited; deterministic; SKILL.md updated.
+
+#### 9.4 — Quality diagrams: `/tc:diagram-risk`, `/tc:diagram-coverage`, `/tc:diagram-traceability`, `/tc:diagram-test-strategy` (TDD)
+
+- **Helpers.** Four generators mirroring the engine: risk (from `risk-register.md`), coverage (from `traceability/requirements-map.md`), traceability (from `traceability/test-map.md` — the full chain), test-strategy (from the requirements + automation plan). Each emits Mermaid with a sources footer.
+- **Methodology + templates + command pages + SKILL.md.** As 9.3.
+- **Tests first.** `tests/test_diagrams_quality.py` — per command: missing-source refusal, valid Mermaid, cited sources, byte-stable; the traceability diagram renders the resolved `Test result`/`Quality report` columns when present and `pending` otherwise (never invents).
+- **Definition of done.** Four quality diagram commands ship; sources cited; deterministic; SKILL.md updated.
+
+#### 9.5 — `/tc:generate-infographic` (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/generate_infographic.py`. Aggregates the quality report's headline facts into an infographic **brief + spec** (Markdown + a structured data block) — not a binary; richer rendering is `/tc:render-visuals`' job, and the layout follows `frontend-design:frontend-design` patterns. Cites its sources; never invents a metric.
+- **Methodology + template.** `methodology/infographic-standards.md`; `templates/infographic-brief-template.md`, `templates/infographic-spec-template.md`.
+- **Command file + SKILL.md update.** `commands/generate-infographic.md`.
+- **Tests first.** `tests/test_generate_infographic.py` — uninitialized refused; no quality report refused (points at `/tc:report`); seeded report → a brief + spec carrying only measured facts with a sources footer; byte-stable.
+- **Definition of done.** Infographic brief + spec generated from real facts; cited; deterministic; SKILL.md updated.
+
+#### 9.6 — `/tc:render-visuals` (Mermaid CLI → SVG/PNG; refused under pytest) (TDD)
+
+- **Helper.** `plugins/test-commander/scripts/render_visuals.py`. Walks `visuals/*.md`, extracts each Mermaid block, and shells out to the Mermaid CLI to produce `visuals/rendered/<name>.svg` (and PNG). The real CLI invocation is **refused under pytest** via the `PYTEST_CURRENT_TEST` guard; tests assert the extraction + the planned output paths + the "CLI missing" graceful degradation, never a rendered binary.
+- **Methodology + command file + SKILL.md update.** A render subsection; `commands/render-visuals.md`. By end of 9.6 all eleven SKILL.md commands are shipped with no deferral wording.
+- **Tests first.** `tests/test_render_visuals.py` — uninitialized refused; no `visuals/*.md` refused (points at `/tc:visualize`); the real render refused under pytest with a directing message; the Mermaid-block extraction + output-path planning correct; missing-CLI handled gracefully.
+- **Definition of done.** Render extracts and plans correctly; real render refused under pytest; SKILL.md updated.
+
+#### 9.7 — Documentation pass
+
+- **Deliverables.** `docs/user-guide/visuals.md` (the generate → render flow with verbatim output + a rendered-source example), command-reference Phase 9 shipped section, workspace-reference `visuals/` section, customization-guide Phase 9 entry (any `tc-visualize.*` config — e.g. diagram-theme — or an explicit "no new extensible surface" record), six-location status-line refresh + a quality-report cross-link to the relevant visuals, final deferral sweep.
+- **Definition of done.** Docs accurate; links resolve; link checker green.
+
+#### 9.8 — Testing finalization
+
+- **Deliverables.** Bump `DEFAULT_PHASE_CAP` 8 → 9 (`tc-visualize` flips `PRESENT`). `tests/test_phase_9_integration.py` (full Phase 2 → 9 sweep): every diagram type renders valid Mermaid with cited sources; the infographic carries only measured facts; `/tc:render-visuals` is refused under pytest; the write boundary holds (`visuals/` only); `/tc:next` advances past `/tc:visualize`. Byte-stable re-run. Confirm `PHASE_OWNERSHIP["9"] == ["visuals"]`.
+- **Definition of done.** Integration smoke passes; cap bump reflected; `make verify` clean; all fifteen skills `PRESENT`, `UNEXPECTED=0`.
+
+#### 9.9 — Sign-off
+
+Six sub-sub-steps mirroring 8.10: cold-user walkthrough of `visuals.md` (`make uninstall` → `make install`, the Mermaid CLI step included); per-step DoD audit (every visual cites sources; no deferral wording); plan + CHANGELOG closing; documentation final pass; test-first `tests/test_phase_9_signoff.py` (RED before the close, GREEN after; test-def floor re-derived); final DoD eval + annotated `phase-9` tag (new tag — confirm absent first).
+
+#### Phase 9 — Lessons learned (running)
+
+Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. (Populated as 9.1–9.9 land.)
+
 ---
 
 ## Phase 10 — Web Console MVP
@@ -3080,6 +3150,70 @@ Structure as previously specified under `apps/web/`, `apps/api/`, `runtime/`.
 **Definition of done.**
 
 - All pages work, SSE delivers updates, indexer keeps up with workspace changes, chat is read-only + proposal cards only (execution gating ships in Phase 10.5), user guide complete.
+
+### Phase 10 — Execution outline
+
+Nine sub-steps. Phase 10 is the first **runtime** phase (per D2): it ships a Next.js frontend + FastAPI backend, not Markdown skills, so it extends the verify chain with backend `pytest` (FastAPI/`apps/api`) and frontend tests (`vitest` + Playwright e2e under `apps/web`). The `tc-web` skill still ships a SKILL.md (the commands that drive the stack). 10.1 scaffolds; 10.2–10.3 build the backend (indexer + read APIs + SSE); 10.4–10.5 build the frontend pages + read-only chat; 10.6 ships `/tc:web-export`; 10.7 docs; 10.8 testing finalization (docker-compose e2e + cap bump); 10.9 sign-off.
+
+**Three disciplines Phase 10 introduces (read before 10.1).**
+
+- **Read-only and proposal-only — no execution (the 10.5 boundary).** Phase 10 ships the UI shell, the artifact indexer, and the proposal-card surface. The chat answers from indexed artifacts and *suggests* `/tc:*` commands as proposal cards; it **cannot execute** anything that changes the workspace or runs tests. Every backend route is read-only or proposal-generating. The execution pipeline is Phase 10.5; a 10.x test asserts no UI/API path mutates the workspace or runs a command.
+- **The workspace is the source of truth; the DB is a derived index.** SQLite holds only a rebuildable index of the committed `.test-commander/` artifacts; the indexer reconciles on change and the workspace files remain authoritative. Nothing the console shows is invented — every panel cites or links the artifact it rendered.
+- **`make run` brings up the whole stack on docker compose (D10/parent rule).** Frontend + backend + the indexer run locally via `make run`; the e2e smoke drives the running stack. No cloud dependency for the MVP (Pattern A, D15).
+
+#### 10.1 — Scaffold (`tc-web` skill + `apps/web` + `apps/api` + `make run`)
+
+- **Deliverables.** `tc-web/SKILL.md` (lists the five `/tc:web-*` commands; deferral wording). Scaffold `apps/web/` (Next.js, via `web-scaffold:create-website` structure) and `apps/api/` (FastAPI) and `runtime/` per the spec; a `make run` docker-compose target bringing both up; a `tests/fixtures/seeded-web/` populated workspace. Extend the verify chain config so backend `pytest` and frontend `vitest` are discoverable (documented; not yet enforced if heavy).
+- **Tests first.** Scaffold test: skill dir + SKILL.md strict parse; `apps/web`/`apps/api`/`runtime` trees exist; `make run` target present; a backend health-route test (FastAPI `TestClient`).
+- **Definition of done.** Stack scaffolds; `make run` boots both services; `verify_skills.py` reports `tc-web UNEXPECTED (phase 10) — ahead of schedule`; `CATALOG["tc-web"] == 10`.
+
+#### 10.2 — Backend: artifact indexer + `/tc:web-index-artifacts` (TDD)
+
+- **Helper + service.** The FastAPI artifact-indexer service that walks `.test-commander/` into the SQLite index (requirements, runs, evidence, journal, quality report, traceability), plus `/tc:web-index-artifacts` to trigger a (re)index. Reconciles on change; the workspace stays authoritative.
+- **Tests first.** Backend `pytest`: indexing a seeded workspace populates the expected rows; a changed artifact re-indexes; the index is rebuildable from scratch (no state the workspace lacks).
+- **Definition of done.** Indexer keeps up with workspace changes; `/tc:web-index-artifacts` shipped; SKILL.md updated.
+
+#### 10.3 — Backend: read APIs + SSE event stream + `/tc:web-sync` (TDD)
+
+- **Service.** Read-only FastAPI routes for each page's data (dashboard, quality report, journal, sessions, requirements, test runs, evidence) and the SSE event stream that pushes updates on workspace change (e.g. a journal append). `/tc:web-sync` reconciles the index with the workspace. **Proposal generation** (read-only suggestion of `/tc:*` commands) lives here — never execution.
+- **Tests first.** Contract tests per route (shape + read-only); an SSE test asserting an event is emitted on a journal append; a proposal-generation test asserting it returns a *proposal card*, never runs anything.
+- **Definition of done.** Read routes + SSE work; proposal generation is read-only; SKILL.md updated.
+
+#### 10.4 — Frontend: the MVP pages + `/tc:web-init` + `/tc:web-start` (TDD)
+
+- **Frontend.** The Next.js pages — Dashboard, Quality Report, Journal, Sessions, Requirements, Test Runs, Evidence, Settings — rendering the read APIs, with SSE live-update on the dashboard/journal. `/tc:web-init` (provision the console config) and `/tc:web-start` (bring the stack up). Embeds the Phase-9 visuals where relevant (`frontend-design` patterns).
+- **Tests first.** `vitest` component tests + a Playwright e2e smoke navigating all pages against a populated `make run` stack; every panel links its source artifact.
+- **Definition of done.** All pages render against a populated workspace; SSE updates appear; `/tc:web-init`/`/tc:web-start` shipped; SKILL.md updated.
+
+#### 10.5 — Frontend: read-only chat + proposal cards (TDD)
+
+- **Frontend + backend.** The chat panel: read-only Q&A from indexed artifacts, workflow suggestions, and command **proposal cards** the user can review. It refuses any action above `read-only` and surfaces proposal cards only — **execution gating ships in Phase 10.5 (the governance phase)**. A clear, tested boundary: no chat path mutates the workspace or runs a command.
+- **Tests first.** Chat answers a question from the index; a "generate BDD" request returns a proposal card (not an execution); an attempt to execute is refused; the e2e asserts no workspace mutation occurs from any chat action.
+- **Definition of done.** Chat is read-only + proposal-cards-only; the no-execution boundary is tested; SKILL.md updated.
+
+#### 10.6 — `/tc:web-export` (TDD)
+
+- **Helper.** `/tc:web-export` — export the console's current view (quality report + evidence + traceability) as a shareable static bundle. Read-only; deterministic.
+- **Tests first.** Export produces the expected static bundle from a seeded workspace; deterministic; no mutation.
+- **Definition of done.** Export ships; deterministic; by end of 10.6 all five `/tc:web-*` commands are shipped with no deferral wording.
+
+#### 10.7 — Documentation pass
+
+- **Deliverables.** `docs/user-guide/web-console.md`, `docs/web-console.md`, `docs/runtime-api.md`; command-reference Phase 10 section; workspace-reference note (the console reads the workspace, the DB is a derived index); customization-guide Phase 10 entry; status-line refresh; the explicit "read-only + proposal cards only; execution arrives in Phase 10.5" framing throughout; final deferral sweep.
+- **Definition of done.** Docs accurate; links resolve; link checker green.
+
+#### 10.8 — Testing finalization
+
+- **Deliverables.** Bump `DEFAULT_PHASE_CAP` 9 → 10. `make run` docker-compose e2e: bring the stack up, Playwright smoke-navigates all pages, the SSE update appears, the chat is read-only + proposal-cards-only (the no-execution assertion), `/tc:web-export` produces a bundle. Backend contract tests green. Confirm `PHASE_OWNERSHIP` is unaffected (the console writes only its own config/DB, not workspace artifacts).
+- **Definition of done.** e2e smoke passes; cap bump reflected; `make verify` (+ the web test lanes) green; `verify_skills.py` all `PRESENT`, `UNEXPECTED=0`.
+
+#### 10.9 — Sign-off
+
+Six sub-sub-steps mirroring prior sign-offs, adapted for the runtime: cold-user walkthrough (`make uninstall` → `make install` → `make run`, navigate the console); per-step DoD audit (read-only + proposal-only boundary holds); plan + CHANGELOG closing; documentation final pass; test-first `tests/test_phase_10_signoff.py`; final DoD eval + annotated `phase-10` tag.
+
+#### Phase 10 — Lessons learned (running)
+
+Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. (Populated as 10.1–10.9 land.)
 
 ---
 
@@ -3252,6 +3386,94 @@ These can be relaxed per-role only with explicit admin configuration. Default de
 - Web console (Phase 10) wired to the pipeline; no UI path can execute an action without it.
 - `docs/user-guide/governance.md` explains the model.
 
+### Phase 10.5 — Execution outline
+
+Thirteen sub-steps — the largest, most security-critical phase. TDD throughout; security properties are asserted by tests, never assumed. The pipeline (intent router → command planner → permission policy → approval gate → bounded execution → artifact capture → diff validation → audit log) is built component-by-component against the **mock adapter** so every gate is exercised hermetically, then the real `ClaudeCodeCliAdapter` is dropped in behind the same controls. 10.5.1 scaffolds; 10.5.2–10.5.9 build the eight pipeline components; 10.5.10 ships the Claude adapter + wires the Phase-10 console; 10.5.11 docs; 10.5.12 testing finalization (the four security integration tests + cap bump); 10.5.13 sign-off.
+
+**Three disciplines Phase 10.5 introduces (read before 10.5.1).**
+
+- **Default deny; every gate is a test, not a convention.** Nothing above `read-only` executes without passing the policy engine and (where required) an approval gate. The four canonical security integration tests (block an unsafe request before the agent; deny a code-write and assert no files change; approve via the mock adapter and assert the diff matches the plan; refuse a no-plan direct adapter call) are written **first** and are the phase's spine — they must be RED before the pipeline exists and GREEN only when each control is in place.
+- **The agent never sees the raw user prompt; secrets never reach the frontend or the prompt.** Bounded execution wraps a *structured instruction* (command, scope, allowed/disallowed paths and actions, expected outputs) — raw user text never lands in instruction-critical sections (a test asserts this). Provider secrets stay server-side, are injected only into runtime jobs, and are redacted from logs, artifacts, and prompts (a test asserts an env-var-printing attempt is flagged).
+- **Adapter abstraction so governance is backend-agnostic.** Every backend (`MockAgentAdapter`, `ClaudeCodeCliAdapter`, stubbed `AnthropicApiAdapter`) implements one `AgentAdapter` interface and runs *inside* the same pipeline. There is no direct-execution backdoor — the API (Phase 11), the sandbox (Phase 12), and continuous mode (Phase 13) all enter here.
+
+#### 10.5.1 — Scaffold (`tc-governance` skill + `runtime/agent_adapters/` + policy/audit dirs + the four RED security tests)
+
+- **Deliverables.** `tc-governance/SKILL.md` (policy / approval-card / bounded-prompt templates + the audit schema; deferral wording). Scaffold `runtime/agent_adapters/` (`base.py` interface, `mock_agent.py`, `claude_code_cli.py` stub, `anthropic_api.py` stub). Workspace additions: `policy/permissions.yaml`, `policy/approvals.yaml`, `audit/actions.jsonl`, `audit/approvals/`. `tests/fixtures/seeded-governance/` (a role set, a sample request set incl. one unsafe). **Write the four security integration tests now, RED**, as executable acceptance criteria the phase drives toward.
+- **Tests first.** Scaffold test (skill + adapter tree + policy/audit dirs) + the four security integration tests landing RED (no pipeline yet).
+- **Definition of done.** Scaffold present; the four security tests exist and are RED; `CATALOG["tc-governance"] == 10.5`; `tc-governance UNEXPECTED (phase 10.5) — ahead of schedule`.
+
+#### 10.5.2 — Agent adapter abstraction (`AgentAdapter` + mock + stubs) (TDD)
+
+- **Deliverables.** `base.py` `AgentAdapter` interface (`execute_command`, `stream_events`, `capture_result`, `report_files_changed`, `report_artifacts_created`, `report_usage_if_available`); `MockAgentAdapter` (deterministic, no real execution); `claude_code_cli.py` + `anthropic_api.py` stubs raising "not wired".
+- **Tests first.** `MockAgentAdapter` round-trips a structured instruction → result + files-changed + artifacts; the stubs refuse cleanly.
+- **Definition of done.** The interface + mock adapter work; stubs refuse; the pipeline can be built against the mock.
+
+#### 10.5.3 — Permission policy engine (7 levels, role-aware) (TDD)
+
+- **Helper.** The engine classifying every action into `read-only` / `safe-write` / `code-write` / `execute-tests` / `external-network` / `destructive` / `admin`, resolved against `policy/permissions.yaml` (role → allowed levels) and the five default roles (Viewer → Admin). Default deny.
+- **Tests first.** Each level resolves correctly per role; an unsafe action ("delete all evidence" → `destructive`) is denied for a Viewer; unknown actions default to `read-only`; **the first security integration test (block-before-agent) goes GREEN.**
+- **Definition of done.** Policy engine + roles + default permissions ship; the block-before-agent test passes.
+
+#### 10.5.4 — Intent router (NL/button → known workflow) (TDD)
+
+- **Helper.** Maps natural-language requests and button actions to known `/tc:*` workflows (examples per D19 are universal SaaS surfaces); unknown intents default to the read-only Q&A path; the router cannot synthesize new commands.
+- **Tests first.** Known phrasings map to the right command; an unknown intent routes read-only; no synthesized command escapes the known set.
+- **Definition of done.** Router maps the known workflow set; unknowns degrade read-only.
+
+#### 10.5.5 — Command planner (displayable plan) (TDD)
+
+- **Helper.** Produces an explicit, displayable plan before execution: command, likely reads, likely writes, permission level, target environment, expected artifacts, approval-required flag.
+- **Tests first.** A planned command yields the full plan with the correct permission level and reads/writes; the plan is deterministic.
+- **Definition of done.** Planner emits complete, deterministic plans feeding the approval gate.
+
+#### 10.5.6 — Approval gate (card + record) (TDD)
+
+- **Helper.** Requires approval for `code-write` / `execute-tests` / `external-network` / `destructive` / `admin` (configurable for `safe-write` via `policy/approvals.yaml`); renders an approval card; records the decision under `audit/approvals/`.
+- **Tests first.** A code-write request renders an approval card; **the deny path goes GREEN — denying leaves no files changed (the second security integration test);** an approval is recorded with approver + timestamp.
+- **Definition of done.** Approval gate + records ship; the deny-no-change test passes.
+
+#### 10.5.7 — Bounded executor (structured instruction wrapping) (TDD)
+
+- **Helper.** Wraps the approved plan into a *structured instruction* (command, scope, allowed/disallowed paths and actions, expected outputs, safety rules, journal requirements) and runs it through the adapter. Raw user text never enters instruction-critical sections.
+- **Tests first.** The structured instruction contains no raw user text in instruction-critical fields; the mock adapter executes the bounded instruction; **the approve-and-execute path begins (third security test setup).**
+- **Definition of done.** Bounded executor runs approved plans via the adapter; the no-raw-prompt property is tested.
+
+#### 10.5.8 — Output validation + secret safety (TDD)
+
+- **Helper.** After execution, diffs the workspace and verifies files-changed match the planned scope, no secret files touched, no unexpected network, expected outputs produced — a violation marks the run failed (admin review). Secret safety: provider keys server-side only, redacted from logs/artifacts/prompts; env-var-printing attempts flagged.
+- **Tests first.** A seeded out-of-scope file write is caught and fails the run; **the approve-and-execute test goes GREEN — the post-execution diff matches the plan (third security integration test);** a secret-redaction test (an env-var-print attempt is flagged).
+- **Definition of done.** Output validator + secret safety ship; the diff-matches-plan and redaction tests pass.
+
+#### 10.5.9 — Audit journal (TDD)
+
+- **Helper.** Append-only `audit/actions.jsonl` recording every action (user, timestamp, original request, mapped intent, proposed command, approval status, approver, permission level, files read/changed, artifacts, tests run, target URLs, status, summary, evidence links).
+- **Tests first.** Every executed action writes one audit entry with the full field set; **the fourth security integration test goes GREEN — a no-plan direct adapter call is refused by the runtime (no audit entry, no execution).**
+- **Definition of done.** Audit journal ships; the no-plan-bypass test passes; all four security integration tests GREEN.
+
+#### 10.5.10 — `ClaudeCodeCliAdapter` + wire the Phase-10 console (TDD)
+
+- **Deliverables.** Implement `ClaudeCodeCliAdapter` behind the *same* pipeline (no new execution path). Wire the Phase-10 web console's proposal cards into the pipeline so an approved card flows intent → plan → policy → approval → bounded execution → validation → audit; **remove any direct-execution path** from the console.
+- **Tests first.** The Claude adapter implements the interface and is gated identically to the mock; a console-initiated approved action traverses the full pipeline; no UI path executes without it.
+- **Definition of done.** Real adapter gated; console wired; no bypass exists.
+
+#### 10.5.11 — Documentation pass
+
+- **Deliverables.** `docs/controlled-agent-execution.md`, `docs/security-and-permissions.md`, `docs/chat-command-governance.md`, `docs/runtime-approval-flow.md`, `docs/agent-adapters.md`, `docs/user-guide/governance.md`; command-reference + workspace-reference (`policy/`, `audit/`) updates; customization-guide Phase 10.5 entry (roles, permission levels, approval policy — the genuinely-extensible governance surface); status-line refresh; final deferral sweep.
+- **Definition of done.** All six docs written; links resolve; link checker green.
+
+#### 10.5.12 — Testing finalization
+
+- **Deliverables.** Bump `DEFAULT_PHASE_CAP` 10 → 10.5. Consolidate the four security integration tests + the secret-redaction test into `tests/test_phase_10_5_integration.py` and confirm all GREEN end-to-end with the mock adapter (and the Claude adapter gated). Confirm `PHASE_OWNERSHIP["10.5"] == ["policy", "audit"]`.
+- **Definition of done.** All security tests GREEN; cap bump reflected; `make verify` green; `verify_skills.py` all `PRESENT`, `UNEXPECTED=0`.
+
+#### 10.5.13 — Sign-off
+
+Six sub-sub-steps mirroring prior sign-offs: cold-user walkthrough of `governance.md` (drive an approve/deny via the console against the mock adapter); per-step DoD audit (every action above `safe-write` shows an approval card; every executed action audits; no bypass); plan + CHANGELOG closing; documentation final pass; test-first `tests/test_phase_10_5_signoff.py`; final DoD eval + annotated `phase-10.5` tag.
+
+#### Phase 10.5 — Lessons learned (running)
+
+Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. (Populated as 10.5.1–10.5.13 land.)
+
 ---
 
 ## Phase 11 — Runtime API and MCP Server
@@ -3278,6 +3500,47 @@ These can be relaxed per-role only with explicit admin configuration. Default de
 **Definition of done.**
 
 - API and MCP routes work, permission gates enforced, contract tests pass, user guide complete.
+
+### Phase 11 — Execution outline
+
+Seven sub-steps. The API and MCP server are **alternative front-ends to the Phase-10.5 pipeline** — every route and tool enters intent routing → planning → permissions → approval → validation → audit; there is no direct-execution backdoor (the headline discipline, asserted by tests). 11.1 scaffolds; 11.2 expands the Runtime API; 11.3 builds the MCP server + tools; 11.4 enforces + unit-tests the permission gates; 11.5 docs; 11.6 testing finalization; 11.7 sign-off.
+
+**Two disciplines Phase 11 introduces (read before 11.1).**
+
+- **No bypass — the pipeline is the only path.** Every API route and MCP tool that does anything above `read-only` is routed through the Phase-10.5 controls server-side; a contract test asserts a route cannot execute without a plan + approval, exactly as the console cannot.
+- **Schema-first tools.** MCP tools ship explicit JSON schemas (per `anthropic-skills:skill-creator` conventions); round-trip tests exercise every tool via a sample client.
+
+#### 11.1 — Scaffold (`tc-mcp` skill + `apps/mcp/` + Runtime API expansion skeleton)
+
+- **Deliverables.** `tc-mcp/SKILL.md` (the MCP tool catalog; deferral wording). Scaffold `apps/mcp/` (server package) and the expanded `apps/api/` route skeleton. `tests/fixtures/seeded-mcp/`. **Tests first:** scaffold test (skill + `apps/mcp` tree + a server health check). DoD: `CATALOG["tc-mcp"] == 11`; ahead-of-schedule.
+
+#### 11.2 — Runtime API expansion (through the pipeline) (TDD)
+
+- **Deliverables.** The expanded FastAPI routes (read + proposal + governed-execution), every mutating route entering the 10.5 pipeline. **Tests first:** contract tests per route (shape + permission level); a route above `read-only` refuses without a plan/approval. DoD: routes work behind the pipeline; SKILL.md updated.
+
+#### 11.3 — MCP server + tool definitions (TDD)
+
+- **Deliverables.** The MCP server and its tools (schema-first), each tool dispatching into the same pipeline. **Tests first:** MCP tool round-trip tests via a sample client; a tool above `read-only` is gated. DoD: all tools work; schemas valid; SKILL.md updated.
+
+#### 11.4 — Permission gates (server-side enforcement) (TDD)
+
+- **Deliverables.** Explicit server-side enforcement of the seven permission levels across API + MCP; unit tests per level. **Tests first:** security tests for destructive routes/tools (refused without admin approval); a bypass attempt fails. DoD: gates enforced + unit-tested; no bypass.
+
+#### 11.5 — Documentation pass
+
+- **Deliverables.** `docs/runtime-api.md`, `docs/mcp-server.md`, `docs/security-and-permissions.md` (updates), `docs/user-guide/integrating.md`; command-reference + customization-guide entries; status-line refresh; final deferral sweep. DoD: docs accurate; links resolve.
+
+#### 11.6 — Testing finalization
+
+- **Deliverables.** Bump `DEFAULT_PHASE_CAP` 10.5 → 11. `tests/test_phase_11_integration.py`: contract tests for every route, MCP round-trips, and the no-bypass security assertions all green. DoD: integration green; cap bump reflected; `make verify` green; `verify_skills.py` all `PRESENT`, `UNEXPECTED=0`.
+
+#### 11.7 — Sign-off
+
+Six sub-sub-steps mirroring prior sign-offs: cold-user walkthrough (exercise the API + an MCP tool via a sample client); per-step DoD audit (no bypass; gates enforced); plan + CHANGELOG closing; documentation final pass; test-first `tests/test_phase_11_signoff.py`; final DoD eval + annotated `phase-11` tag.
+
+#### Phase 11 — Lessons learned (running)
+
+Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. (Populated as 11.1–11.7 land.)
 
 ---
 
@@ -3307,6 +3570,47 @@ These can be relaxed per-role only with explicit admin configuration. Default de
 
 - Sandbox launches and tears down, safety guards in place, MVP limitations documented honestly.
 
+### Phase 12 — Execution outline
+
+Seven sub-steps. A sandbox is an on-demand Test Commander environment launched from GitHub Actions — and **the Phase-10.5 pipeline runs inside it exactly as locally** (sandboxing never relaxes governance, the headline discipline). 12.1 scaffolds; 12.2 builds the provider abstraction + docker-compose provider; 12.3 ships the six sandbox commands; 12.4 ships the workflows + safety guards; 12.5 docs; 12.6 testing finalization; 12.7 sign-off.
+
+**Two disciplines Phase 12 introduces (read before 12.1).**
+
+- **Governance travels with the sandbox.** The controlled execution pipeline runs in the sandbox just as locally; provider credentials are server-side secrets, never exposed to the frontend, scoped to the runtime jobs that need them. A test asserts the sandbox cannot execute above its approved level.
+- **Safe-by-default targeting.** Allowed target domains only, private network ranges blocked by default, secret-scanning guidance, approvals for external targets and destructive commands, clear environment labels. CI is exercised as a **dry-run with a mocked provider** — no real cloud spend in tests.
+
+#### 12.1 — Scaffold (`tc-sandbox` skill + `sandbox/providers/` + `.github/workflows/` skeleton)
+
+- **Deliverables.** `tc-sandbox/SKILL.md` (the six `/tc:sandbox-*` commands; deferral wording). Scaffold `sandbox/providers/` (provider abstraction) and the workflow skeleton. **Tests first:** scaffold test. DoD: `CATALOG["tc-sandbox"] == 12`; ahead-of-schedule.
+
+#### 12.2 — Provider abstraction + docker-compose provider + stubs (TDD)
+
+- **Deliverables.** The `SandboxProvider` interface; the docker-compose-local provider; stub adapters for a generic container host and a Sprites.dev placeholder (Q8 default). **Tests first:** the docker-compose provider launches/teardowns against a mock; the stubs refuse cleanly. DoD: provider abstraction + the local provider work; stubs refuse.
+
+#### 12.3 — The six sandbox commands (TDD)
+
+- **Deliverables.** `/tc:sandbox-init`, `/tc:sandbox-launch`, `/tc:sandbox-status`, `/tc:sandbox-sync`, `/tc:sandbox-stop`, `/tc:sandbox-export` against the provider abstraction. **Tests first:** each command exercises the mock provider with the right lifecycle call; launch/stop are idempotent. DoD: all six shipped; SKILL.md updated, no deferral wording.
+
+#### 12.4 — GitHub Actions workflows + safety guards (TDD)
+
+- **Deliverables.** The sandbox workflows under `.github/workflows/`; the safety-guard config (allowed domains, blocked private ranges, approvals for external/destructive). **Tests first:** the workflow YAML is valid + sequences image build → env publish → teardown; a blocked target/private range is refused; the in-sandbox pipeline enforces governance. DoD: workflows + guards ship; the governance-in-sandbox assertion passes.
+
+#### 12.5 — Documentation pass
+
+- **Deliverables.** `docs/sandboxed-environments.md`, `docs/github-actions-sandbox.md`, `docs/no-code-tester-workflow.md`, `docs/user-guide/sandbox.md`; command-reference + customization-guide entries; status-line refresh; **honest MVP-limitations** section; final deferral sweep. DoD: docs accurate; links resolve.
+
+#### 12.6 — Testing finalization
+
+- **Deliverables.** Bump `DEFAULT_PHASE_CAP` 11 → 12. `tests/test_phase_12_integration.py`: CI dry-run with a mocked provider asserting image build, env publish, and teardown sequencing, plus the safety-guard refusals and the governance-in-sandbox assertion. DoD: integration green; cap bump reflected; `make verify` green; `verify_skills.py` all `PRESENT`, `UNEXPECTED=0`.
+
+#### 12.7 — Sign-off
+
+Six sub-sub-steps mirroring prior sign-offs: cold-user walkthrough (launch a sandbox against a sample target via the mocked provider; confirm teardown); per-step DoD audit (safety guards; governance travels); plan + CHANGELOG closing; documentation final pass; test-first `tests/test_phase_12_signoff.py`; final DoD eval + annotated `phase-12` tag.
+
+#### Phase 12 — Lessons learned (running)
+
+Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. (Populated as 12.1–12.7 land.)
+
 ---
 
 ## Phase 13 — Continuous Quality Agent Mode
@@ -3335,6 +3639,55 @@ Continuous mode runs through the **same Phase 10.5 pipeline** as the web console
 **Definition of done.**
 
 - All modes implemented and tested, CI workflow stable, principles "autonomous where safe, human-governed where it matters" reflected, user guide complete.
+
+### Phase 13 — Execution outline
+
+Nine sub-steps — the final phase. Continuous mode watches code, requirements, and pipelines and proposes quality updates, **running through the same Phase-10.5 pipeline**; the configured autonomy level (0–4) decides which permission levels are auto-approved, and nothing above it executes without explicit human approval (the headline discipline). 13.1 scaffolds; 13.2 ships change-detection + impact analysis; 13.3 coverage-gap analysis; 13.4 propose-tests + create-test-PR; 13.5 the continuous check + the five autonomy-mode gates; 13.6 the CI workflow; 13.7 docs; 13.8 testing finalization; 13.9 sign-off.
+
+**Two disciplines Phase 13 introduces (read before 13.1).**
+
+- **Autonomy is a ceiling, not a license.** The five modes (0 read-only-advisor → 4 governed-autonomy) map to which permission levels are auto-approved in the 10.5 pipeline; mode boundaries are enforced (mode 0 cannot open PRs; PRs from mode 3 are clearly labeled), asserted by tests. Continuous mode must not bypass approvals.
+- **Reuse, don't rebuild.** Impacted-test runs reuse `tc-run`'s execution + failure-triage; lessons feed `tc-learning`; no parallel machinery. The phase adds the *watch → analyze → propose → PR* loop on top of the existing skills.
+
+#### 13.1 — Scaffold (`tc-continuous-quality` skill + the CI workflow skeleton + seeded fixture)
+
+- **Deliverables.** `tc-continuous-quality/SKILL.md` (the six commands + the five autonomy modes; deferral wording). The `.github/workflows/test-commander-continuous-quality.yml` skeleton. `tests/fixtures/seeded-continuous/` (a sample PR diff + an impacted-feature map). **Tests first:** scaffold test. DoD: `CATALOG["tc-continuous-quality"] == 13`; ahead-of-schedule.
+
+#### 13.2 — `/tc:watch-changes` + `/tc:impact-analysis` (TDD)
+
+- **Deliverables.** Change detection (a PR/push diff) and impact analysis mapping changed files → impacted features/requirements via the Phase-3 knowledge + Phase-5 traceability. **Tests first:** a seeded diff yields the expected impacted features; deterministic. DoD: both commands ship; SKILL.md updated.
+
+#### 13.3 — `/tc:coverage-gap-analysis` (TDD)
+
+- **Deliverables.** Analyzes the impacted set against existing coverage (test-map, automation plan) and writes a coverage-gap analysis (read-only). **Tests first:** a seeded impacted set with a known gap → the gap surfaced with provenance; never invents coverage. DoD: ships; deterministic; SKILL.md updated.
+
+#### 13.4 — `/tc:propose-tests` + `/tc:create-test-pr` (TDD)
+
+- **Deliverables.** `/tc:propose-tests` proposes new BDD/automation for the gaps (reusing Phases 5/6 generators as proposals); `/tc:create-test-pr` opens a clearly-labeled PR through the 10.5 pipeline (requires the configured autonomy level + approval). **Tests first:** propose yields reviewable artifacts; create-test-pr is gated by mode + approval and the PR is labeled; a below-threshold mode cannot open a PR. DoD: both ship; gated; SKILL.md updated.
+
+#### 13.5 — `/tc:continuous-quality-check` + the five autonomy-mode gates (TDD)
+
+- **Deliverables.** The orchestrator running watch → impact → coverage-gap → propose under the configured autonomy mode, with the five mode gates mapping to 10.5 auto-approval levels. **Tests first:** each mode auto-approves exactly its levels and no more; mode 0 cannot open PRs; nothing above the mode executes without approval. By end of 13.5 all six commands ship with no deferral wording. DoD: the check + gates ship; boundaries enforced.
+
+#### 13.6 — The continuous-quality CI workflow (TDD)
+
+- **Deliverables.** The `pull_request` / `push` / `schedule` / `workflow_dispatch` workflow wiring the check into CI, read-only analysis automatic, generated changes arriving as gated PRs. **Tests first:** the workflow YAML is valid + triggers correct; a simulated PR runs the check at the configured mode. DoD: workflow stable; the simulated-PR assertion passes.
+
+#### 13.7 — Documentation pass
+
+- **Deliverables.** `docs/continuous-quality-agent.md`, `docs/autonomy-levels.md`, `docs/governed-self-improvement.md`, `docs/user-guide/continuous-quality.md`; command-reference + customization-guide (the autonomy-mode config is the extensible surface) entries; status-line refresh; final deferral sweep. DoD: docs accurate; links resolve.
+
+#### 13.8 — Testing finalization
+
+- **Deliverables.** Bump `DEFAULT_PHASE_CAP` 12 → 13. `tests/test_phase_13_integration.py`: simulate a PR with a code change; assert impact analysis identifies the expected impacted features and proposes appropriate tests; assert the mode boundaries hold and PRs are labeled. DoD: integration green; cap bump reflected; `make verify` green; `verify_skills.py` reports all skills `PRESENT` with `UNEXPECTED=0` (the full catalog).
+
+#### 13.9 — Sign-off (project complete)
+
+Six sub-sub-steps mirroring prior sign-offs: cold-user walkthrough (simulate a PR end-to-end at a chosen mode); per-step DoD audit (mode boundaries; PR labeling; no bypass); plan + CHANGELOG closing; documentation final pass; test-first `tests/test_phase_13_signoff.py`; final DoD eval + annotated `phase-13` tag. With 13.9 the full roadmap (Phases 0–13) is shipped.
+
+#### Phase 13 — Lessons learned (running)
+
+Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. (Populated as 13.1–13.9 land.)
 
 ---
 
@@ -3449,55 +3802,88 @@ Phase 7 complete (2026-06-01) — see Completed.
 Phase 8 complete (2026-06-01) — see Completed.
 
 ### Phase 9
-- [ ] Author all `/tc:diagram-*`, `/tc:visualize`, `/tc:generate-infographic`, `/tc:render-visuals`
-- [ ] Add Mermaid CLI to `make install`
-- [ ] Author methodology and templates
-- [ ] Author `docs/user-guide/visuals.md`
-- [ ] Confirm review and test gates green
+
+See `### Phase 9 — Execution outline` for full sub-step detail.
+
+- [ ] 9.1 — Skill scaffold (`tc-visualize`) + seeded-visuals fixture + Mermaid CLI in `make install`
+- [ ] 9.2 — `/tc:visualize` + the shared render engine + `/tc:diagram-flow`
+- [ ] 9.3 — Structural diagrams (`/tc:diagram-sequence`, `/tc:diagram-state`, `/tc:diagram-architecture`)
+- [ ] 9.4 — Quality diagrams (`/tc:diagram-risk`, `/tc:diagram-coverage`, `/tc:diagram-traceability`, `/tc:diagram-test-strategy`)
+- [ ] 9.5 — `/tc:generate-infographic`
+- [ ] 9.6 — `/tc:render-visuals` (Mermaid CLI → SVG/PNG; refused under pytest)
+- [ ] 9.7 — Documentation pass (`visuals.md`, references, customization)
+- [ ] 9.8 — Testing finalization (cap bump 8 → 9 + integration smoke)
+- [ ] 9.9 — Sign-off (`phase-9` tag)
 
 ### Phase 10
-- [ ] Scaffold `apps/web/` and `apps/api/`
-- [ ] Implement all MVP pages and the artifact indexer
-- [ ] Implement SSE streams
-- [ ] Implement read-only chat (Q&A + proposal cards only — execution arrives in Phase 10.5)
-- [ ] Author `docs/user-guide/web-console.md`, `docs/web-console.md`, `docs/runtime-api.md`
-- [ ] Confirm review and test gates green
+
+See `### Phase 10 — Execution outline` for full sub-step detail.
+
+- [ ] 10.1 — Scaffold (`tc-web` + `apps/web` + `apps/api` + `make run`)
+- [ ] 10.2 — Backend: artifact indexer + `/tc:web-index-artifacts`
+- [ ] 10.3 — Backend: read APIs + SSE event stream + `/tc:web-sync`
+- [ ] 10.4 — Frontend: the MVP pages + `/tc:web-init` + `/tc:web-start`
+- [ ] 10.5 — Frontend: read-only chat + proposal cards (no execution)
+- [ ] 10.6 — `/tc:web-export`
+- [ ] 10.7 — Documentation pass (`web-console.md`, `runtime-api.md`)
+- [ ] 10.8 — Testing finalization (docker-compose e2e + cap bump 9 → 10)
+- [ ] 10.9 — Sign-off (`phase-10` tag)
 
 ### Phase 10.5
-- [ ] Author `plugins/test-commander/skills/tc-governance/SKILL.md` with policy/approval/bounded-prompt templates
-- [ ] Scaffold `runtime/agent_adapters/` (`base.py`, `mock_agent.py`, `claude_code_cli.py`, `anthropic_api.py` stub)
-- [ ] Implement intent router (NL + button -> known TC workflow)
-- [ ] Implement command planner (produces displayable plan)
-- [ ] Implement permission policy engine (7 levels, role-aware)
-- [ ] Implement approval gate (UI card + record)
-- [ ] Implement bounded executor (structured instruction wrapping)
-- [ ] Implement output validator (diff against plan, secret-redaction, network checks)
-- [ ] Implement audit journal (`.test-commander/audit/actions.jsonl` + per-approval records)
-- [ ] Wire Phase 10 web console to the pipeline; remove any direct-execution paths
-- [ ] Seed default `policy/permissions.yaml` and `policy/approvals.yaml`
-- [ ] Author `docs/controlled-agent-execution.md`, `docs/security-and-permissions.md`, `docs/chat-command-governance.md`, `docs/runtime-approval-flow.md`, `docs/agent-adapters.md`, `docs/user-guide/governance.md`
-- [ ] Confirm review and test gates green (including the four integration tests in Phase 10.5 Test step)
+
+See `### Phase 10.5 — Execution outline` for full sub-step detail.
+
+- [ ] 10.5.1 — Scaffold (`tc-governance` + `runtime/agent_adapters/` + policy/audit dirs + the four RED security tests)
+- [ ] 10.5.2 — Agent adapter abstraction (`AgentAdapter` + mock + stubs)
+- [ ] 10.5.3 — Permission policy engine (7 levels, role-aware)
+- [ ] 10.5.4 — Intent router (NL/button → known workflow)
+- [ ] 10.5.5 — Command planner (displayable plan)
+- [ ] 10.5.6 — Approval gate (card + record)
+- [ ] 10.5.7 — Bounded executor (structured instruction wrapping)
+- [ ] 10.5.8 — Output validation + secret safety
+- [ ] 10.5.9 — Audit journal
+- [ ] 10.5.10 — `ClaudeCodeCliAdapter` + wire the Phase-10 console (no bypass)
+- [ ] 10.5.11 — Documentation pass (six governance docs)
+- [ ] 10.5.12 — Testing finalization (four security integration tests + cap bump 10 → 10.5)
+- [ ] 10.5.13 — Sign-off (`phase-10.5` tag)
 
 ### Phase 11
-- [ ] Expand FastAPI Runtime API
-- [ ] Scaffold `apps/mcp/` and implement all MCP tools
-- [ ] Implement and unit-test permission gates
-- [ ] Author `docs/runtime-api.md`, `docs/mcp-server.md`, `docs/security-and-permissions.md`, `docs/user-guide/integrating.md`
-- [ ] Confirm review and test gates green
+
+See `### Phase 11 — Execution outline` for full sub-step detail.
+
+- [ ] 11.1 — Scaffold (`tc-mcp` + `apps/mcp/` + Runtime API expansion skeleton)
+- [ ] 11.2 — Runtime API expansion (through the 10.5 pipeline)
+- [ ] 11.3 — MCP server + tool definitions
+- [ ] 11.4 — Permission gates (server-side enforcement, unit-tested)
+- [ ] 11.5 — Documentation pass (`runtime-api.md`, `mcp-server.md`, `integrating.md`)
+- [ ] 11.6 — Testing finalization (contract + MCP round-trip + cap bump 10.5 → 11)
+- [ ] 11.7 — Sign-off (`phase-11` tag)
 
 ### Phase 12
-- [ ] Author sandbox commands and provider adapters
-- [ ] Author GitHub Actions workflows
-- [ ] Author safety guard configuration
-- [ ] Author `docs/sandboxed-environments.md`, `docs/github-actions-sandbox.md`, `docs/no-code-tester-workflow.md`, `docs/user-guide/sandbox.md`
-- [ ] Confirm review and test gates green
+
+See `### Phase 12 — Execution outline` for full sub-step detail.
+
+- [ ] 12.1 — Scaffold (`tc-sandbox` + `sandbox/providers/` + `.github/workflows/` skeleton)
+- [ ] 12.2 — Provider abstraction + docker-compose provider + stubs
+- [ ] 12.3 — The six `/tc:sandbox-*` commands
+- [ ] 12.4 — GitHub Actions workflows + safety guards
+- [ ] 12.5 — Documentation pass (sandbox docs)
+- [ ] 12.6 — Testing finalization (CI dry-run with mocked provider + cap bump 11 → 12)
+- [ ] 12.7 — Sign-off (`phase-12` tag)
 
 ### Phase 13
-- [ ] Author continuous-quality commands
-- [ ] Implement autonomy mode gates
-- [ ] Author the continuous-quality workflow
-- [ ] Author `docs/continuous-quality-agent.md`, `docs/autonomy-levels.md`, `docs/governed-self-improvement.md`, `docs/user-guide/continuous-quality.md`
-- [ ] Confirm review and test gates green
+
+See `### Phase 13 — Execution outline` for full sub-step detail.
+
+- [ ] 13.1 — Scaffold (`tc-continuous-quality` + CI workflow skeleton + seeded fixture)
+- [ ] 13.2 — `/tc:watch-changes` + `/tc:impact-analysis`
+- [ ] 13.3 — `/tc:coverage-gap-analysis`
+- [ ] 13.4 — `/tc:propose-tests` + `/tc:create-test-pr`
+- [ ] 13.5 — `/tc:continuous-quality-check` + the five autonomy-mode gates
+- [ ] 13.6 — The continuous-quality CI workflow
+- [ ] 13.7 — Documentation pass (continuous-quality docs)
+- [ ] 13.8 — Testing finalization (PR simulation + cap bump 12 → 13)
+- [ ] 13.9 — Sign-off (`phase-13` tag; project complete)
 
 ---
 
