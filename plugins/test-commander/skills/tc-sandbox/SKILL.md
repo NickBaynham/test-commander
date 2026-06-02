@@ -20,10 +20,16 @@ Every backend implements one `SandboxProvider` interface (`sandbox/providers/bas
 
 ## Status
 
-Phase 12 (Step 12.2). The provider abstraction is shipped; the commands and the safety guards land across 12.3–12.4:
+Phase 12 (Step 12.3). The provider abstraction and the six commands are shipped; the workflows + safety guards land in 12.4:
 
 - Provider abstraction + the docker-compose-local provider + the refusing stubs — **shipped (Step 12.2).** `sandbox/providers/` ships the `DockerComposeProvider` (the MVP default — lifecycle calls plan deterministically in dry-run; a real launch shells out and is refused under pytest), the `ContainerHostProvider`/`SpritesProvider` refusing stubs (Q8 default), a `MockSandboxProvider` for hermetic testing, and `get_provider(name)` (default deny on an unknown name). See [methodology/provider-abstraction.md](methodology/provider-abstraction.md).
-- The six `/tc:sandbox-*` commands against the provider abstraction — behavior arrives in Step 12.3.
+- The six `/tc:sandbox-*` commands — **shipped (Step 12.3).** Self-contained plugin helpers (D18) that manage `<workspace>/.test-commander/sandbox/{config.yaml,state.json}` and drive the provider:
+  - `/tc:sandbox-init` — write the sandbox config (skip-not-overwrite; idempotent). [commands/sandbox-init.md](commands/sandbox-init.md)
+  - `/tc:sandbox-launch` — launch via the provider; persist state; idempotent on a running sandbox; dry run by default. [commands/sandbox-launch.md](commands/sandbox-launch.md)
+  - `/tc:sandbox-status` — report the persisted state (`none`/`running`/`stopped`). [commands/sandbox-status.md](commands/sandbox-status.md)
+  - `/tc:sandbox-sync` — push the committed workspace into the sandbox. [commands/sandbox-sync.md](commands/sandbox-sync.md)
+  - `/tc:sandbox-stop` — tear down; idempotent. [commands/sandbox-stop.md](commands/sandbox-stop.md)
+  - `/tc:sandbox-export` — write a shareable bundle (endpoints, labels, status). [commands/sandbox-export.md](commands/sandbox-export.md)
 - The GitHub Actions workflows + the safety guards (allowed domains, blocked private ranges, approvals) — behavior arrives in Step 12.4.
 
 See [methodology/provider-abstraction.md](methodology/provider-abstraction.md) and [methodology/sandbox-safety.md](methodology/sandbox-safety.md).
