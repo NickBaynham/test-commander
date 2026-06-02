@@ -673,6 +673,18 @@ provisioned by `make install`; a project that wants a custom Mermaid theme can
 post-process the `visuals/mermaid/*.md` sources or pass its own `mmdc` config,
 but that is outside Test Commander's schema.
 
+### Phase 10 — what landed (no new extensible surface)
+
+Phase 10 ships the read-only web console (`tc-web`: `/tc:web-init`,
+`/tc:web-start`, `/tc:web-sync`, `/tc:web-index-artifacts`, `/tc:web-export`). It
+adds **no new `<workspace>/config.yaml` surface** — the console renders the same
+committed artifacts every other phase produces, and its only configuration
+(`.test-commander/.web/console.json`: the API base and web port, written by
+`/tc:web-init`) is the console's *own* derived config, not a project-domain
+extension point. A project tunes what the console shows only by changing the
+underlying artifacts it reads. The stack ports and the served workspace are set
+through `TC_WORKSPACE` and the compose file, not a schema.
+
 ## Hook 2: project documents under `documents/uploaded/`
 
 The Phase 2 helpers read every Markdown file in `.test-commander/documents/uploaded/` that matches their convention — `REQ-\d+` markers for requirements, `US-\d+` for stories, `AC-\d+` for acceptance criteria. Drop your real product requirements there as Markdown files. No tool configuration is needed; the helpers find and parse them.

@@ -222,6 +222,15 @@ The governed learning loop. The four capture commands (`/tc:learn` + the three `
 
 Diagrams and infographics generated from committed workspace artifacts by the `tc-visualize` commands. `mermaid/` holds the Mermaid source (`<name>.md`, the diffable source of truth, each with a `> Sources:` footer) written by `/tc:visualize` and the eight `/tc:diagram-*` commands; `svg/` and `png/` hold the output of `/tc:render-visuals` (Mermaid CLI); `infographic/` holds the quality infographic brief + spec written by `/tc:generate-infographic`. Every visual cites its sources and never invents a node, edge, or metric.
 
+### `.web/` — Phase 10 (derived, git-ignored)
+
+The Phase 10 web console reads the committed workspace and keeps its derivatives
+under `.test-commander/.web/`: `index.db` (the rebuildable SQLite index),
+`console.json` (the console config from `/tc:web-init`), and `export/` (the
+`/tc:web-export` static bundle). All of `.web/` is git-ignored and rebuildable —
+the committed artifacts above remain authoritative, and the console never writes
+to them. See [web-console.md](web-console.md).
+
 ### `journal/` — Phase 1
 
 Append-only narrative journal. `/tc:journal append "..."` writes one H2 timestamp section per call to a day file (`YYYY-MM-DD.md`). `/tc:journal summarize` prints entries chronologically within an inclusive `--from`/`--to` range.

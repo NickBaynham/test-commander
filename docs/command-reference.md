@@ -122,12 +122,23 @@ The four capture commands append `tc-lesson/v1` candidates to `learning/lessons-
 
 Every visual is generated only from committed workspace artifacts and carries a `> Sources:` footer; a generator refuses (exit 2) a missing source and points at the producing command. `/tc:visualize` runs every diagram generator (skipping any whose source is absent); the eight `/tc:diagram-*` commands generate individual Mermaid diagrams under `visuals/mermaid/`; `/tc:generate-infographic` writes a brief + spec of measured facts under `visuals/infographic/`; and `/tc:render-visuals` renders the Mermaid sources to SVG/PNG via the Mermaid CLI (the only command that shells out — refused under pytest, graceful when the CLI is absent). End-to-end walkthrough: [user-guide/visuals.md](user-guide/visuals.md).
 
+## Phase 10 commands (shipped)
+
+| Command | Skill | Per-command page |
+| --- | --- | --- |
+| `/tc:web-init` | `tc-web` | [web-init.md](../plugins/test-commander/skills/tc-web/commands/web-init.md) |
+| `/tc:web-start` | `tc-web` | [web-start.md](../plugins/test-commander/skills/tc-web/commands/web-start.md) |
+| `/tc:web-sync` | `tc-web` | [web-sync.md](../plugins/test-commander/skills/tc-web/commands/web-sync.md) |
+| `/tc:web-index-artifacts` | `tc-web` | [web-index-artifacts.md](../plugins/test-commander/skills/tc-web/commands/web-index-artifacts.md) |
+| `/tc:web-export` | `tc-web` | [web-export.md](../plugins/test-commander/skills/tc-web/commands/web-export.md) |
+
+The web console is a team-facing, **read-only and proposal-only** viewer over the workspace (a Next.js frontend + a FastAPI backend, brought up by `make run` on docker compose). `/tc:web-init` provisions the console config; `/tc:web-index-artifacts` and `/tc:web-sync` (re)build the SQLite index (a rebuildable derivative — the workspace stays authoritative); `/tc:web-start` brings the stack up; `/tc:web-export` writes a shareable static bundle. The console also ships a read-only chat that answers from the index and surfaces command **proposal cards** — it never changes the workspace or runs a command (execution arrives in Phase 10.5). End-to-end walkthrough: [user-guide/web-console.md](user-guide/web-console.md); architecture: [web-console.md](web-console.md); API: [runtime-api.md](runtime-api.md).
+
 ## Planned commands (not yet implemented)
 
 These will gain per-command pages as their phases ship.
 
 | Command | Skill | Phase |
 | --- | --- | --- |
-| `/tc:web-*` | `tc-web` | 10 |
 | `/tc:sandbox-*` | `tc-sandbox` | 12 |
 | `/tc:watch-changes`, continuous-quality | `tc-continuous-quality` | 13 |
