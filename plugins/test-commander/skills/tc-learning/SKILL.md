@@ -13,16 +13,14 @@ The loop has three stages: **capture** (`/tc:learn` and the three `/tc:learn-fro
 
 ## Status
 
-Phase 8 (Step 8.2). `/tc:learn` is end-to-end runnable; the other five commands are registered but not yet shipped:
+Phase 8 (Step 8.7). All six commands are end-to-end runnable:
 
 - `/tc:learn` — **shipped (Step 8.2).** Appends a candidate lesson (the `tc-lesson/v1` schema) to `learning/lessons-inbox.md` from a freeform `--note`, with `path:line` provenance, a monotonic `LESSON-NNN` id, and `(source, origin, summary)` dedup. Owns the shared `append_lessons` inbox engine the `/tc:learn-from-*` commands reuse.
 - `/tc:learn-from-failures` — **shipped (Step 8.3).** Derives candidate lessons from the Phase-7 `runs/<RUN-ID>/analysis.md` triage, mapping each classification to a lesson category (`product-defect` → `product-defect-pattern`, `flaky` → `flaky-pattern`, `test-defect` → `anti-pattern`, `environment` → `process`), with `runs/.../analysis.md:<line>` provenance, via the shared `append_lessons` engine.
 - `/tc:learn-from-exploration` — **shipped (Step 8.4).** Derives candidate lessons from the Phase-4 `exploration-notes/` and `sessions/`: each recorded anomaly becomes an `anti-pattern` candidate (carrying its severity) and each coverage gap a `coverage-gap` candidate, with `exploration-notes/<file>:<line>` provenance, via the shared `append_lessons` engine.
 - `/tc:learn-from-feedback` — **shipped (Step 8.5).** Derives candidate lessons from resolved human feedback — `requirements/open-questions.md` entries carrying a `_Resolved:` marker (`process`) and an optional `documents/uploaded/feedback.md` (`heuristic`) — with `path:line` provenance, via the shared `append_lessons` engine. No feedback is a no-op (exit 0), not an error.
 - `/tc:review-lessons` — **shipped (Step 8.6).** Classifies every inbox candidate into `accepted` / `rejected` / `needs-human-review` (rubric: `severity: high` → needs-human-review; a `summary` already in `accepted-lessons.md` → rejected; otherwise accepted), moves it to the matching `learning/` file with its `status` updated, and clears the inbox. Idempotent.
-- `/tc:promote-lessons` — behavior arrives in Step 8.7. It will propose promotions by default and, only with `--apply` (the human-approval gate), move accepted lessons into `learning/promoted-guidance.md` — never the shipped methodology, never third-party skills.
-
-When Steps 8.3–8.7 land, this SKILL.md is updated to describe their shipped behavior and the deferral wording above is removed.
+- `/tc:promote-lessons` — **shipped (Step 8.7).** Proposes promotions by default (writes `learning/promotion-proposal.md`, changes no guidance) and, only with `--apply` (the human-approval gate), moves accepted lessons into `learning/promoted-guidance.md` (`status: promoted`) and renders a `core-promotion-proposal.md` for any `core: true` lesson. Writes **only** under `learning/` — never the shipped methodology, never third-party skills (Q6). Idempotent.
 
 ## Commands
 
@@ -98,7 +96,17 @@ Full spec: [commands/review-lessons.md](commands/review-lessons.md). Methodology
 
 ### `/tc:promote-lessons`
 
-Promotes accepted lessons into project guidance under a human-approval gate. Full behavior is documented in the per-command page once Step 8.7 ships the helper.
+Reads `learning/accepted-lessons.md`. By default writes `learning/promotion-proposal.md` (what *would* be promoted) and changes no guidance; only `--apply` (the human-approval gate) moves each accepted non-core lesson into `learning/promoted-guidance.md` (`status: promoted`), renders each `core: true` lesson into `learning/core-promotion-proposal.md` (an upstream proposal, never auto-applied), and marks the promoted lessons so a re-apply skips them. Writes **only** under `learning/` — never the shipped methodology or third-party skills (Q6); every applied promotion is a visible `git diff`. Idempotent.
+
+**Run:**
+
+```sh
+python3 <plugin-root>/scripts/promote_lessons.py <project-root> [--apply]
+```
+
+`<project-root>` defaults to the current working directory. Refuses uninitialized workspaces (exit 2) and a stub accepted-lessons file with nothing accepted (exit 2; the precondition error directs the user at `/tc:review-lessons`).
+
+Full spec: [commands/promote-lessons.md](commands/promote-lessons.md). Methodology: [methodology/improvement-governance.md](methodology/improvement-governance.md).
 
 ## See also
 
