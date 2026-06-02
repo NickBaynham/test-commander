@@ -14,7 +14,11 @@ docker-compose.yml   api + web, brought up by `make run`
 ```
 
 The backend reads one consuming-project `.test-commander/` workspace (located
-via `TC_WORKSPACE`, mounted read-only in the container) and serves it.
+via `TC_WORKSPACE`) and serves it. The mount is read-write so the console can
+build its derived index under `.test-commander/.web/`; the read-only contract
+(no workspace-*artifact* mutation) is enforced at the app layer and asserted by
+the test suite — the only thing the backend ever writes is the rebuildable
+`.web/` index.
 
 ## Invariants
 

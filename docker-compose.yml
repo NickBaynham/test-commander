@@ -11,8 +11,12 @@ services:
       - "8100:8100"
     environment:
       TC_WORKSPACE: /workspace
+    # Mounted read-write so the console can build its derived index under
+    # .test-commander/.web/. The read-only contract (no workspace-artifact
+    # mutation) is enforced at the app layer and asserted by the test suite -
+    # the only thing the backend ever writes is the rebuildable .web/ index.
     volumes:
-      - "${TC_WORKSPACE:-.}:/workspace:ro"
+      - "${TC_WORKSPACE:-.}:/workspace"
 
   web:
     build:

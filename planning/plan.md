@@ -3225,6 +3225,7 @@ Six sub-sub-steps mirroring prior sign-offs, adapted for the runtime: cold-user 
 
 Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. (Populated as 10.1–10.9 land.)
 
+- **Step 10.9 — sign-off.** Six sub-sub-steps. **The cold-user walkthrough — booting the real Docker stack — caught a bug no in-process test could:** `make uninstall` → `make install` ran clean (16 skills `PRESENT`, `UNEXPECTED=0`), `docker compose config` validated, and `docker compose up --build api` booted the real FastAPI container serving the mounted workspace. But a *fresh* (un-indexed) workspace 500'd: the compose mount was `:ro`, and the rebuild-on-read path tries to create `.test-commander/.web/` — a write the read-only mount forbids. **Root cause: the `:ro` mount conflated two different "read-only"s.** The plan's read-only contract means "never mutate a workspace *artifact*", but the console legitimately writes its *derived* `.web/` index. Fix: mount the workspace read-write and keep the read-only guarantee at the app layer (where the suite already asserts it as a property). Re-ran the fresh boot → 200s, index built, dashboard data. **Lesson: for a runtime phase the hermetic TestClient suite cannot see container/mount semantics — the real `make run` boot is the only thing that exercises the volume mount, the image build, and the env wiring; budget the sign-off walkthrough to actually boot Docker.** The test-first gate (`test_phase_10_signoff.py`, 20 tests, floor `>= 865`) landed RED on the four closing assertions, GREEN after. Annotated `phase-10` tag confirmed absent, then pushed.
 - **Step 10.8 — testing finalization.** Bumped `DEFAULT_PHASE_CAP` 9→10; `tc-web` flips `UNEXPECTED → PRESENT`, so all sixteen skills report `PRESENT` with `UNEXPECTED=0`. **The e2e smoke is split across two layers by where it can run:** the enforced gate is an *in-process* API integration test (`test_phase_10_integration.py`) that drives index → all read routes → SSE → chat → export via the FastAPI TestClient and asserts the write boundary + that `PHASE_OWNERSHIP` has no `"10"` key (the console writes only the derived `.web/`); the *browser* e2e (Playwright `smoke.spec.ts` navigating all pages + the read-only chat) and the vitest component test live under `apps/web/` and run via new `make web-test` / `make web-e2e` targets, Node-managed and deliberately outside `make verify` (the plan's "documented, not enforced if heavy" allowance — the real browser run needs `make run` up). This keeps `make verify` fast and hermetic while still shipping the frontend test lanes. The cold-user walkthrough in 10.9 is where the real docker stack actually boots.
 - **Step 10.7 — documentation pass.** No code changes; `make verify` clean (903 tests unchanged, link checker 295 files). Authored three docs: `docs/user-guide/web-console.md` (the bring-it-up → pages → chat → export walkthrough with verbatim command output), `docs/web-console.md` (the architecture — stack, invariants, the `tcweb` module map), and `docs/runtime-api.md` (the full route reference: health, the read routes, SSE, proposals, chat). Added a "Phase 10 commands (shipped)" table to `command-reference.md` (removed `/tc:web-*` from Planned), a `.web/` derived-dir note to `workspace-reference.md`, and a "Phase 10 — what landed (no new extensible surface)" record to the customization guide (the console's `console.json` is its own derived config, not a project-domain `config.yaml` extension). Status sweep across README (status header + skill list + walkthrough link), the plugin README skill table (new shipped row, removed from "What arrives later"), `install.md`, and `getting-started.md`. **The "execution arrives in Phase 10.5" framing is threaded throughout** (user guide, runtime-api, command-reference) — this is the required read-only-boundary message, *not* deferral wording for a tc-web command (the SKILL.md deferral sweep is clean; all five commands shipped in 10.6). Status set to "Phase 10 in progress — sign-off pending"; the complete flip + tag is 10.9.
 - **Step 10.6 — `/tc:web-export`.** 6/6 GREEN. **Determinism came free from the existing query layer + a no-clock rule:** the exporter assembles the bundle from `queries.*` (already sorted) and serializes with `json.dumps(sort_keys=True)`, and the HTML is generated from the sorted data with no wall-clock timestamp — so two exports are byte-identical (asserted). The bundle is two files: `data.json` (the structured payload) and a self-contained, dependency-free `index.html` (no external CSS/JS, all values `html.escape`d). Writes only under `.web/export/`, so the workspace-unchanged property test passes. With 10.6 all five `/tc:web-*` commands are shipped with no deferral wording (the 10.9 sign-off test asserts this). Same delegating-command pattern (`web_export.py` → `tcweb.exporter`).
@@ -3824,18 +3825,7 @@ Phase 8 complete (2026-06-01) — see Completed.
 Phase 9 complete (2026-06-01) — see Completed.
 
 ### Phase 10
-
-See `### Phase 10 — Execution outline` for full sub-step detail.
-
-- [x] 10.1 — Scaffold (`tc-web` + `apps/web` + `apps/api` + `make run`)
-- [x] 10.2 — Backend: artifact indexer + `/tc:web-index-artifacts`
-- [x] 10.3 — Backend: read APIs + SSE event stream + `/tc:web-sync`
-- [x] 10.4 — Frontend: the MVP pages + `/tc:web-init` + `/tc:web-start`
-- [x] 10.5 — Frontend: read-only chat + proposal cards (no execution)
-- [x] 10.6 — `/tc:web-export`
-- [x] 10.7 — Documentation pass (`web-console.md`, `runtime-api.md`)
-- [x] 10.8 — Testing finalization (docker-compose e2e + cap bump 9 → 10)
-- [ ] 10.9 — Sign-off (`phase-10` tag)
+Phase 10 complete (2026-06-01) — see Completed.
 
 ### Phase 10.5
 
@@ -3898,6 +3888,20 @@ See `### Phase 13 — Execution outline` for full sub-step detail.
 ## Completed
 
 Move To Do items here as phases finish, with date and short note.
+
+### Phase 10 — Web console MVP (2026-06-01)
+
+One skill shipped (`tc-web`), adding five commands — and the first **runtime** phase (per D2): a Next.js frontend (`apps/web/`) + a FastAPI backend (`apps/api/tcweb/`) brought up together by `make run` on docker compose, serving a team-facing **read-only, proposal-only** console over a consuming project's `.test-commander/` workspace. The backend indexes the workspace into a rebuildable SQLite derivative (`indexer` + `db`), serves one read route per page plus an SSE `changed` stream, generates command **proposal cards** (`proposals`), answers questions read-only (`chat`), and exports a deterministic static bundle (`exporter`); the five `/tc:web-*` commands (`web-init`, `web-start`, `web-sync`, `web-index-artifacts`, `web-export`) are plugin scripts (D18) that drive the runtime. No route mutates a workspace artifact or runs a command — the only thing the backend writes is the derived `.web/` index (the read-only contract is enforced at the app layer and asserted as a property by the suite); execution is gated behind Phase 10.5. Reconciled the DB to SQLite (not the Runtime Topology table's Postgres) and, in sign-off, the workspace mount to read-write (the `:ro` mount blocked the legitimate `.web/` index write). 906-test suite green; lint clean; 295-file Markdown link check clean. `verify_skills.py` reports all sixteen skills `PRESENT` (`tc-web` at phase 10) with `UNEXPECTED=0`. Phase 10 ships no new `config.yaml` surface (recorded in the customization guide). Tagged `phase-10` on origin.
+
+- [x] Step 10.1: scaffold `tc-web` + `apps/web` (Next.js) + `apps/api` (FastAPI, `tcweb`) + `runtime/` + the `make run` docker-compose target + the `seeded-web` fixture + `tests/test_phase_10_scaffolds.py` (11 tests).
+- [x] Step 10.2: the artifact indexer (`tcweb.db` + `tcweb.indexer`) + `/tc:web-index-artifacts` — rebuild-from-scratch into SQLite; `tests/test_web_indexer.py` (6 tests).
+- [x] Step 10.3: read-only API routes + SSE (`tcweb.sse`) + proposals (`tcweb.proposals`) + `/tc:web-sync`; `tests/test_web_api.py` (14 tests).
+- [x] Step 10.4: the MVP frontend pages + `Nav` + `LiveBadge` (SSE) + `/tc:web-init` + `/tc:web-start`; `tests/test_phase_10_frontend.py` (9 tests).
+- [x] Step 10.5: the read-only chat (`tcweb.chat`) + proposal cards; `tests/test_web_chat.py` (8 tests).
+- [x] Step 10.6: `/tc:web-export` (`tcweb.exporter`) — deterministic static bundle; `tests/test_web_export.py` (6 tests).
+- [x] Step 10.7: documentation pass — `docs/user-guide/web-console.md`, `docs/web-console.md`, `docs/runtime-api.md`, command-reference Phase 10 section, `.web/` workspace-reference note, customization-guide record, six-surface status sweep.
+- [x] Step 10.8: testing finalization — `DEFAULT_PHASE_CAP` 9 → 10, `tests/test_phase_10_integration.py` (the in-process API smoke), the vitest/Playwright web test lanes (`make web-test` / `make web-e2e`).
+- [x] Step 10.9: sign-off — cold-user walkthrough (`make uninstall` → `make install` → real `docker compose up --build api`; caught and fixed the `:ro`-mount bug that blocked the derived-index write), test-first `tests/test_phase_10_signoff.py` (20 tests, RED → GREEN), plan + CHANGELOG closing, annotated `phase-10` tag.
 
 ### Phase 9 — Visual documentation and infographics (2026-06-01)
 

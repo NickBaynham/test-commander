@@ -27,7 +27,9 @@ $ make run                           # bring up api (8100) + web (3100) on docke
 ```
 
 `make run` mounts your project (set `TC_WORKSPACE` to its root, default the
-current directory) read-only and starts both services. `/tc:web-start` is the
+current directory) and starts both services. The console reads your artifacts
+and writes only its derived index under `.test-commander/.web/` — it never
+changes a workspace artifact. `/tc:web-start` is the
 scriptable equivalent — by default it prints the command without running it:
 
 ```
