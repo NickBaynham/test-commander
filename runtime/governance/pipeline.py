@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from governance import approval, executor, intent, planner, policy
+from governance import approval, executor, intent, planner, policy, validation
 
 
 @dataclass
@@ -91,10 +91,14 @@ def handle_request(
     # the audit entry in 10.5.9 — until then validation is None and the
     # approve-diff-matches security test stays xfail).
     result = executor.run(the_plan, adapter, project_root)
+    verdict = validation.validate(the_plan, result, project_root)
+    if not verdict.ok:
+        result.status = "failed"
     return PipelineResult(
         level=level, intent=command, plan=the_plan,
         requires_approval=needs_approval, approved=needs_approval, executed=True,
-        result=result, validation=None,
+        result=result, validation=verdict,
+        reason="" if verdict.ok else "; ".join(verdict.violations),
     )
 
 

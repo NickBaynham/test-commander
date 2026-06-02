@@ -37,7 +37,7 @@ Phase 10.5 (Step 10.5.2). The pipeline components ship across Steps 10.5.2-10.5.
 - Command planner (displayable plan) — **shipped (Step 10.5.5).** Produces a deterministic `Plan` (command, level, reads, writes, expected artifacts, target environment, approval-required) the approval gate renders. See [methodology/intent-and-planning.md](methodology/intent-and-planning.md).
 - Approval gate (card + record) — **shipped (Step 10.5.6).** Requires approval for the privileged levels (configurable for safe-write via `policy/approvals.yaml`), renders the approval card, and records the decision under `audit/approvals/`. A not-approved privileged action is held — no execution, no change. See [methodology/approval-and-audit.md](methodology/approval-and-audit.md).
 - Bounded executor (structured instruction wrapping) — **shipped (Step 10.5.7).** Wraps an approved plan into a `BoundedInstruction` (derived only from the plan, never the raw request) and runs it through the adapter — the only path to execution. See [methodology/agent-adapters.md](methodology/agent-adapters.md).
-- Output validation + secret safety. Behavior arrives in Phase 10.5 Step 10.5.8.
+- Output validation + secret safety — **shipped (Step 10.5.8).** After execution, verifies the diff matches the plan (in-scope writes, no secret file, expected outputs produced) — a violation fails the run. Redacts secret values and flags env-var-print attempts. See [methodology/output-validation.md](methodology/output-validation.md).
 - Audit journal. Behavior arrives in Phase 10.5 Step 10.5.9.
 - `ClaudeCodeCliAdapter` + console wiring. Behavior arrives in Phase 10.5 Step 10.5.10.
 

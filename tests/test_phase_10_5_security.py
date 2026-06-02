@@ -79,7 +79,6 @@ def test_code_write_denied_changes_nothing(tmp_path: Path):
     assert workspace_snapshot(project) == before, "a denied action must change nothing"
 
 
-@pytest.mark.xfail(reason="output validation lands in 10.5.8", strict=True)
 def test_approved_action_diff_matches_plan(tmp_path: Path):
     from agent_adapters.mock_agent import MockAgentAdapter
     from governance import pipeline
