@@ -659,6 +659,20 @@ the shipped methodology or any third-party skill (Open Question Q6), so there is
 nothing to misconfigure. Project-specific guidance enters through
 `learning/promoted-guidance.md` (what you promote), not through a schema.
 
+### Phase 9 — what landed (no new extensible surface)
+
+Phase 9 ships visual documentation (`tc-visualize`: `/tc:visualize`, the eight
+`/tc:diagram-*` commands, `/tc:generate-infographic`, `/tc:render-visuals`). It
+adds **no new `config.yaml` surface** — the diagrams are generated mechanically
+from committed artifacts, with no theme, layout, or keyword knobs in v1 (Decision
+D19 keeps the shipped output universal). A project tunes the visuals only by
+changing *the underlying artifacts* the generators read (its requirements,
+risk register, traceability maps, system model, automation plan, and quality
+report); there is nothing to misconfigure. Rendering uses the Mermaid CLI
+provisioned by `make install`; a project that wants a custom Mermaid theme can
+post-process the `visuals/mermaid/*.md` sources or pass its own `mmdc` config,
+but that is outside Test Commander's schema.
+
 ## Hook 2: project documents under `documents/uploaded/`
 
 The Phase 2 helpers read every Markdown file in `.test-commander/documents/uploaded/` that matches their convention — `REQ-\d+` markers for requirements, `US-\d+` for stories, `AC-\d+` for acceptance criteria. Drop your real product requirements there as Markdown files. No tool configuration is needed; the helpers find and parse them.

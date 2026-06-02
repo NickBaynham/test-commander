@@ -218,9 +218,9 @@ Artifacts routed by the `tc-evidence` indexer (auto-run by `/tc:run`; `--no-inde
 
 The governed learning loop. The four capture commands (`/tc:learn` + the three `/tc:learn-from-*`) append `tc-lesson/v1` candidates to `lessons-inbox.md` (with `path:line` provenance and a monotonic `LESSON-NNN` id). `/tc:review-lessons` sorts each candidate into `accepted-lessons.md`, `rejected-lessons.md`, or `needs-human-review.md` (updating its `status`) and clears the inbox. `/tc:promote-lessons` proposes by default — writing `promotion-proposal.md` — and, only with `--apply` (the human-approval gate), moves accepted lessons into `promoted-guidance.md` (`status: promoted`) and renders `core-promotion-proposal.md` for any `core: true` lesson. The loop writes **only** under `learning/`; it never rewrites Test Commander's shipped methodology and never modifies third-party installed skills (Open Question Q6). Every applied promotion is a visible `git diff`.
 
-### `visuals/` — Phase 9
+### `visuals/` — Phase 9 (shipped)
 
-Mermaid source plus rendered SVG/PNG. `infographic/` holds higher-design-effort visuals for the quality report.
+Diagrams and infographics generated from committed workspace artifacts by the `tc-visualize` commands. `mermaid/` holds the Mermaid source (`<name>.md`, the diffable source of truth, each with a `> Sources:` footer) written by `/tc:visualize` and the eight `/tc:diagram-*` commands; `svg/` and `png/` hold the output of `/tc:render-visuals` (Mermaid CLI); `infographic/` holds the quality infographic brief + spec written by `/tc:generate-infographic`. Every visual cites its sources and never invents a node, edge, or metric.
 
 ### `journal/` — Phase 1
 

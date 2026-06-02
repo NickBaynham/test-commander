@@ -111,7 +111,7 @@ review rubric, and the promotion gate are the universal governance contract. See
 ## Beyond Phase 8
 
 Phase 9 generates visual quality artifacts (Mermaid diagrams and infographics)
-from the workspace.
+from the workspace — see [visuals.md](visuals.md) for the walkthrough.
 
 ## See also
 

@@ -104,8 +104,17 @@ defaults; an early-stage product allows a small transient margin. See the
 "Phase 7 schema (`tc-quality-report`)" section of
 [customizing-for-your-project.md](customizing-for-your-project.md).
 
+## Visualizing the report
+
+Phase 9's `tc-visualize` commands turn this report and its upstream artifacts
+into diffable visuals: `/tc:generate-infographic` aggregates the report's
+headline facts into an infographic brief + spec, and `/tc:diagram-coverage`,
+`/tc:diagram-traceability`, and `/tc:diagram-risk` render the coverage map, the
+traceability chain, and the risk register. See [visuals.md](visuals.md).
+
 ## See also
 
+- [Visual documentation (Phase 9)](visuals.md) — diagrams and the quality infographic.
 - [Running tests (Phase 7)](running-tests.md) — the run → analyze → report → gate walkthrough.
 - [tc-quality-report report command page](../../plugins/test-commander/skills/tc-quality-report/commands/report.md)
 - [tc-quality-report quality-gate command page](../../plugins/test-commander/skills/tc-quality-report/commands/quality-gate.md)

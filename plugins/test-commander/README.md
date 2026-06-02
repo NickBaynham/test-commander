@@ -22,6 +22,7 @@ This README documents the plugin's contents. For the project overview, architect
 | `tc-evidence` | Phase 7 shipped | The internal evidence indexer (no `/tc:*` command; invoked by `/tc:run`). |
 | `tc-quality-report` | Phase 7 shipped | Owns `/tc:report` and `/tc:quality-gate`. |
 | `tc-learning` | Phase 8 shipped | Owns `/tc:learn`, `/tc:learn-from-failures`, `/tc:learn-from-exploration`, `/tc:learn-from-feedback`, `/tc:review-lessons`, `/tc:promote-lessons` — the governed learning loop. |
+| `tc-visualize` | Phase 9 shipped | Owns `/tc:visualize`, the eight `/tc:diagram-*` commands, `/tc:generate-infographic`, and `/tc:render-visuals` — diagrams and infographics generated from committed artifacts. |
 
 ## What arrives later
 
@@ -30,8 +31,6 @@ Each Test Commander skill is created by the phase that needs it. Until that phas
 | Skill | Phase | Owns |
 | --- | --- | --- |
 | `tc-run`, `tc-quality-report`, `tc-evidence` | 7 | Execution, evidence, quality report |
-| `tc-learning` | 8 | Governed continuous learning |
-| `tc-visualize` | 9 | Mermaid diagrams and infographics |
 | `tc-web`, `tc-governance`, `tc-mcp`, `tc-sandbox`, `tc-continuous-quality` | 10–13 | Web console, controlled execution, API/MCP, sandboxes, continuous quality |
 
 ## Install

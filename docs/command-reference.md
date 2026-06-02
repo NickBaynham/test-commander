@@ -104,15 +104,30 @@ The Phase 6 commands generate and structurally validate TypeScript — they neve
 
 The four capture commands append `tc-lesson/v1` candidates to `learning/lessons-inbox.md` through one shared engine (monotonic `LESSON-NNN` ids, `(source, origin, summary)` dedup, `path:line` provenance): `/tc:learn` from a freeform `--note`, `/tc:learn-from-failures` from the Phase-7 `runs/<RUN-ID>/analysis.md` triage, `/tc:learn-from-exploration` from `exploration-notes/` anomalies and coverage gaps, and `/tc:learn-from-feedback` from resolved open questions and uploaded feedback. `/tc:review-lessons` classifies each candidate into `accepted` / `rejected` / `needs-human-review` (rubric: `severity: high` → needs-human-review; a summary already accepted → rejected; otherwise accepted) and clears the inbox. `/tc:promote-lessons` proposes by default and, only with `--apply` (the human-approval gate), moves accepted lessons into `learning/promoted-guidance.md` (`status: promoted`) and renders a `core-promotion-proposal.md` for any `core: true` lesson. The loop writes **only** under `learning/` — it never rewrites Test Commander's shipped methodology or any third-party skill (Open Question Q6). For the methodology, see [learning-loop.md](../plugins/test-commander/skills/tc-learning/methodology/learning-loop.md), [lesson-taxonomy.md](../plugins/test-commander/skills/tc-learning/methodology/lesson-taxonomy.md), and [improvement-governance.md](../plugins/test-commander/skills/tc-learning/methodology/improvement-governance.md). End-to-end walkthrough: [user-guide/learning-loop.md](user-guide/learning-loop.md).
 
+## Phase 9 commands (shipped)
+
+| Command | Skill | Per-command page |
+| --- | --- | --- |
+| `/tc:visualize` | `tc-visualize` | [visualize.md](../plugins/test-commander/skills/tc-visualize/commands/visualize.md) |
+| `/tc:diagram-flow` | `tc-visualize` | [diagram-flow.md](../plugins/test-commander/skills/tc-visualize/commands/diagram-flow.md) |
+| `/tc:diagram-sequence` | `tc-visualize` | [diagram-sequence.md](../plugins/test-commander/skills/tc-visualize/commands/diagram-sequence.md) |
+| `/tc:diagram-state` | `tc-visualize` | [diagram-state.md](../plugins/test-commander/skills/tc-visualize/commands/diagram-state.md) |
+| `/tc:diagram-architecture` | `tc-visualize` | [diagram-architecture.md](../plugins/test-commander/skills/tc-visualize/commands/diagram-architecture.md) |
+| `/tc:diagram-risk` | `tc-visualize` | [diagram-risk.md](../plugins/test-commander/skills/tc-visualize/commands/diagram-risk.md) |
+| `/tc:diagram-coverage` | `tc-visualize` | [diagram-coverage.md](../plugins/test-commander/skills/tc-visualize/commands/diagram-coverage.md) |
+| `/tc:diagram-traceability` | `tc-visualize` | [diagram-traceability.md](../plugins/test-commander/skills/tc-visualize/commands/diagram-traceability.md) |
+| `/tc:diagram-test-strategy` | `tc-visualize` | [diagram-test-strategy.md](../plugins/test-commander/skills/tc-visualize/commands/diagram-test-strategy.md) |
+| `/tc:generate-infographic` | `tc-visualize` | [generate-infographic.md](../plugins/test-commander/skills/tc-visualize/commands/generate-infographic.md) |
+| `/tc:render-visuals` | `tc-visualize` | [render-visuals.md](../plugins/test-commander/skills/tc-visualize/commands/render-visuals.md) |
+
+Every visual is generated only from committed workspace artifacts and carries a `> Sources:` footer; a generator refuses (exit 2) a missing source and points at the producing command. `/tc:visualize` runs every diagram generator (skipping any whose source is absent); the eight `/tc:diagram-*` commands generate individual Mermaid diagrams under `visuals/mermaid/`; `/tc:generate-infographic` writes a brief + spec of measured facts under `visuals/infographic/`; and `/tc:render-visuals` renders the Mermaid sources to SVG/PNG via the Mermaid CLI (the only command that shells out — refused under pytest, graceful when the CLI is absent). End-to-end walkthrough: [user-guide/visuals.md](user-guide/visuals.md).
+
 ## Planned commands (not yet implemented)
 
 These will gain per-command pages as their phases ship.
 
 | Command | Skill | Phase |
 | --- | --- | --- |
-| `/tc:visualize`, `/tc:diagram-*` | `tc-visualize` | 9 |
-| `/tc:generate-infographic` | `tc-visualize` | 9 |
-| `/tc:render-visuals` | `tc-visualize` | 9 |
 | `/tc:web-*` | `tc-web` | 10 |
 | `/tc:sandbox-*` | `tc-sandbox` | 12 |
 | `/tc:watch-changes`, continuous-quality | `tc-continuous-quality` | 13 |
