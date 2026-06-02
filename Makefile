@@ -1,6 +1,6 @@
 .PHONY: help install uninstall lint test build run verify \
         pdm-install validate-manifests marketplace-add plugin-install verify-skills \
-        mermaid-install
+        mermaid-install web-test web-e2e
 
 help:
 	@echo "Test Commander - Make targets"
@@ -76,3 +76,13 @@ run:
 
 verify: lint test verify-skills
 	python3 scripts/check_links.py
+
+# Phase 10 web console frontend test lanes (Node-managed; not part of `verify`).
+# The backend is covered by the Python `make test` gate; these cover the
+# Next.js frontend.
+web-test:
+	cd apps/web && npm install && npm run test
+
+web-e2e:
+	@echo "Bring the stack up first: make run (or /tc:web-start --up)."
+	cd apps/web && npm install && npm run e2e
