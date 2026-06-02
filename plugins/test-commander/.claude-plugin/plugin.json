@@ -1,7 +1,7 @@
 {
   "name": "test-commander",
   "version": "0.0.0",
-  "description": "An AI-assisted testing system and quality intelligence center. Skills span requirements review, project knowledge ingestion, exploratory testing, BDD generation, Playwright automation, evidence collection, quality reporting, and continuous learning.",
+  "description": "An AI-assisted testing system and quality intelligence center. Skills span requirements review, project knowledge ingestion, exploratory testing, BDD generation, Playwright automation, evidence collection, quality reporting, continuous learning, visual documentation, a governed web console, a Runtime API and MCP server, sandboxed environments, and continuous quality agent mode.",
   "author": {
     "name": "Nick Baynham",
     "email": "nickbaynham@gmail.com"

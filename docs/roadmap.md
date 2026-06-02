@@ -1,5 +1,7 @@
 # Roadmap
 
+**Status: complete.** All phases (0–13) are shipped — annotated `phase-0` … `phase-13` tags on origin.
+
 The full phased plan is in [../planning/plan.md](../planning/plan.md). Below is the summary.
 
 | Phase | Name |

@@ -11,7 +11,7 @@ Each command is implemented as a Python helper script bundled inside the plugin 
 
 ## Status
 
-Phase 4 complete (2026-05-28); Phase 5 starts next. All four Phase 4 commands are end-to-end runnable:
+Phase 4 complete (2026-05-28). All four Phase 4 commands are end-to-end runnable:
 
 - `/tc:create-charter` — **shipped (Step 4.2).**
 - `/tc:explore` — **shipped (Step 4.3).** Auto-runs the internal exploration-review sub-mode at end of every session (suppressible with `--no-review`).

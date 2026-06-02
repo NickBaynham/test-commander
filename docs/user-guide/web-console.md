@@ -86,8 +86,9 @@ exported: 2 file(s)
 Every backend route is read-only or proposal-generating. No UI or API path
 mutates the workspace or runs a command — the project's test suite asserts this
 as a property (hitting every route, and every chat turn, leaves the workspace
-byte-identical). Execution arrives in Phase 10.5 behind the controlled execution
-pipeline.
+byte-identical). Execution is handled separately by the Phase-10.5 controlled
+execution pipeline (the console's single `/api/execute` route), never by the
+read-only data routes.
 
 ## See also
 
