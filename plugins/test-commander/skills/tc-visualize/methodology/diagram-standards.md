@@ -42,6 +42,23 @@ Every generated `visuals/mermaid/<name>.md` ends with:
 
 listing each artifact the generator read. This is the cited-sources contract.
 
+## Structural diagrams (per-kind derivation)
+
+- **`/tc:diagram-sequence`** — `sequenceDiagram`. Participants are `User` and
+  `System`; a `Note over System` lists the entities from the system model; one
+  `User->>System` message is emitted per user journey, in document order. The
+  journeys are named in `user-journeys.md`; nothing about message timing is
+  invented beyond the order the journeys are listed.
+- **`/tc:diagram-state`** — `stateDiagram-v2`. Models the *scenario result
+  lifecycle* drawn from the test map: `[*] --> Pending`, then `Pending -->`
+  each terminal result (`Passed`, `Failed`, `Flaky`) that actually appears in
+  the map. A result state absent from the map never appears. (The plan's "session
+  lifecycle" phrasing was a guess; the test map's result column is the real,
+  derivable lifecycle source.)
+- **`/tc:diagram-architecture`** — `flowchart`. A `System` node with a
+  `comprises` edge to each entity in the system model's Entities section. Entities
+  are sorted; no relationship the model does not state is drawn.
+
 ## See also
 
 - [Visual documentation methodology](visual-documentation.md)
