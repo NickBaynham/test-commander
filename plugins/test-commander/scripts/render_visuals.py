@@ -70,17 +70,25 @@ def mmdc_available() -> bool:
     return shutil.which("mmdc") is not None
 
 
-def _invoke_mmdc(src: Path, out: Path) -> None:
-    """Shell out to mmdc to render one diagram. Refused under pytest."""
+def _invoke_mmdc(mermaid_source: str, out: Path) -> None:
+    """Render one Mermaid diagram to ``out``. Refused under pytest.
+
+    The Mermaid block is written to a sibling ``.mmd`` and rendered, so mmdc
+    names the output exactly ``out`` (feeding it a Markdown file makes it append
+    a ``-N`` suffix per embedded block, which the cold-user walkthrough caught).
+    """
     if os.environ.get(PYTEST_ENV_VAR):
         raise RenderRefusedError(
             "real Mermaid rendering refused under pytest (PYTEST_CURRENT_TEST is set); "
             "the suite asserts the Mermaid source and planned paths, never a binary"
         )
     out.parent.mkdir(parents=True, exist_ok=True)  # pragma: no cover
-    subprocess.run(  # pragma: no cover
-        ["mmdc", "-i", str(src), "-o", str(out)], check=True
-    )
+    tmp = out.with_suffix(".mmd")  # pragma: no cover
+    tmp.write_text(mermaid_source + "\n", encoding="utf-8")  # pragma: no cover
+    try:  # pragma: no cover
+        subprocess.run(["mmdc", "-i", str(tmp), "-o", str(out)], check=True)
+    finally:  # pragma: no cover
+        tmp.unlink(missing_ok=True)
 
 
 def render_visuals(project_root: Path) -> RenderResult:
@@ -95,8 +103,11 @@ def render_visuals(project_root: Path) -> RenderResult:
         return RenderResult(rendered=[], cli_missing=True)
     rendered: list[Path] = []
     for src, svg, png in plans:
-        _invoke_mmdc(src, svg)
-        _invoke_mmdc(src, png)
+        block = extract_mermaid(src.read_text(encoding="utf-8"))
+        if block is None:
+            continue
+        _invoke_mmdc(block, svg)
+        _invoke_mmdc(block, png)
         rendered.extend([svg, png])
     return RenderResult(rendered=rendered, cli_missing=False)
 

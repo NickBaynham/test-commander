@@ -84,4 +84,4 @@ def test_real_render_refused_under_pytest(tmp_path: Path, monkeypatch):
 
 def test_invoke_mmdc_guarded_directly(tmp_path: Path):
     with pytest.raises(render_visuals.RenderRefusedError):
-        render_visuals._invoke_mmdc(tmp_path / "a.md", tmp_path / "a.svg")
+        render_visuals._invoke_mmdc("flowchart TD\n  a --> b", tmp_path / "a.svg")
