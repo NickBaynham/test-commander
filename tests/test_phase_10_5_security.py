@@ -61,7 +61,6 @@ def test_unsafe_request_blocked_before_agent(tmp_path: Path):
     assert adapter.calls == [], "an unsafe request must never reach the agent"
 
 
-@pytest.mark.xfail(reason="approval gate deny path lands in 10.5.6", strict=True)
 def test_code_write_denied_changes_nothing(tmp_path: Path):
     from agent_adapters.mock_agent import MockAgentAdapter
     from governance import pipeline

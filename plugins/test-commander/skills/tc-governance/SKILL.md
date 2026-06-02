@@ -35,7 +35,7 @@ Phase 10.5 (Step 10.5.2). The pipeline components ship across Steps 10.5.2-10.5.
 - Permission policy engine (7 levels, role-aware) — **shipped (Step 10.5.3).** Classifies every request into one of the seven levels and resolves it against the role's allowed levels (default deny); overridable via `policy/permissions.yaml`. The pipeline blocks before the agent when denied. See [methodology/permission-policy.md](methodology/permission-policy.md).
 - Intent router (NL/button → known workflow) — **shipped (Step 10.5.4).** Maps requests to the closed set of known `/tc:*` workflows or the read-only path; cannot synthesize a command outside the set. See [methodology/intent-and-planning.md](methodology/intent-and-planning.md).
 - Command planner (displayable plan) — **shipped (Step 10.5.5).** Produces a deterministic `Plan` (command, level, reads, writes, expected artifacts, target environment, approval-required) the approval gate renders. See [methodology/intent-and-planning.md](methodology/intent-and-planning.md).
-- Approval gate (card + record). Behavior arrives in Phase 10.5 Step 10.5.6.
+- Approval gate (card + record) — **shipped (Step 10.5.6).** Requires approval for the privileged levels (configurable for safe-write via `policy/approvals.yaml`), renders the approval card, and records the decision under `audit/approvals/`. A not-approved privileged action is held — no execution, no change. See [methodology/approval-and-audit.md](methodology/approval-and-audit.md).
 - Bounded executor (structured instruction wrapping). Behavior arrives in Phase 10.5 Step 10.5.7.
 - Output validation + secret safety. Behavior arrives in Phase 10.5 Step 10.5.8.
 - Audit journal. Behavior arrives in Phase 10.5 Step 10.5.9.
