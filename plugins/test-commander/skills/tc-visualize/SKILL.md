@@ -18,10 +18,10 @@ Generated Mermaid sources land under `<workspace>/visuals/mermaid/<name>.md`; re
 
 ## Status
 
-Phase 9 (Step 9.1 — scaffold). The eleven commands ship across Steps 9.2-9.6; until each lands, its behavior is documented in the per-command page once that step ships:
+Phase 9 (Step 9.2). The remaining commands ship across Steps 9.3-9.6; until each lands, its behavior is documented in the per-command page once that step ships:
 
-- `/tc:visualize` — the umbrella that regenerates the full visual set; owns the shared `render_diagram` engine. Behavior arrives in Phase 9 Step 9.2.
-- `/tc:diagram-flow` — a user-journey / flow diagram from `product-knowledge/user-journeys.md` and `system-model.md`. Behavior arrives in Phase 9 Step 9.2.
+- `/tc:visualize` — **shipped (Step 9.2).** The umbrella that regenerates the full visual set. Runs every registered generator, skipping any whose source is a missing stub so one absent source never blocks the rest. Owns the shared render engine (`render_diagram`, `render_flowchart`, `render_diagram_doc`, `write_visual`, `read_source`, `mermaid_id`, `Node`/`Edge`) every `/tc:diagram-*` reuses. Writes only under `visuals/`. Full spec: [commands/visualize.md](commands/visualize.md).
+- `/tc:diagram-flow` — **shipped (Step 9.2).** A user-journey flow `flowchart` built from `product-knowledge/user-journeys.md` (the journey index) and `system-model.md` (the entities): a `User` actor, one node per journey, and a `System` node, written to `visuals/mermaid/flow.md` with a `> Sources:` footer. Refuses a missing source (exit 2) pointing at `/tc:learn-from-docs`. Full spec: [commands/diagram-flow.md](commands/diagram-flow.md).
 - `/tc:diagram-sequence` — a sequence diagram from a user journey. Behavior arrives in Phase 9 Step 9.3.
 - `/tc:diagram-state` — a state diagram from the session lifecycle. Behavior arrives in Phase 9 Step 9.3.
 - `/tc:diagram-architecture` — an architecture diagram from `product-knowledge/system-model.md`. Behavior arrives in Phase 9 Step 9.3.
