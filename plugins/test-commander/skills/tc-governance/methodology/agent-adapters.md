@@ -34,6 +34,18 @@ A backend swap changes nothing about the gates: intent → plan → policy →
 approval → bounded execution → validation → audit runs identically whichever
 adapter is in use.
 
+## Bounded execution
+
+`governance.executor.build_instruction(plan, project_root)` wraps an approved
+`Plan` into a `BoundedInstruction` whose instruction-critical fields (command,
+scope, allowed/disallowed paths, allowed/disallowed actions per level, expected
+outputs, safety rules) are derived **only from the plan** — never from the raw
+user request. A prompt injection in the original text therefore cannot reach the
+agent (a test asserts a sentinel injection marker appears in no field). Secret
+paths (`.env`, `secrets`, `credentials`, `.git`, `deploy`) are always
+disallowed. `executor.run(plan, adapter, project_root)` builds the instruction
+and executes it through the adapter — the only path to execution.
+
 ## See also
 
 - [tc-governance skill](../SKILL.md)

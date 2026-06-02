@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from governance import approval, intent, planner, policy
+from governance import approval, executor, intent, planner, policy
 
 
 @dataclass
@@ -76,12 +76,25 @@ def handle_request(
             executed=False,
         )
 
-    # Approved (or approval not required) -> bounded execution lands in 10.5.7.
-    if approve and approver and needs_approval:
-        approval.record(project_root, the_plan, approved=True, approver=approver,
-                        now=_now())
-    raise NotImplementedError(
-        "bounded execution + validation + audit land in Steps 10.5.7-10.5.9"
+    # Approved (or approval not required). Record the approval decision.
+    if needs_approval and approve and approver:
+        approval.record(project_root, the_plan, approved=True, approver=approver, now=_now())
+
+    # A read-only request is answered without invoking the agent.
+    if level == "read-only":
+        return PipelineResult(
+            level=level, intent=command, plan=the_plan, requires_approval=False,
+            approved=False, executed=False, reason="read-only",
+        )
+
+    # Bounded execution through the adapter (output validation lands in 10.5.8;
+    # the audit entry in 10.5.9 — until then validation is None and the
+    # approve-diff-matches security test stays xfail).
+    result = executor.run(the_plan, adapter, project_root)
+    return PipelineResult(
+        level=level, intent=command, plan=the_plan,
+        requires_approval=needs_approval, approved=needs_approval, executed=True,
+        result=result, validation=None,
     )
 
 
