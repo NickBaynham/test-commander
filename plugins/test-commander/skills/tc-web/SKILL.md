@@ -19,8 +19,8 @@ Three disciplines govern this skill:
 
 Phase 10 (Step 10.1 — scaffold). The five commands ship across Steps 10.2-10.6; until each lands, its behavior is documented in the per-command page once that step ships:
 
-- `/tc:web-init` — provision the console config in the workspace. Behavior arrives in Phase 10 Step 10.4.
-- `/tc:web-start` — bring the stack up (`docker compose`). Behavior arrives in Phase 10 Step 10.4.
+- `/tc:web-init` — **shipped (Step 10.4).** Provisions `.test-commander/.web/console.json` (api base, web port); idempotent; refuses an uninitialized workspace (exit 2). Full spec: [commands/web-init.md](commands/web-init.md).
+- `/tc:web-start` — **shipped (Step 10.4).** Prints the `docker compose up` command and the workspace by default (a dry run); `--up` brings the stack up (refused under pytest). Ships alongside the MVP frontend pages (Dashboard, Quality Report, Journal, Sessions, Requirements, Test Runs, Evidence, Settings) with SSE live-update on the dashboard and journal. Full spec: [commands/web-start.md](commands/web-start.md).
 - `/tc:web-sync` — **shipped (Step 10.3).** Reconciles the SQLite index with the workspace (a clean rebuild). Ships alongside the read-only API routes (one per page), the SSE `/api/events` stream (a `changed` frame on any workspace change), and `/api/proposals` (returns a command proposal card, never executes). Refuses an uninitialized workspace (exit 2). Full spec: [commands/web-sync.md](commands/web-sync.md).
 - `/tc:web-index-artifacts` — **shipped (Step 10.2).** Rebuilds the SQLite index (requirements, runs, run results, evidence, journal, traceability, quality facts) from the workspace into `.test-commander/.web/index.db`. Drops and repopulates every table, so the index is always reconstructible; never mutates a workspace artifact. Refuses an uninitialized workspace (exit 2). Full spec: [commands/web-index-artifacts.md](commands/web-index-artifacts.md).
 - `/tc:web-export` — export the current view as a shareable static bundle. Behavior arrives in Phase 10 Step 10.6.
