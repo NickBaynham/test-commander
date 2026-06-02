@@ -37,6 +37,36 @@ class PipelineResult:
     audit_entry: dict | None = None
 
 
+@dataclass
+class Preview:
+    """The pre-execution decision for a request: what it routes to, the level it
+    classifies to, and whether the role is allowed. No execution, no audit."""
+
+    intent: str
+    level: str
+    plan: Any
+    allowed: bool
+
+
+def preview(request: str, *, role: str, project_root: Path) -> Preview:
+    """Route, plan, and classify a request without executing it.
+
+    The single source of truth for the pre-execution decision: `handle_request`
+    calls it before any gate, and the Runtime API's read-only `/plan` route
+    surfaces it. Level matches the request's inherent risk even when the router
+    falls back to read-only (a dangerous unrouted request still classifies high).
+    """
+    command = intent.route(request)
+    the_plan = planner.plan(command)
+    level = the_plan.level if command != "read-only" else policy.classify(request)
+    return Preview(
+        intent=command,
+        level=level,
+        plan=the_plan,
+        allowed=policy.allows(role, level, project_root),
+    )
+
+
 def handle_request(
     request: str,
     *,
@@ -50,13 +80,12 @@ def handle_request(
 ) -> PipelineResult:
     now = now or datetime.now()
 
-    # Route to a known command (or read-only); plan it deterministically.
-    command = intent.route(request)
-    the_plan = planner.plan(command)
-    level = the_plan.level if command != "read-only" else policy.classify(request)
+    # Route, plan, and classify (the shared pre-execution decision).
+    pv = preview(request, role=role, project_root=project_root)
+    command, the_plan, level = pv.intent, pv.plan, pv.level
 
     # Permission policy (default deny). The agent is never reached if denied.
-    if not policy.allows(role, level, project_root):
+    if not pv.allowed:
         return PipelineResult(
             blocked=True,
             reason=f"permission denied: {level} not allowed for {role} (default deny)",
