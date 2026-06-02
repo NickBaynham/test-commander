@@ -1,0 +1,49 @@
+---
+name: tc-governance
+description: Controlled agent execution and policy-governed chat for Test Commander. Use when the web console runs a user request through the governance pipeline - intent routing, command planning, permission policy, approval gate, bounded execution, output validation, and the append-only audit log. Owns the policy templates, approval-card templates, bounded-prompt templates, and the audit-log schema. Default deny - nothing above read-only executes without passing the policy engine and, where required, an approval gate, and the agent never sees the raw user prompt.
+---
+
+# tc-governance
+
+The governance skill for Test Commander. It makes the web console safe to expose: every user request — chat message, button click, automation — flows through a policy-governed pipeline before it can touch Claude or the workspace. Users drive Test Commander workflows; they never drive raw Claude Code.
+
+The pipeline runtime lives under `runtime/governance/` (the components) and `runtime/agent_adapters/` (the backend abstraction); this skill owns the **templates** (policy, approval card, bounded prompt) and the **audit-log schema**. There are no `/tc:*` commands — the pipeline is invoked by the console (Phase 10) and, later, the API (Phase 11), the sandbox (Phase 12), and continuous mode (Phase 13). They all enter here; there is no direct-execution backdoor.
+
+## The pipeline
+
+```
+Frontend request -> Intent router -> Command planner -> Permission policy
+  -> Approval gate -> Bounded execution -> Artifact capture -> Output validation
+  -> Audit log
+```
+
+## Three disciplines
+
+- **Default deny; every gate is a test, not a convention.** Nothing above `read-only` executes without passing the permission policy and (where required) an approval gate. Four canonical security integration tests are the phase's spine: block an unsafe request before the agent; deny a code-write and assert no files change; approve via the mock adapter and assert the diff matches the plan; refuse a no-plan direct adapter call.
+- **The agent never sees the raw user prompt; secrets never reach the frontend or the prompt.** Bounded execution wraps a *structured instruction* (command, scope, allowed/disallowed paths and actions, expected outputs) — raw user text never lands in instruction-critical sections. Provider secrets stay server-side and are redacted from logs, artifacts, and prompts.
+- **Adapter abstraction so governance is backend-agnostic.** Every backend (`MockAgentAdapter`, `ClaudeCodeCliAdapter`, stubbed `AnthropicApiAdapter`) implements one `AgentAdapter` interface and runs inside the same pipeline.
+
+## Permission levels and roles
+
+Seven levels — `read-only`, `safe-write`, `code-write`, `execute-tests`, `external-network`, `destructive`, `admin` — resolved per role (Viewer → Tester → Automation Engineer → Maintainer → Admin) against `<workspace>/policy/permissions.yaml`. Approval requirements live in `<workspace>/policy/approvals.yaml`. Every action is recorded in the append-only `<workspace>/audit/actions.jsonl`.
+
+## Status
+
+Phase 10.5 (Step 10.5.1 — scaffold). The pipeline components ship across Steps 10.5.2-10.5.10; until each lands, its behavior is documented in the methodology once that step ships:
+
+- Agent adapter abstraction (`AgentAdapter` + mock + stubs). Behavior arrives in Phase 10.5 Step 10.5.2.
+- Permission policy engine (7 levels, role-aware). Behavior arrives in Phase 10.5 Step 10.5.3.
+- Intent router (NL/button → known workflow). Behavior arrives in Phase 10.5 Step 10.5.4.
+- Command planner (displayable plan). Behavior arrives in Phase 10.5 Step 10.5.5.
+- Approval gate (card + record). Behavior arrives in Phase 10.5 Step 10.5.6.
+- Bounded executor (structured instruction wrapping). Behavior arrives in Phase 10.5 Step 10.5.7.
+- Output validation + secret safety. Behavior arrives in Phase 10.5 Step 10.5.8.
+- Audit journal. Behavior arrives in Phase 10.5 Step 10.5.9.
+- `ClaudeCodeCliAdapter` + console wiring. Behavior arrives in Phase 10.5 Step 10.5.10.
+
+## See also
+
+- [Plugin README](../../README.md)
+- [Phased plan](../../../../planning/plan.md)
+- [Workspace reference](../../../../docs/workspace-reference.md)
+- [tc-web skill](../tc-web/SKILL.md)

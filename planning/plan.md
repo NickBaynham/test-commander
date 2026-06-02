@@ -3494,6 +3494,8 @@ Six sub-sub-steps mirroring prior sign-offs: cold-user walkthrough of `governanc
 
 Captured at sub-step close per the "Sub-step lesson capture" Per-Phase Convention. (Populated as 10.5.1–10.5.13 land.)
 
+- **Step 10.5.1 — scaffold + the four RED security tests.** 9/9 scaffold GREEN, 4 security tests xfailed. **The hard problem this phase poses: write the four security tests RED at 10.5.1 *and* keep `make verify` green at every commit.** Solution: `@pytest.mark.xfail(strict=True)` with a per-test reason naming the enabling sub-step. xfail means RED doesn't break the suite; `strict=True` means an *unexpected pass* fails — so when a control lands and its test starts passing, I'm forced to remove the marker in that same sub-step (the plan's green-at-step schedule becomes mechanical). **Two design choices keep each test RED until exactly its step, not earlier:** (1) in-body imports so a not-yet-existing module surfaces as the expected failure, not a collection error; (2) each test depends on a module that only its step ships — test 4 (no-plan bypass) imports `governance.audit` (10.5.9) and asserts no audit entry, so adapter-level refusal alone (available at 10.5.2) can't XPASS it early. The pipeline orchestrator (`governance.pipeline.handle_request`) is the single entry point, scaffolded to `raise NotImplementedError`; it grows component-by-component, and the "not yet implemented" downstream raise keeps later tests xfail. Added `runtime` to the pytest pythonpath so `governance.*` and `agent_adapters.*` import. tc-governance has **no `/tc:*` commands** — it is a templates/methodology skill the pipeline (and the console) invoke, so the `commands/` dir stays a `.gitkeep` placeholder.
+
 ---
 
 ## Phase 11 — Runtime API and MCP Server
@@ -3831,7 +3833,7 @@ Phase 10 complete (2026-06-01) — see Completed.
 
 See `### Phase 10.5 — Execution outline` for full sub-step detail.
 
-- [ ] 10.5.1 — Scaffold (`tc-governance` + `runtime/agent_adapters/` + policy/audit dirs + the four RED security tests)
+- [x] 10.5.1 — Scaffold (`tc-governance` + `runtime/agent_adapters/` + policy/audit dirs + the four RED security tests)
 - [ ] 10.5.2 — Agent adapter abstraction (`AgentAdapter` + mock + stubs)
 - [ ] 10.5.3 — Permission policy engine (7 levels, role-aware)
 - [ ] 10.5.4 — Intent router (NL/button → known workflow)

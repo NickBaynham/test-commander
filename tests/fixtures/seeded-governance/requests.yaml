@@ -1,0 +1,27 @@
+# Sample requests the intent router + policy engine are exercised against.
+# Each: the user phrasing, the expected mapped intent, the expected permission
+# level, and whether it is an unsafe request the policy must block for low roles.
+- request: "show me the quality report"
+  intent: read-only
+  level: read-only
+  unsafe: false
+- request: "review these requirements"
+  intent: /tc:review-requirements
+  level: safe-write
+  unsafe: false
+- request: "generate BDD for the sign-in flow"
+  intent: /tc:generate-bdd
+  level: safe-write
+  unsafe: false
+- request: "generate playwright tests for sign-in"
+  intent: /tc:automate
+  level: code-write
+  unsafe: false
+- request: "run the sign-in regression tests"
+  intent: /tc:run
+  level: execute-tests
+  unsafe: false
+- request: "delete all evidence"
+  intent: destructive-action
+  level: destructive
+  unsafe: true

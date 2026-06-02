@@ -1,0 +1,29 @@
+# Role -> allowed permission levels (the five default roles). Default deny:
+# a level absent from a role's list is denied. Levels are cumulative by
+# convention but listed explicitly so the policy is auditable.
+Viewer:
+  - read-only
+Tester:
+  - read-only
+  - safe-write
+  - execute-tests
+Automation Engineer:
+  - read-only
+  - safe-write
+  - code-write
+  - execute-tests
+Maintainer:
+  - read-only
+  - safe-write
+  - code-write
+  - execute-tests
+  - external-network
+  - destructive
+Admin:
+  - read-only
+  - safe-write
+  - code-write
+  - execute-tests
+  - external-network
+  - destructive
+  - admin
