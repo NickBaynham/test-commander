@@ -19,8 +19,14 @@ policy supplies the *block decision*.
 
 ## Command planner
 
-(Shipped in Step 10.5.5.) Produces the explicit, displayable plan the approval
-gate renders.
+`governance.planner.plan(command)` produces an explicit, deterministic `Plan`
+the approval gate renders and the bounded executor wraps: `command`, `level`,
+`reads`, `writes`, `expected_artifacts`, `target_environment`, and
+`requires_approval`. Per-command knowledge (what each `/tc:*` reads and writes,
+and at what level) lives in `_COMMAND_PLANS`; a routed-but-unknown command and
+the read-only path both yield a no-write read-only plan. `requires_approval` is
+true for `code-write` / `execute-tests` / `external-network` / `destructive` /
+`admin` by default (the approval gate may widen it for `safe-write`).
 
 ## See also
 
