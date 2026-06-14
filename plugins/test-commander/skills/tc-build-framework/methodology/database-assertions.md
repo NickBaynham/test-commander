@@ -64,5 +64,33 @@ test('REQ-NNN create persists with the right reference', async ({ request, db })
 });
 ```
 
+## Guidelines (checklist)
+
+Do:
+
+- Assert at the DB only when the test already exercises a write **and**
+  persistence or a relationship is the risk.
+- Read a created entity back from the store and check the fields the API
+  transforms or omits.
+- Assert relationship references resolve to the right records, via
+  `idEquals(stored, apiId)` — never a raw `==`.
+- Assert a **rejected** write did not insert (the collection count is unchanged).
+- Assert an update persisted (status, flags), not just that the response said so.
+- Assert no orphaned references remain after a delete.
+- Keep DB access **read-only** in tests: set up state through the app (reset/seed,
+  API, UI), never by writing to the store directly — a test that seeds via the DB
+  stops testing the app's write path.
+- Use one **worker-scoped, lazy** connection; only DB-using tests pay for it.
+
+Do not:
+
+- Mirror every API assertion at the DB — assert there only where persistence is
+  the point; otherwise it is duplicate noise.
+- Assert on volatile or generated values (the literal `_id`, timestamps, server
+  defaults you don't control) — assert shape and references instead.
+- Hard-code the store's id type; centralize the API-id ↔ stored-id translation.
+- Let a DB assertion replace the user-facing assertion — verify the UI/API
+  outcome too, so a green DB check never hides a broken response.
+
 See [db-client-template.ts](../templates/db-client-template.ts) for the client and
 [playwright-standards.md](playwright-standards.md) for where it sits in the tree.
