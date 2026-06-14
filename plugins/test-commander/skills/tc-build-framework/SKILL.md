@@ -1,6 +1,6 @@
 ---
 name: tc-build-framework
-description: Lazy Playwright/TypeScript framework scaffolding for Test Commander. Use when the user runs /tc:build-framework, or asks about creating the project-root tests/ tree (e2e, pages, components, fixtures, utils), playwright.config.ts, and package.json that Test Commander generates only when automation first needs them. Owns the single command that builds the automation framework idempotently and exposes the lazy-init entry point the other Phase 6 commands call before generating any TypeScript.
+description: Lazy Playwright/TypeScript framework scaffolding for Test Commander. Use when the user runs /tc:build-framework, or asks about creating the project-root tests/ tree (e2e, pages, components, fixtures, db, utils), playwright.config.ts, and package.json that Test Commander generates only when automation first needs them. Owns the single command that builds the automation framework idempotently and exposes the lazy-init entry point the other Phase 6 commands call before generating any TypeScript.
 ---
 
 # tc-build-framework
@@ -13,13 +13,13 @@ Each command is implemented as a Python helper script bundled inside the plugin 
 
 Phase 6 (Step 6.2). The command is end-to-end runnable:
 
-- `/tc:build-framework` — **shipped (Step 6.2).** Scaffolds the project-root `tests/{e2e,pages,components,fixtures,utils}/` tree plus `playwright.config.ts` and `package.json`, creating each managed path only when absent so a re-run is a byte-stable no-op. Exposes `ensure_framework(project_root)` as the lazy-init entry point `/tc:automate` calls first.
+- `/tc:build-framework` — **shipped (Step 6.2).** Scaffolds the project-root `tests/{e2e,pages,components,fixtures,db,utils}/` tree plus `playwright.config.ts` and `package.json`, creating each managed path only when absent so a re-run is a byte-stable no-op. Exposes `ensure_framework(project_root)` as the lazy-init entry point `/tc:automate` calls first.
 
 ## Commands
 
 ### `/tc:build-framework`
 
-Scaffolds the project-root Playwright/TypeScript framework lazily (Decision D8): the `tests/{e2e,pages,components,fixtures,utils}/` tree, `tests/playwright.config.ts` (`testDir: './e2e'`, target from the `PLAYWRIGHT_BASE_URL` environment variable), and `tests/package.json` (declaring `@playwright/test` and `typescript`). Each path is created only when absent — a re-run reports `created 0` and leaves existing files byte-for-byte untouched, and a partial tree converges without clobbering user edits. The framework lands at the project root `tests/` tree, *outside* the `.test-commander/` workspace.
+Scaffolds the project-root Playwright/TypeScript framework lazily (Decision D8): the `tests/{e2e,pages,components,fixtures,db,utils}/` tree, `tests/playwright.config.ts` (`testDir: './e2e'`, target from the `PLAYWRIGHT_BASE_URL` environment variable), and `tests/package.json` (declaring `@playwright/test` and `typescript`). Each path is created only when absent — a re-run reports `created 0` and leaves existing files byte-for-byte untouched, and a partial tree converges without clobbering user edits. The framework lands at the project root `tests/` tree, *outside* the `.test-commander/` workspace.
 
 The helper only writes TypeScript and JSON text — it never invokes `tsc` or `npx playwright test` and never reaches a browser. Execution is Phase 7's `/tc:run`. The four `.ts` object templates under [`templates/`](templates/) are the v1 rendering contract `/tc:automate` consumes.
 
@@ -31,7 +31,9 @@ python3 <plugin-root>/scripts/build_framework.py <project-root>
 
 `<project-root>` defaults to the current working directory. Refuses uninitialized workspaces (exit 2). `ensure_framework(project_root)` is the lazy-init entry point importable by the Phase 6.4 generator.
 
-Full spec: [commands/build-framework.md](commands/build-framework.md). Methodology: [methodology/playwright-standards.md](methodology/playwright-standards.md), [methodology/locator-strategy.md](methodology/locator-strategy.md).
+Full spec: [commands/build-framework.md](commands/build-framework.md). Methodology: [methodology/playwright-standards.md](methodology/playwright-standards.md), [methodology/locator-strategy.md](methodology/locator-strategy.md), [methodology/database-assertions.md](methodology/database-assertions.md).
+
+Framework best practices (enforced by the generated shape and the reference templates): every spec pairs a **page object** (locators) with a **fixture** (data + state); fixtures carry an auto reset-to-known-state for shared backends and expose typed data; data-driven cases loop a dataset; and persistence is verified at the **database layer** (`tests/db/`, [db-client-template.ts](templates/db-client-template.ts)).
 
 ## See also
 

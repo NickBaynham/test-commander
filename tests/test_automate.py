@@ -177,8 +177,14 @@ def test_spec_reaches_data_via_fixture_not_inline(tmp_path):
     assert "../fixtures/sign-in" in spec, "spec must import its per-area fixture"
     fixture = tmp_path / "tests" / "fixtures" / "sign-in.ts"
     assert fixture.is_file(), "expected a generated per-area fixture"
-    assert "test-data" in fixture.read_text(encoding="utf-8"), (
+    fixture_text = fixture.read_text(encoding="utf-8")
+    assert "test-data" in fixture_text, (
         "fixture must reach data via the .test-commander/test-data/ tree (D6)"
+    )
+    # Best practice: the generated fixture carries reset-to-known-state isolation
+    # for a shared backend (gated on PLAYWRIGHT_RESET_PATH).
+    assert "resetState" in fixture_text and "PLAYWRIGHT_RESET_PATH" in fixture_text, (
+        "generated fixture must carry the reset-to-known-state best practice"
     )
 
 

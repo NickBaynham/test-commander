@@ -2,8 +2,9 @@
 """/tc:build-framework helper - Phase 6 Step 6.2.
 
 Scaffolds the project-root Playwright/TypeScript automation framework lazily
-(Decision D8): the ``tests/{e2e,pages,components,fixtures,utils}/`` tree plus
-``tests/playwright.config.ts`` and ``tests/package.json``. Each managed path is
+(Decision D8): the ``tests/{e2e,pages,components,fixtures,db,utils}/`` tree plus
+``tests/playwright.config.ts`` and ``tests/package.json``. ``db/`` holds optional
+database-layer assertion helpers (methodology/database-assertions.md). Each managed path is
 created only when absent, so a re-run is a byte-stable no-op and a partial tree
 converges without clobbering user edits.
 
@@ -39,7 +40,7 @@ from pathlib import Path
 WORKSPACE_DIRNAME = ".test-commander"
 FRAMEWORK_DIRNAME = "tests"
 SENTINEL = "playwright.config.ts"
-SUBDIRS = ("e2e", "pages", "components", "fixtures", "utils")
+SUBDIRS = ("e2e", "pages", "components", "fixtures", "db", "utils")
 
 
 # ---------------------------------------------------------------------------

@@ -45,7 +45,7 @@ OBJECT_TEMPLATES = [
     "playwright-spec-template.ts",
     "fixture-template.ts",
 ]
-SUBDIRS = ["e2e", "pages", "components", "fixtures", "utils"]
+SUBDIRS = ["e2e", "pages", "components", "fixtures", "db", "utils"]
 
 
 # ---------------------------------------------------------------------------
@@ -194,6 +194,24 @@ def test_object_templates_present_and_well_formed(tmp_path):
         assert balanced(text), f"{name} has unbalanced brackets"
         assert "import" in text, f"{name} must import from @playwright/test"
         assert "@playwright/test" in text, f"{name} must reference @playwright/test"
+
+
+def test_db_client_template_present_and_well_formed():
+    """The database-assertion reference template ships, is well-formed, and shows
+    the worker-scoped client + id-translation helper (best-practice DB layer)."""
+    path = TEMPLATES_DIR / "db-client-template.ts"
+    assert path.is_file(), "missing bundled template db-client-template.ts"
+    text = path.read_text(encoding="utf-8")
+    assert balanced(text), "db-client-template.ts has unbalanced brackets"
+    assert "class DbClient" in text
+    assert "idEquals" in text, "must centralize stored-id vs api-id translation"
+
+
+def test_fixture_template_carries_reset_isolation():
+    """The fixture template shows the reset-to-known-state best practice for a
+    shared backend."""
+    text = (TEMPLATES_DIR / "fixture-template.ts").read_text(encoding="utf-8")
+    assert "resetState" in text and "PLAYWRIGHT_RESET_PATH" in text
 
 
 def test_spec_template_carries_provenance_placeholder():

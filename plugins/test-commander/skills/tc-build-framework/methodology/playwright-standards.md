@@ -23,9 +23,34 @@ The framework lands at the project root `tests/` tree, outside the
 | `tests/pages/` | Page objects - one per `@area:` namespace. Locators live here, never in specs. |
 | `tests/components/` | Component objects - shared UI fragments (nav, dialogs, tables). |
 | `tests/fixtures/` | Fixtures - the only path test data reaches a spec (D6). |
+| `tests/db/` | Optional database-layer assertion helpers ([database-assertions.md](database-assertions.md)). |
 | `tests/utils/` | Shared helpers. |
 | `tests/playwright.config.ts` | Config: `testDir: './e2e'`, `PLAYWRIGHT_BASE_URL` target. |
 | `tests/package.json` | `@playwright/test` + `typescript` dev deps; `test` scripts. |
+
+## Every spec pairs a page object with a fixture
+
+This is the framework's core shape, not a suggestion. A spec imports its page
+object (locators and behavior methods) and its fixture (data and state); the body
+expresses intent only. No locators in specs (they live in `tests/pages/`), no
+inlined test data (it comes through a fixture, D6). The generated spec template
+already shows this pairing; hand-written specs follow it.
+
+## Test isolation on a shared backend
+
+When the target keeps a database that persists between tests, every test must
+start from a known state or tests leak into each other. The generated fixture
+carries an auto `resetState` fixture that POSTs to a configured reset endpoint
+(`PLAYWRIGHT_RESET_PATH`) before each test - on by setting the env var, a no-op
+otherwise. A suite that shares one backend also runs sequentially (per project,
+`fullyParallel: false` / `--workers=1`), because a reset that regenerates ids
+would invalidate another test's fetched ids mid-run.
+
+## Verify persistence at the database layer
+
+Confirming the API response is not the same as confirming the write landed. Where
+persistence or relationships are the risk, assert against the store directly via a
+`tests/db/` helper - see [database-assertions.md](database-assertions.md).
 
 ## Idempotent and byte-stable
 
@@ -54,5 +79,6 @@ scaffold never overwrites an edited `playwright.config.ts`.
 ## See also
 
 - [Locator strategy](locator-strategy.md) - the locator priority order.
+- [Database assertions](database-assertions.md) - the DB-layer verification pattern.
 - [/tc:build-framework](../commands/build-framework.md) - the command spec.
 - [Object templates](../templates/) - the v1 rendering contract.
