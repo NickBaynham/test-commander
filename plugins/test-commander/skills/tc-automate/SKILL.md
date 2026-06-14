@@ -14,7 +14,7 @@ Each command is implemented as a Python helper script bundled inside the plugin 
 Phase 6 (Step 6.5). Both commands are end-to-end runnable:
 
 - `/tc:automate` — **shipped (Step 6.4).** Reads the automation plan plus `bdd/features/*.feature`, builds the framework lazily via `ensure_framework`, and renders page objects, per-area fixtures, and specs for `automate`-ranked / `@automated-candidate` scenarios with `@req:`/`@cs:` provenance and fixture-mediated data. Writes `traceability/automation-map.md`, then auto-runs the automation review (suppressible with `--no-review`).
-- `/tc:review-automation` — **shipped (Step 6.5).** Standalone, re-runnable review of the generated `tests/e2e/*.spec.ts` against the six-category universal rubric; shares one implementation (`review_automation()`) with the generate-time auto-run.
+- `/tc:review-automation` — **shipped (Step 6.5).** Standalone, re-runnable review of the generated `tests/e2e/*.spec.ts` against the seven-category universal rubric; shares one implementation (`review_automation()`) with the generate-time auto-run.
 
 ## Commands
 
@@ -34,7 +34,7 @@ Full spec: [commands/automate.md](commands/automate.md). Methodology: [methodolo
 
 ### `/tc:review-automation`
 
-Reads `tests/e2e/*.spec.ts` and runs the six-category universal rubric (`inline-test-data`, `hardcoded-wait`, `missing-provenance`, `weak-locator`, `untraceable-spec`, `assertion-free`), one finding per category per spec. Writes a per-spec verdict to `<workspace>/automation-plan/review-summary.md` (`pass` or `N finding(s) - categories: ...`) and routes failures to `<workspace>/requirements/open-questions.md` as `[automation-review]` gap signals (per-spec source-id `tc-automate/automation-review-<area>`, Phase-2 dedup contract). A clean generated spec passes with zero findings; re-running is idempotent. The shared `review_automation()` implementation is the same code path `/tc:automate` auto-runs. The `untraceable-spec` check uses `traceability/automation-map.md`.
+Reads `tests/e2e/*.spec.ts` and runs the seven-category universal rubric (`inline-test-data`, `hardcoded-wait`, `missing-provenance`, `weak-locator`, `untraceable-spec`, `assertion-free`, `unverified-write`), one finding per category per spec. Writes a per-spec verdict to `<workspace>/automation-plan/review-summary.md` (`pass` or `N finding(s) - categories: ...`) and routes failures to `<workspace>/requirements/open-questions.md` as `[automation-review]` gap signals (per-spec source-id `tc-automate/automation-review-<area>`, Phase-2 dedup contract). A clean generated spec passes with zero findings; re-running is idempotent. The shared `review_automation()` implementation is the same code path `/tc:automate` auto-runs. The `untraceable-spec` check uses `traceability/automation-map.md`.
 
 **Run:**
 

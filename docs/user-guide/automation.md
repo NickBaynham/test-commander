@@ -142,7 +142,7 @@ The generated TypeScript is a deterministic scaffold; Claude refines the Given/W
 
 ## Step 4: `/tc:review-automation`
 
-Runs the six-category universal rubric over every spec: `inline-test-data`, `hardcoded-wait`, `missing-provenance`, `weak-locator`, `untraceable-spec`, `assertion-free` (one finding per category per spec). Writes a per-spec verdict and routes failures to `requirements/open-questions.md`. The same implementation is what `/tc:automate` auto-runs.
+Runs the seven-category universal rubric over every spec: `inline-test-data`, `hardcoded-wait`, `missing-provenance`, `weak-locator`, `untraceable-spec`, `assertion-free`, `unverified-write` (one finding per category per spec). Writes a per-spec verdict and routes failures to `requirements/open-questions.md`. The same implementation is what `/tc:automate` auto-runs.
 
 **Run:**
 

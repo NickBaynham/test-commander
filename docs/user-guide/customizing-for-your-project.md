@@ -545,7 +545,7 @@ generated `automation-plan/<area>.md` table.
   (target via `PLAYWRIGHT_BASE_URL`) and four `.ts` object templates.
   `/tc:automation-plan` ships the seven-factor rubric with fixed names,
   thresholds, and hard overrides. `/tc:automate` ships the provenance + fixture
-  conventions; `/tc:review-automation` ships the six-category review rubric;
+  conventions; `/tc:review-automation` ships the seven-category review rubric;
   `/tc:generate-test-data` ships the universal seed shape.
 - **Schema keys.** `tc-automate.suitability.weights` (mapping of the seven factor
   names to integer weights) — the only `config.yaml` surface. Unknown names are

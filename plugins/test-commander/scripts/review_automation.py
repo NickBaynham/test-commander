@@ -2,7 +2,7 @@
 """/tc:review-automation helper - Phase 6 Step 6.5.
 
 Reviews the generated Playwright specs under ``tests/e2e/*.spec.ts`` against a
-deterministic six-category universal rubric, writes a per-spec verdict to
+deterministic seven-category universal rubric, writes a per-spec verdict to
 ``<workspace>/automation-plan/review-summary.md``, and routes failures to
 ``<workspace>/requirements/open-questions.md`` as ``[automation-review]`` gap
 signals (deduplicated by per-spec source-id + question text, the Phase-2
@@ -18,6 +18,8 @@ Universal rubric categories (D19):
                             ``page.$``) instead of a role/label/test-id locator.
 - ``untraceable-spec``    - the spec file is not linked in ``automation-map.md``.
 - ``assertion-free``      - a ``test()`` contains no ``expect(`` call.
+- ``unverified-write``    - a ``test()`` fires a write (submit / non-GET request)
+                            but asserts no outcome (URL / status / count / value).
 
 ``review_automation()`` is the shared entry point: the standalone
 ``/tc:review-automation`` command and the ``/tc:automate`` generate-time
@@ -49,6 +51,15 @@ INLINE_DATA_RE = re.compile(r"\.(fill|type|selectOption)\(\s*['\"`]")
 WAIT_RE = re.compile(r"waitForTimeout\(|\.sleep\(")
 WEAK_LOCATOR_RE = re.compile(r"\.locator\(['\"`][.#\[]|xpath=|page\.\$\(")
 SPEC_PATH_RE = re.compile(r"tests/e2e/[\w-]+\.spec\.ts")
+# A write trigger: a non-GET request or a page-object submit. A test that fires
+# one but asserts no outcome can pass on a message alone even when the write failed.
+WRITE_TRIGGER_RE = re.compile(r"\.(post|put|patch|delete)\(|\.submit\(")
+# An outcome signal: the test checks a navigation, response, count, stored value,
+# or any concrete value/state - not just that an element is present.
+OUTCOME_RE = re.compile(
+    r"toHaveURL|toHaveCount|toHaveText|toContainText|toBe\(|toEqual\(|toMatch\("
+    r"|toBeGreaterThan|toBeLessThan|\.status\(|\.ok\(|findById\(|\.count\(|idEquals\("
+)
 
 MESSAGES: dict[str, str] = {
     "inline-test-data": (
@@ -70,6 +81,11 @@ MESSAGES: dict[str, str] = {
         "is not linked in automation-map.md; regenerate it via /tc:automate"
     ),
     "assertion-free": "has a test() with no expect() assertion",
+    "unverified-write": (
+        "performs a write (submit or non-GET request) but asserts no outcome "
+        "(URL, response status, row/count, or stored value); a message alone can "
+        "pass even when the write failed"
+    ),
 }
 
 
@@ -167,6 +183,9 @@ def review_spec_text(text: str, *, traceable: bool) -> set[str]:
             categories.add("missing-provenance")
         if not any(EXPECT_RE.search(ln) for ln in body):
             categories.add("assertion-free")
+        body_text = "\n".join(body)
+        if WRITE_TRIGGER_RE.search(body_text) and not OUTCOME_RE.search(body_text):
+            categories.add("unverified-write")
     return categories
 
 
@@ -303,7 +322,7 @@ def review_automation(project_root: Path) -> ReviewOutcome:
 def main(argv: Iterable[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Review generated specs under tests/e2e/ against the six-category "
+            "Review generated specs under tests/e2e/ against the seven-category "
             "universal rubric. Writes automation-plan/review-summary.md and "
             "routes failures to requirements/open-questions.md."
         ),

@@ -1,7 +1,7 @@
 """Step 6.5 - /tc:review-automation (review_automation) + automate auto-run.
 
 Drives ``review_automation.py`` against a tmp consuming project. The helper
-reviews the generated specs under ``tests/e2e/*.spec.ts`` against a six-category
+reviews the generated specs under ``tests/e2e/*.spec.ts`` against a seven-category
 universal rubric, writes a per-spec verdict to
 ``<workspace>/automation-plan/review-summary.md``, and routes failures to
 ``<workspace>/requirements/open-questions.md`` as deduplicated
@@ -47,6 +47,7 @@ CATEGORIES = {
     "weak-locator",
     "untraceable-spec",
     "assertion-free",
+    "unverified-write",
 }
 
 

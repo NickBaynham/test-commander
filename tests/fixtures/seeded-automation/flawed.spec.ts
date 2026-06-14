@@ -40,4 +40,12 @@ test.describe('Flawed sign-in automation (review fixture)', () => {
     const signIn = new SignInPage(page);
     await signIn.goto();
   });
+
+  // knowledge: unverified-write
+  // @req:REQ-001 @cs:CS-001-002
+  test('submits but only checks that a toast appeared', async ({ page }) => {
+    const signIn = new SignInPage(page);
+    await signIn.submit();
+    await expect(page.getByTestId('toast')).toBeVisible();
+  });
 });

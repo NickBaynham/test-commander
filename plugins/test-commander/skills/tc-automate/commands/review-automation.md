@@ -1,6 +1,6 @@
 # /tc:review-automation
 
-Review the generated Playwright specs against a six-category universal rubric,
+Review the generated Playwright specs against a seven-category universal rubric,
 write a per-spec verdict, and route failures to the open-questions log. The same
 engine auto-runs at the end of `/tc:automate`.
 
@@ -27,9 +27,9 @@ engine auto-runs at the end of `/tc:automate`.
 ## Behavior
 
 1. **Resolve** the workspace and read the automation map (for traceability).
-2. **Review** each `tests/e2e/*.spec.ts` against the six categories:
+2. **Review** each `tests/e2e/*.spec.ts` against the seven categories:
    `inline-test-data`, `hardcoded-wait`, `missing-provenance`, `weak-locator`,
-   `untraceable-spec`, `assertion-free` - one finding per category per spec.
+   `untraceable-spec`, `assertion-free`, `unverified-write` - one finding per category per spec.
 3. **Write** the per-spec verdict to `automation-plan/review-summary.md`.
 4. **Route** each finding to `requirements/open-questions.md` as a deduplicated
    `[automation-review]` gap signal (per-spec source-id
@@ -68,7 +68,7 @@ same rules.
 
 ## See also
 
-- [Automation review methodology](../methodology/automation-review.md) - the six categories, verdict, routing, and judgment layer.
+- [Automation review methodology](../methodology/automation-review.md) - the seven categories, verdict, routing, and judgment layer.
 - [Automation review template](../templates/automation-review-template.md) - the summary shape.
 - [/tc:automate](automate.md) - generation; auto-runs this review.
 - [tc-automate skill](../SKILL.md)
