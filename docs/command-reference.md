@@ -173,6 +173,15 @@ A sandbox is an on-demand, team-accessible Test Commander environment launched f
 
 Continuous quality mode watches application changes, maps them to impacted features, finds coverage gaps, proposes tests, and opens clearly-labeled PRs when the configured autonomy mode allows it. It runs the watch → analyze → propose → PR loop through the same Phase-10.5 pipeline; the autonomy mode (0–4) is a ceiling on what auto-approves, and `destructive`/`admin` never auto-approve. Architecture: [continuous-quality-agent.md](continuous-quality-agent.md); autonomy: [autonomy-levels.md](autonomy-levels.md); walkthrough: [user-guide/continuous-quality.md](user-guide/continuous-quality.md).
 
+## Test-plan commands (shipped)
+
+| Command | Skill | Per-command page |
+| --- | --- | --- |
+| `/tc:generate-test-plan` | `tc-test-plan` | [generate-test-plan.md](../plugins/test-commander/skills/tc-test-plan/commands/generate-test-plan.md) |
+| `/tc:update-test-plan` | `tc-test-plan` | [update-test-plan.md](../plugins/test-commander/skills/tc-test-plan/commands/update-test-plan.md) |
+
+`/tc:generate-test-plan` seeds a human-owned `test-plan/test-plan.md` from the requirements inventory and writes a `test-plan/coverage-map.md`; `/tc:update-test-plan` regenerates the coverage map without touching the plan. For the division of labor between the deterministic helper and the Claude judgment layer, see [test-planning.md](../plugins/test-commander/skills/tc-test-plan/methodology/test-planning.md).
+
 ## All phases shipped
 
 Phases 0–13 are complete. Test Commander ships the full workflow from workspace initialization through requirements, knowledge, exploration, BDD, automation, execution, learning, visualization, the web console, governance, the Runtime API + MCP server, sandboxes, and continuous quality.

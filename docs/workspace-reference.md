@@ -41,6 +41,9 @@ The workspace is created by [`/tc:init`](../plugins/test-commander/skills/tc-cor
     features/                 #   .feature files
     summaries/                #   per-feature Markdown summaries
   automation-plan/            # Phase 6 — per-feature automation plans
+  test-plan/                  # tc-test-plan — test plan + requirement coverage map
+    test-plan.md
+    coverage-map.md
   test-data/                  # Phase 6 — declarative test data
     seed/                     #   baseline fixtures
     scenarios/                #   per-suite scenarios
