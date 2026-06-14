@@ -203,7 +203,20 @@ def parse_scenarios(path: Path) -> list[Scenario]:
                 linked_anomaly=linked,
             )
         )
-    return sorted(scenarios, key=lambda s: s.cs_id)
+    # Drop candidates that duplicate an earlier one by (type, title) - a broad
+    # exploration session can attach the same anomaly scenario many times, which
+    # would otherwise render as identical Gherkin scenarios. Keep the
+    # lexicographically-first cs_id for determinism.
+    ordered = sorted(scenarios, key=lambda s: s.cs_id)
+    seen: set[tuple[str, str]] = set()
+    deduped: list[Scenario] = []
+    for s in ordered:
+        key = (s.type, s.title.strip().lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(s)
+    return deduped
 
 
 def parse_feature(path: Path) -> Feature | None:

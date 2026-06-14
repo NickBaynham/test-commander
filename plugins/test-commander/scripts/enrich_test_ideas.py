@@ -353,13 +353,20 @@ def session_keywords(session: ParsedSession) -> set[str]:
     return _tokens(" ".join(parts))
 
 
+# A single coincidental shared stem (e.g. one entity noun mentioned in a broad
+# charter) over-matches: a wide-scope session would then enrich nearly every
+# requirement. Requiring at least two distinct shared stems keeps the match
+# anchored to genuine topical overlap, not an incidental noun collision.
+MIN_SHARED_STEMS = 2
+
+
 def req_matches_session(idea: TestIdea, sess_stems: set[str]) -> bool:
-    """True when the requirement body shares at least one stem with the
-    session's keyword set. Stem-matching means ``authentication`` (req)
+    """True when the requirement body shares at least ``MIN_SHARED_STEMS`` stems
+    with the session's keyword set. Stem-matching means ``authentication`` (req)
     matches ``authenticated`` (charter) and ``session`` matches ``sessions``.
     """
     req_stems = {_stem(t) for t in _tokens(idea.requirement_body)}
-    return bool(req_stems & sess_stems)
+    return len(req_stems & sess_stems) >= MIN_SHARED_STEMS
 
 
 # ---------------------------------------------------------------------------

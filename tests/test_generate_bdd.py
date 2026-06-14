@@ -92,6 +92,39 @@ def load_module():
     return module
 
 
+def test_duplicate_candidates_are_deduped(tmp_path):
+    """A broad session can attach the same anomaly candidate many times; identical
+    (type, title) candidates must collapse to one scenario (regression for the
+    duplicate 'Reproduce unexpected-state' scenarios)."""
+    mod = load_module()
+    seed = tmp_path / "REQ-001.md"
+    seed.write_text(
+        "---\n"
+        "requirement_id: REQ-001\n"
+        "requirement_title: Example\n"
+        "---\n\n"
+        "## Phase 4 enrichment\n\n"
+        "### SESS-1\n\n"
+        "- **CS-001-001** (negative) - Reproduce unexpected-state on /x\n"
+        "  - source: a\n"
+        "- **CS-001-002** (negative) - Reproduce unexpected-state on /x\n"
+        "  - source: b\n"
+        "- **CS-001-003** (negative) - Reproduce unexpected-state on /x\n"
+        "  - source: c\n"
+        "- **CS-001-004** (happy) - Happy path works\n"
+        "  - source: d\n",
+        encoding="utf-8",
+    )
+    scenarios = mod.parse_scenarios(seed)
+    titles = [(s.type, s.title) for s in scenarios]
+    # Ordered by cs_id: the three identical negatives collapse to one (CS-001-001).
+    assert titles == [
+        ("negative", "Reproduce unexpected-state on /x"),
+        ("happy", "Happy path works"),
+    ], titles
+    assert scenarios[0].cs_id == "CS-001-001"
+
+
 # ---------------------------------------------------------------------------
 # Preconditions
 # ---------------------------------------------------------------------------

@@ -101,6 +101,8 @@ class ParsedScenario:
     tags: list[str]
     steps: list[str]
     has_examples: bool
+    # Feature-level tags (e.g. @area:) that apply to every scenario in the file.
+    feature_tags: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -165,10 +167,12 @@ SCENARIO_RE = re.compile(r"^(Scenario Outline|Scenario):\s*(.*)$")
 def parse_feature_file(path: Path) -> list[ParsedScenario]:
     """Parse a ``.feature`` file into scenarios with tags, steps, and
     examples-presence. Tags are the contiguous ``@`` lines preceding a
-    Scenario; feature-level tags are not propagated (the v1 rubric checks
-    per-scenario tags)."""
+    Scenario. Feature-level tags (the ``@`` lines preceding ``Feature:``) are
+    captured on each scenario's ``feature_tags`` so the rubric can honor tag
+    inheritance (e.g. a Feature-level ``@area:`` satisfies every scenario)."""
     scenarios: list[ParsedScenario] = []
     pending_tags: list[str] = []
+    feature_tags: list[str] = []
     name = ""
     is_outline = False
     tags: list[str] = []
@@ -180,7 +184,9 @@ def parse_feature_file(path: Path) -> list[ParsedScenario]:
         nonlocal open_scenario
         if open_scenario:
             scenarios.append(
-                ParsedScenario(name, is_outline, list(tags), list(steps), has_examples)
+                ParsedScenario(
+                    name, is_outline, list(tags), list(steps), has_examples, list(feature_tags)
+                )
             )
         open_scenario = False
 
@@ -194,6 +200,7 @@ def parse_feature_file(path: Path) -> list[ParsedScenario]:
             continue
         if stripped.startswith("Feature:"):
             close()
+            feature_tags = pending_tags
             pending_tags = []
             continue
         match = SCENARIO_RE.match(stripped)
@@ -230,7 +237,9 @@ def review_scenario(
     def add(category: str) -> None:
         findings.append(Finding(category, sc.name, MESSAGES[category]))
 
-    if not any(t.startswith("@area:") for t in sc.tags):
+    # An @area: tag at either the scenario or the feature level satisfies the check
+    # (Gherkin tags inherit from Feature to its scenarios).
+    if not any(t.startswith("@area:") for t in (*sc.tags, *sc.feature_tags)):
         add("missing-tag")
     if not any(t.startswith("@req:") or t.startswith("@cs:") for t in sc.tags):
         add("untraceable")

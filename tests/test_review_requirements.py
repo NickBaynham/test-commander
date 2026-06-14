@@ -16,6 +16,7 @@ Test contract per the partition table in planning/plan.md Step 2.2:
   - Config.yaml extension takes effect (additive, not replacing the core).
 """
 
+import re
 import shutil
 from pathlib import Path
 
@@ -81,6 +82,34 @@ def _seed_requirements(workspace: Path, source: Path = FIXTURE_REQUIREMENTS) -> 
 def test_uninitialized_workspace_refused(tmp_path):
     with pytest.raises(review_requirements.UninitializedWorkspaceError):
         review_requirements.review(tmp_path)
+
+
+def test_consistency_ignores_mixed_modal_false_positive(tmp_path):
+    """A requirement carrying both a permission ('can') and an obligation ('shall')
+    modal is internally mixed; it must not be flagged as a contradiction pole over a
+    coincidental shared noun (regression for the REQ-009-style false positive)."""
+    workspace = _init_workspace(tmp_path)
+    doc = workspace / "documents" / "uploaded" / "reqs.md"
+    doc.parent.mkdir(parents=True, exist_ok=True)
+    doc.write_text(
+        "REQ-101: A department shall carry an optional description and an active "
+        "boolean indicating whether it can be used for scheduling.\n"
+        "REQ-102: An admin shall be able to create a department with a required name.\n"
+        "REQ-201: Anonymous users may access the API without authentication.\n"
+        "REQ-202: All API access requires an authenticated user account.\n",
+        encoding="utf-8",
+    )
+    result = review_requirements.review(tmp_path)
+    cons = [f for f in result.findings if f.dimension == "consistency"]
+    involved: set[str] = set()
+    for f in cons:
+        involved.add(f.req_id)
+        involved.update(re.findall(r"REQ-\d+", f.detail))
+    # The mixed-modal pair must NOT produce a consistency finding.
+    assert "REQ-101" not in involved
+    assert "REQ-102" not in involved
+    # A genuine pure-permission vs pure-obligation contradiction is still caught.
+    assert "REQ-201" in involved or "REQ-202" in involved
 
 
 def test_no_requirements_files_writes_empty_review(tmp_path):

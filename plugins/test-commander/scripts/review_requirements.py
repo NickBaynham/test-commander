@@ -527,13 +527,22 @@ def _cross_check_consistency(reqs: list[Requirement]) -> tuple[list[Finding], li
     nouns = {r.id: _substantive_nouns(r.body) for r in reqs}
     permits = {r.id: _has_any_modal(r.body, PERMISSION_MODALS) for r in reqs}
     obligates = {r.id: _has_any_modal(r.body, OBLIGATION_MODALS) for r in reqs}
+    # A requirement carrying BOTH a permission and an obligation modal is internally
+    # mixed - its permission modal is usually incidental (e.g. "shall carry ... that
+    # CAN be used for scheduling"). Only a requirement that is PURELY permissive or
+    # PURELY obligatory is a clean pole of a contradiction; treating a mixed
+    # requirement as a pole produces false positives over coincidental shared nouns.
+    pure_permit = {r.id: permits[r.id] and not obligates[r.id] for r in reqs}
+    pure_obligate = {r.id: obligates[r.id] and not permits[r.id] for r in reqs}
 
     for i, a in enumerate(reqs):
         for b in reqs[i + 1:]:
             pair = tuple(sorted((a.id, b.id)))
             if pair in seen_pairs:
                 continue
-            opposing = (permits[a.id] and obligates[b.id]) or (permits[b.id] and obligates[a.id])
+            opposing = (pure_permit[a.id] and pure_obligate[b.id]) or (
+                pure_permit[b.id] and pure_obligate[a.id]
+            )
             if not opposing:
                 continue
             shared = nouns[a.id] & nouns[b.id]

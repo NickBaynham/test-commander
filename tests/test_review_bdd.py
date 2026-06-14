@@ -113,6 +113,29 @@ def load(name: str, path: Path):
     return module
 
 
+def test_feature_level_area_satisfies_missing_tag(tmp_path):
+    """A Feature-level @area: tag is inherited by its scenarios, so a scenario
+    without its own @area: must NOT raise missing-tag (regression for the
+    per-scenario @area ceremony)."""
+    review_mod = load("review_bdd", REVIEW)
+    feature = tmp_path / "f.feature"
+    feature.write_text(
+        "@area:billing\n"
+        "Feature: Billing\n\n"
+        "  @req:REQ-001 @cs:CS-001-001 @smoke\n"
+        "  Scenario: Charge a card\n"
+        "    Given a valid card\n"
+        "    When the account is charged\n"
+        "    Then the charge succeeds\n",
+        encoding="utf-8",
+    )
+    scenarios = review_mod.parse_feature_file(feature)
+    assert scenarios[0].feature_tags == ["@area:billing"]
+    findings = review_mod.review_one(feature, review_mod.VAGUE_RE, review_mod.UI_RE)
+    categories = {f.category for f in findings}
+    assert "missing-tag" not in categories
+
+
 # ---------------------------------------------------------------------------
 # Preconditions
 # ---------------------------------------------------------------------------

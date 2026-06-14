@@ -48,6 +48,41 @@ CHARTER_HELPER = SCRIPTS / "create_charter.py"
 EXPLORE_HELPER = SCRIPTS / "explore.py"
 SESSION_SUMMARY_HELPER = SCRIPTS / "session_summary.py"
 
+def _load_enrich_module():
+    import importlib.util
+
+    if str(SCRIPTS) not in sys.path:
+        sys.path.insert(0, str(SCRIPTS))
+    spec = importlib.util.spec_from_file_location("enrich_test_ideas", HELPER)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_single_shared_stem_does_not_match_but_two_do():
+    """A broad session sharing only ONE incidental stem with a requirement must not
+    enrich it; genuine topical overlap (>= 2 stems) must. Regression for the
+    over-broad enrichment that tagged every requirement."""
+    import types
+
+    e = _load_enrich_module()
+    # Session keyword set scoped to scheduling/appointments.
+    sess_stems = {e._stem(t) for t in e._tokens(
+        "schedule appointment doctor department patient slot booking"
+    )}
+    # Shares only 'appoi' (one stem) — incidental; must NOT match.
+    one = types.SimpleNamespace(
+        requirement_body="The dashboard shall display an appointment empty state."
+    )
+    assert e.req_matches_session(one, sess_stems) is False
+    # Shares 'appoi' + 'docto' + 'depar' — genuine overlap; must match.
+    two = types.SimpleNamespace(
+        requirement_body="The appointment links a doctor in the selected department."
+    )
+    assert e.req_matches_session(two, sess_stems) is True
+
+
 FIXTURE_DIR = REPO / "tests" / "fixtures" / "seeded-exploration-session"
 FIXTURE_RECORDED_SESSION = FIXTURE_DIR / "recorded-session.json"
 FLAWED_DIR = REPO / "tests" / "fixtures" / "seeded-flawed-requirements"
