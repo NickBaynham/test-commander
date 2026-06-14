@@ -156,3 +156,76 @@ def test_requirement_count_in_plan(tmp_path):
     plan = (workspace(tmp_path) / "test-plan" / "test-plan.md").read_text(encoding="utf-8")
     assert "**3**" in plan  # REQUIREMENT_COUNT substituted
     assert "| REQ-001 |" in plan  # inventory block substituted
+
+
+# A Playwright-shaped report: REQ-003 has a passing test (-> automated), REQ-002 has
+# only a failing test (-> automated-failing). REQ-001 is not referenced by any test.
+RESULTS_JSON = """\
+{
+  "suites": [
+    {
+      "title": "patients.spec.ts",
+      "file": "tests/api/patients.spec.ts",
+      "specs": [
+        { "title": "REQ-003 dashboard shows totals", "ok": true, "tests": [] }
+      ],
+      "suites": [
+        {
+          "title": "validation",
+          "specs": [
+            { "title": "REQ-002 rejects duplicate email", "ok": false, "tests": [] }
+          ]
+        }
+      ]
+    }
+  ]
+}
+"""
+
+
+def _coverage(project_root: Path) -> str:
+    return (workspace(project_root) / "test-plan" / "coverage-map.md").read_text(encoding="utf-8")
+
+
+def _row(cov: str, req_id: str) -> str:
+    return [ln for ln in cov.splitlines() if ln.startswith(f"| {req_id} |")][0]
+
+
+def test_results_explicit_path_marks_run_status(tmp_path):
+    seed(tmp_path, with_map=False)
+    (tmp_path / "results.json").write_text(RESULTS_JSON, encoding="utf-8")
+    result = run_plan(tmp_path, "--results", "results.json")
+    assert result.returncode == 0, result.stderr
+    cov = _coverage(tmp_path)
+    assert "automated" in _row(cov, "REQ-003")
+    assert "automated-failing" in _row(cov, "REQ-002")
+    # REQ-001 has no test and no map link -> uncovered.
+    assert "uncovered" in _row(cov, "REQ-001")
+    assert "results:" in result.stdout
+
+
+def test_results_autodetect_default_path(tmp_path):
+    seed(tmp_path, with_map=False)
+    report_dir = tmp_path / "playwright-report"
+    report_dir.mkdir()
+    (report_dir / "results.json").write_text(RESULTS_JSON, encoding="utf-8")
+    run_plan(tmp_path)  # no --results; should autodetect
+    cov = _coverage(tmp_path)
+    assert "automated" in _row(cov, "REQ-003")
+    assert "automated-failing" in _row(cov, "REQ-002")
+
+
+def test_run_status_overrides_map(tmp_path):
+    # REQ-002 is "planned" via the map (test-idea only), but a failing run wins.
+    seed(tmp_path, with_map=True)
+    (tmp_path / "results.json").write_text(RESULTS_JSON, encoding="utf-8")
+    run_plan(tmp_path, "--results", "results.json")
+    cov = _coverage(tmp_path)
+    assert "automated-failing" in _row(cov, "REQ-002")
+
+
+def test_missing_results_file_is_ignored(tmp_path):
+    seed(tmp_path, with_map=False)
+    result = run_plan(tmp_path, "--results", "does-not-exist.json")
+    assert result.returncode == 0
+    assert "results: none" in result.stdout

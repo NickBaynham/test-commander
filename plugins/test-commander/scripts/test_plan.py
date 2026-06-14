@@ -35,6 +35,7 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from collections.abc import Iterable
@@ -48,6 +49,12 @@ MAP_ROW = re.compile(
     r"^\|\s*(REQ-\d+)\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|\s*$", re.MULTILINE
 )
 NONE_MARKERS = {"", "_(none)_", "(none)", "-"}
+
+# A requirement is linked to a test when the test's title path mentions its REQ-ID.
+REQ_TOKEN = re.compile(r"\bREQ-\d{1,4}\b")
+
+# Default location of a Playwright JSON report, relative to the project root.
+DEFAULT_RESULTS_REL = Path("playwright-report") / "results.json"
 
 TEMPLATE_REL = Path("skills") / "tc-test-plan" / "templates" / "test-plan-template.md"
 
@@ -87,15 +94,20 @@ class CoverageRow:
     test_ideas: str
     bdd: str
     automation: str
+    # From a Playwright results.json, when supplied: "pass", "fail", or "" (no run linked).
+    run_status: str = ""
 
     @property
     def status(self) -> str:
-        downstream = (self.test_ideas, self.bdd, self.automation)
-        has_automation = _present(self.automation)
-        has_any = any(_present(d) for d in downstream)
-        if has_automation:
+        # A real test run is the strongest evidence and wins over the traceability map.
+        if self.run_status == "pass":
             return "automated"
-        if has_any:
+        if self.run_status == "fail":
+            return "automated-failing"
+        downstream = (self.test_ideas, self.bdd, self.automation)
+        if _present(self.automation):
+            return "automated"
+        if any(_present(d) for d in downstream):
             return "planned"
         return "uncovered"
 
@@ -108,6 +120,7 @@ class PlanOutcome:
     plan_skipped: bool = False
     coverage_written: bool = False
     paths: list[Path] = field(default_factory=list)
+    results_path: Path | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -172,9 +185,51 @@ def parse_requirements_map(path: Path) -> dict[str, tuple[str, str, str]]:
     return out
 
 
+def parse_playwright_results(path: Path) -> dict[str, str]:
+    """Map each REQ-ID referenced by a test to its run status ("pass"/"fail").
+
+    Reads a Playwright JSON report. A requirement is linked to a test when the
+    test's title path (file + describe titles + test title) contains its REQ-ID.
+    A requirement is "pass" if ANY linked test passed; otherwise "fail" if any
+    linked test ran and did not pass. Tests with no REQ-ID token are ignored.
+    """
+    try:
+        report = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+    status_by_req: dict[str, str] = {}
+
+    def record(req_ids: set[str], passed: bool) -> None:
+        for req_id in req_ids:
+            if passed:
+                status_by_req[req_id] = "pass"
+            elif status_by_req.get(req_id) != "pass":
+                status_by_req[req_id] = "fail"
+
+    def walk(suite: dict, ancestors: list[str]) -> None:
+        here = ancestors + [str(suite.get("title", "")), str(suite.get("file", ""))]
+        for spec in suite.get("specs", []):
+            title_path = " ".join(here + [str(spec.get("title", ""))])
+            req_ids = set(REQ_TOKEN.findall(title_path))
+            if not req_ids:
+                continue
+            passed = bool(spec.get("ok", False))
+            record(req_ids, passed)
+        for child in suite.get("suites", []):
+            walk(child, here)
+
+    for suite in report.get("suites", []):
+        walk(suite, [])
+    return status_by_req
+
+
 def build_coverage_rows(
-    requirements: list[Requirement], req_map: dict[str, tuple[str, str, str]]
+    requirements: list[Requirement],
+    req_map: dict[str, tuple[str, str, str]],
+    run_status: dict[str, str] | None = None,
 ) -> list[CoverageRow]:
+    run_status = run_status or {}
     rows: list[CoverageRow] = []
     for req in requirements:
         ideas, bdd, automation = req_map.get(req.req_id, ("", "", ""))
@@ -185,6 +240,7 @@ def build_coverage_rows(
                 test_ideas=ideas,
                 bdd=bdd,
                 automation=automation,
+                run_status=run_status.get(req.req_id, ""),
             )
         )
     return rows
@@ -200,22 +256,30 @@ def _truncate(text: str, limit: int = 90) -> str:
     return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
 
 
-def render_coverage_map(rows: list[CoverageRow]) -> str:
-    counts = {"automated": 0, "planned": 0, "uncovered": 0}
+def render_coverage_map(rows: list[CoverageRow], *, results_used: bool) -> str:
+    counts = {"automated": 0, "automated-failing": 0, "planned": 0, "uncovered": 0}
     for row in rows:
         counts[row.status] += 1
+    source_note = (
+        "When a Playwright `results.json` is supplied, `status` reflects the actual run "
+        "(`automated` = a linked test passed, `automated-failing` = a linked test is red); "
+        "otherwise it is the mechanical signal from the traceability map."
+        if results_used
+        else "The `status` column is a mechanical signal (does the requirement have any "
+        "downstream artifact). Supply a test report with `--results` to mark requirements "
+        "`automated` from an actual run."
+    )
     lines = [
         "# Requirement → Coverage Map",
         "",
         "Auto-generated by `/tc:update-test-plan` (and `/tc:generate-test-plan`).",
-        "Re-running overwrites this file byte-deterministically. The `status` column is a",
-        "mechanical signal (does the requirement have any downstream artifact); the Claude",
-        "judgment layer refines it to real test files and pass/fail in `test-plan.md`.",
+        "Re-running overwrites this file byte-deterministically. " + source_note,
         "",
         "## Summary",
         "",
         f"- Requirements: **{len(rows)}**",
-        f"- Automated: **{counts['automated']}**",
+        f"- Automated (passing): **{counts['automated']}**",
+        f"- Automated (failing): **{counts['automated-failing']}**",
         f"- Planned (seed/BDD only): **{counts['planned']}**",
         f"- Uncovered: **{counts['uncovered']}**",
         "",
@@ -258,11 +322,27 @@ def render_plan_from_template(template_text: str, rows: list[CoverageRow]) -> st
 # ---------------------------------------------------------------------------
 
 
-def build(project_root: Path, *, refresh: bool, force: bool) -> PlanOutcome:
+def resolve_results_path(project_root: Path, results: str | None) -> Path | None:
+    """An explicit --results path (must exist), else autodetect the default report."""
+    if results:
+        path = Path(results)
+        if not path.is_absolute():
+            path = project_root / path
+        return path if path.is_file() else None
+    default = project_root / DEFAULT_RESULTS_REL
+    return default if default.is_file() else None
+
+
+def build(
+    project_root: Path, *, refresh: bool, force: bool, results: str | None = None
+) -> PlanOutcome:
     workspace = workspace_dir(project_root)
     requirements = parse_inventory(workspace / "requirements" / "requirements-inventory.md")
     req_map = parse_requirements_map(workspace / "traceability" / "requirements-map.md")
-    rows = build_coverage_rows(requirements, req_map)
+
+    results_path = resolve_results_path(project_root, results)
+    run_status = parse_playwright_results(results_path) if results_path else {}
+    rows = build_coverage_rows(requirements, req_map, run_status)
 
     plan_dir = workspace / "test-plan"
     plan_dir.mkdir(parents=True, exist_ok=True)
@@ -270,10 +350,13 @@ def build(project_root: Path, *, refresh: bool, force: bool) -> PlanOutcome:
         requirement_count=len(rows),
         covered_count=sum(1 for r in rows if r.status != "uncovered"),
     )
+    outcome.results_path = results_path
 
     # coverage-map.md is always (re)generated - the "keep up to date" half.
     coverage_path = plan_dir / "coverage-map.md"
-    coverage_path.write_text(render_coverage_map(rows), encoding="utf-8")
+    coverage_path.write_text(
+        render_coverage_map(rows, results_used=results_path is not None), encoding="utf-8"
+    )
     outcome.coverage_written = True
     outcome.paths.append(coverage_path)
 
@@ -316,11 +399,22 @@ def main(argv: Iterable[str] | None = None) -> int:
         action="store_true",
         help="Re-create test-plan.md from the template even if it already exists.",
     )
+    parser.add_argument(
+        "--results",
+        metavar="PATH",
+        help=(
+            "Playwright JSON report. Requirements whose REQ-ID appears in a test's "
+            "title path are marked automated/automated-failing from the run. "
+            "Defaults to <project-root>/playwright-report/results.json when present."
+        ),
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
     project_root = Path(args.project_root).resolve()
 
     try:
-        outcome = build(project_root, refresh=args.refresh, force=args.force)
+        outcome = build(
+            project_root, refresh=args.refresh, force=args.force, results=args.results
+        )
     except UninitializedWorkspaceError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
@@ -334,11 +428,20 @@ def main(argv: Iterable[str] | None = None) -> int:
         plan_state = "skipped (exists)"
     else:
         plan_state = "n/a"
+    if outcome.results_path:
+        try:
+            shown = outcome.results_path.relative_to(project_root)
+        except ValueError:
+            shown = outcome.results_path
+        results_note = f"  results: {shown}"
+    else:
+        results_note = "  results: none"
     print(
         f"requirements: {outcome.requirement_count}  "
         f"covered: {outcome.covered_count}  "
         f"plan: {plan_state}  "
         f"coverage-map: {'written' if outcome.coverage_written else 'n/a'}"
+        f"{results_note}"
     )
     for path in outcome.paths:
         print(f"  - {path.relative_to(project_root)}")

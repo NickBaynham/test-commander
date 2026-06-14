@@ -14,7 +14,9 @@ Each command is implemented as a Python helper script bundled inside the plugin 
 The helper is deterministic and universal (D19). It does two things:
 
 1. **Seeds `test-plan.md`** from the bundled template, populated with the requirement inventory and a mechanical coverage status. After creation the file is **human-owned** — the helper never overwrites it, so per-test tables, defects, risks, and narrative survive. Re-create with `--force`.
-2. **Regenerates `coverage-map.md`** on every run — a pure generated requirement → coverage table. This is the "keep up to date" half: it always reflects the current inventory, test-ideas, and traceability map.
+2. **Regenerates `coverage-map.md`** on every run — a pure generated requirement → coverage table. This is the "keep up to date" half: it always reflects the current inventory, test-ideas, traceability map, and — when supplied — an actual test run.
+
+When a Playwright JSON report is passed with `--results` (or found at the default `playwright-report/results.json`), each requirement whose `REQ-ID` appears in a test's title path is marked **`automated`** (a linked test passed) or **`automated-failing`** (a linked test is red, e.g. a known-defect regression). A real run wins over the traceability map. This relies on the convention that tests **name their requirement in the title or a describe block** — e.g. `test('REQ-025 creates a valid appointment', ...)`.
 
 The **Claude judgment layer** then fills the per-test tables (ID / Name / Description / Test Data / Status), the defect register, and the risks — the parts a generic helper cannot know because the actual test files live in the consuming project, not the workspace. See [methodology/test-planning.md](methodology/test-planning.md).
 
@@ -27,7 +29,7 @@ Seeds `<workspace>/test-plan/test-plan.md` from the template (skip-not-overwrite
 **Run:**
 
 ```sh
-python3 <plugin-root>/scripts/test_plan.py <project-root> [--force]
+python3 <plugin-root>/scripts/test_plan.py <project-root> [--force] [--results PATH]
 ```
 
 `<project-root>` defaults to the current working directory. Refuses uninitialized workspaces and a missing/empty inventory with exit 2 (directing the user at `/tc:init` and `/tc:review-requirements`).
@@ -41,10 +43,10 @@ Regenerates `<workspace>/test-plan/coverage-map.md` from the current inventory a
 **Run:**
 
 ```sh
-python3 <plugin-root>/scripts/test_plan.py <project-root> --refresh
+python3 <plugin-root>/scripts/test_plan.py <project-root> --refresh [--results PATH]
 ```
 
-`<project-root>` defaults to the current working directory. Same preconditions as above.
+`<project-root>` defaults to the current working directory. Same preconditions as above. Pass `--results` to refresh the coverage map's `automated`/`automated-failing` statuses from the latest run.
 
 Full spec: [commands/update-test-plan.md](commands/update-test-plan.md). Methodology: [methodology/test-planning.md](methodology/test-planning.md).
 

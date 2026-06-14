@@ -57,6 +57,36 @@ the truth. A requirement can show `planned` (a seed exists) while a real
 automated test already covers it — reconcile the two when you update the plan,
 and prefer the evidence of an actual passing test over a seed link.
 
+## Ingesting run results (`--results`)
+
+The mechanical coverage status above answers "is there *any* downstream artifact"
+— it cannot tell a seed apart from a passing automated test. Pass a Playwright
+JSON report (`--results <path>`, or drop it at the default
+`playwright-report/results.json`) to ground the status in an actual run:
+
+- A requirement whose `REQ-ID` appears in a test's title path, where that test
+  **passed**, becomes `automated`.
+- If the only linked tests **failed** (e.g. a known-defect regression that is red
+  by design), it becomes `automated-failing` — visible, not hidden.
+- A real run **wins over** the traceability map: evidence beats a seed link.
+
+This depends on one convention: **tests name their requirement in the title or a
+describe block**, so the report carries the linkage. For example:
+
+```ts
+test('REQ-025 creates a valid appointment', async ({ request }) => { ... });
+// or group them:
+test.describe('REQ-026 doctor-department relationship', () => { ... });
+```
+
+Tests with no `REQ-ID` token are simply not linked — they still run, they just
+do not move a requirement's status. Untagging is therefore safe; tagging is what
+turns a passing suite into provable requirement coverage.
+
+The report is read-only and the parse is resilient: a missing or malformed file
+is ignored (the map falls back to the mechanical status) rather than failing the
+run.
+
 ## Keeping it current
 
 1. When requirements change → `/tc:review-requirements`, then `/tc:update-test-plan`.

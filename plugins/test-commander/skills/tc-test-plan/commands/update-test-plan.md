@@ -7,6 +7,9 @@ latest inventory and traceability, without disturbing the human-owned plan.
 
 - `<workspace>/requirements/requirements-inventory.md` — the parsed REQ-ID list (required).
 - `<workspace>/traceability/requirements-map.md` — per-requirement downstream links (optional).
+- A Playwright JSON report (optional): `--results PATH`, or the default
+  `<project-root>/playwright-report/results.json`. Marks requirements
+  `automated` / `automated-failing` from the actual run.
 
 ## Outputs
 
@@ -38,7 +41,7 @@ by hand (the judgment layer).
 ## Implementation
 
 - Helper: `plugins/test-commander/scripts/test_plan.py --refresh` (per D18).
-- Run: `python3 <plugin-root>/scripts/test_plan.py <project-root> --refresh`.
+- Run: `python3 <plugin-root>/scripts/test_plan.py <project-root> --refresh [--results PATH]`.
 
 ## See also
 

@@ -10,6 +10,10 @@ requirement → coverage map.
 - `<workspace>/traceability/requirements-map.md` — per-requirement downstream
   links (test ideas / BDD / automation), when present. Used to derive each
   requirement's mechanical coverage status.
+- A Playwright JSON report (optional): `--results PATH`, or the default
+  `<project-root>/playwright-report/results.json`. Requirements whose `REQ-ID`
+  appears in a passing test's title path are marked `automated`; only-failing
+  links become `automated-failing`. A real run wins over the traceability map.
 - `skills/tc-test-plan/templates/test-plan-template.md` — the plan template.
 
 ## Outputs
@@ -31,9 +35,12 @@ requirement → coverage map.
 1. Resolve the workspace; refuse if uninitialized.
 2. Parse the inventory into `(REQ-ID, body)` rows in document order.
 3. Parse the traceability map (if present) into per-requirement downstream links.
-4. Derive each requirement's coverage status: `automated` (has an automation
-   link), `planned` (has a test-idea or BDD link), or `uncovered`.
-5. Write `coverage-map.md` (always) and `test-plan.md` (skip-not-overwrite).
+4. If a results report is available, map each `REQ-ID` referenced by a test to
+   its run status (pass/fail).
+5. Derive each requirement's coverage status, run results first: `automated`
+   (a linked test passed), `automated-failing` (only failing links), `planned`
+   (a test-idea or BDD link), or `uncovered`.
+6. Write `coverage-map.md` (always) and `test-plan.md` (skip-not-overwrite).
 
 ## Safety
 
@@ -46,7 +53,7 @@ requirement → coverage map.
 ## Implementation
 
 - Helper: `plugins/test-commander/scripts/test_plan.py` (per D18).
-- Run: `python3 <plugin-root>/scripts/test_plan.py <project-root> [--force]`.
+- Run: `python3 <plugin-root>/scripts/test_plan.py <project-root> [--force] [--results PATH]`.
 
 ## Judgment layer
 
