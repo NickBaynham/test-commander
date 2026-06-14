@@ -21,7 +21,7 @@ The framework lands at the project root `tests/` tree, outside the
 | --- | --- |
 | `tests/e2e/` | Specs - one `<area>.spec.ts` per `@area:` feature, one `test()` per scenario. |
 | `tests/pages/` | Page objects - one per `@area:` namespace. Locators live here, never in specs. |
-| `tests/components/` | Component objects - shared UI fragments (nav, dialogs, tables). |
+| `tests/components/` | Component objects - shared UI fragments (nav, dialogs, and especially list **tables/filters**, [ui-test-quality.md](ui-test-quality.md)). |
 | `tests/fixtures/` | Fixtures - the only path test data reaches a spec (D6). |
 | `tests/db/` | Optional database-layer assertion helpers ([database-assertions.md](database-assertions.md)). |
 | `tests/utils/` | Shared helpers. |
@@ -79,6 +79,7 @@ scaffold never overwrites an edited `playwright.config.ts`.
 ## See also
 
 - [Locator strategy](locator-strategy.md) - the locator priority order.
+- [UI test quality](ui-test-quality.md) - component objects, empty/error-state coverage, accessibility.
 - [Database assertions](database-assertions.md) - the DB-layer verification pattern.
 - [/tc:build-framework](../commands/build-framework.md) - the command spec.
 - [Object templates](../templates/) - the v1 rendering contract.

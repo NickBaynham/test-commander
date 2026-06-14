@@ -31,9 +31,9 @@ python3 <plugin-root>/scripts/build_framework.py <project-root>
 
 `<project-root>` defaults to the current working directory. Refuses uninitialized workspaces (exit 2). `ensure_framework(project_root)` is the lazy-init entry point importable by the Phase 6.4 generator.
 
-Full spec: [commands/build-framework.md](commands/build-framework.md). Methodology: [methodology/playwright-standards.md](methodology/playwright-standards.md), [methodology/locator-strategy.md](methodology/locator-strategy.md), [methodology/database-assertions.md](methodology/database-assertions.md).
+Full spec: [commands/build-framework.md](commands/build-framework.md). Methodology: [methodology/playwright-standards.md](methodology/playwright-standards.md), [methodology/locator-strategy.md](methodology/locator-strategy.md), [methodology/database-assertions.md](methodology/database-assertions.md), [methodology/ui-test-quality.md](methodology/ui-test-quality.md).
 
-Framework best practices (enforced by the generated shape and the reference templates): every spec pairs a **page object** (locators) with a **fixture** (data + state); fixtures carry an auto reset-to-known-state for shared backends and expose typed data; data-driven cases loop a dataset; and persistence is verified at the **database layer** (`tests/db/`, [db-client-template.ts](templates/db-client-template.ts)).
+Framework best practices (enforced by the generated shape and the reference templates): every spec pairs a **page object** (locators) with a **fixture** (data + state); fixtures carry an auto reset-to-known-state for shared backends and expose typed data; data-driven cases loop a dataset; persistence is verified at the **database layer** (`tests/db/`, [db-client-template.ts](templates/db-client-template.ts)); shared **tables/filters** get a component object; UI areas cover the **empty and error states**, not just the happy path; and **accessibility** is an optional axe-core gate ([a11y-fixture-template.ts](templates/a11y-fixture-template.ts)). See [methodology/ui-test-quality.md](methodology/ui-test-quality.md).
 
 ## See also
 

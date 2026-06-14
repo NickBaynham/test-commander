@@ -214,6 +214,26 @@ def test_fixture_template_carries_reset_isolation():
     assert "resetState" in text and "PLAYWRIGHT_RESET_PATH" in text
 
 
+def test_component_template_is_a_table_with_filters():
+    """The component template demonstrates the table/filter component pattern that
+    list-area specs assert through (rows / rowContaining / filterBy)."""
+    text = (TEMPLATES_DIR / "component-object-template.ts").read_text(encoding="utf-8")
+    assert balanced(text), "component-object-template.ts has unbalanced brackets"
+    for helper in ("rows(", "rowContaining(", "filterBy("):
+        assert helper in text, f"component template should expose {helper}"
+
+
+def test_a11y_fixture_template_present_and_well_formed():
+    """The accessibility-scan reference fixture ships, is well-formed, and runs an
+    axe-core scan that fails on violations."""
+    path = TEMPLATES_DIR / "a11y-fixture-template.ts"
+    assert path.is_file(), "missing bundled template a11y-fixture-template.ts"
+    text = path.read_text(encoding="utf-8")
+    assert balanced(text), "a11y-fixture-template.ts has unbalanced brackets"
+    assert "@axe-core/playwright" in text and "a11yScan" in text
+    assert "violations" in text, "a11y scan must assert on violations"
+
+
 def test_spec_template_carries_provenance_placeholder():
     text = (TEMPLATES_DIR / "playwright-spec-template.ts").read_text(encoding="utf-8")
     assert "@req:" in text and "@cs:" in text, (
